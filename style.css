@@ -150,3 +150,56 @@ body {
 .stat-value { font-size: 16px; font-weight: 700; color: var(--accent-purple); margin-top: 4px; }
 .global-event-banner { background: linear-gradient(90deg, rgba(239, 68, 68, 0.2), transparent); border-left: 4px solid var(--danger-color); padding: 12px; border-radius: 8px; margin-bottom: 12px; }
 .bp-card { background: linear-gradient(135deg, rgba(236,72,153,0.1), rgba(139,92,246,0.1)); border-color: var(--accent-pink); }
+/* 🛠️ СТО И ДЕТАЛИЗАЦИЯ ФУРЫ */
+.parts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.part-card {
+    background: rgba(15, 15, 22, 0.7);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.part-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.part-val {
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.part-val.good { color: var(--success-color); }
+.part-val.warn { color: #F59E0B; }
+.part-val.danger { color: var(--danger-color); }
+
+.part-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.part-bar-fill {
+    height: 100%;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.btn-repair {
+    padding: 6px 8px;
+    font-size: 11px;
+    margin-top: 4px;
+}
