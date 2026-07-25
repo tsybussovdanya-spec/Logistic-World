@@ -357,7 +357,6 @@ const GameLogic = {
         UI.renderAll();
     },
 
-    // 📜 Покупка лицензий
     async buyLicense(licId, cost, reqLvl) {
         if (AppState.player.level < reqLvl) {
             return UI.showToast(`Нужен уровень ${reqLvl} для получения этой лицензии!`, 'error');
@@ -411,6 +410,7 @@ const GameLogic = {
 };
 
 
+
 // ============================================================================
 // 🎨 УПРАВЛЕНИЕ ИНТЕРФЕЙСОМ
 // ============================================================================
@@ -455,7 +455,7 @@ const UI = {
         
         if(p.syndicate) {
             this.safeUpdate('corp-name', p.syndicate);
-            this.safeUpdate('corp-role', 'Ваша должность: Логист');
+            this.safeUpdate('corp-role', `Должность: ${p.corp_role || 'Водитель'}`);
         }
 
         const xpProg = Math.min((p.xp / GameLogic.getReqXP(p.level)) * 100, 100);
@@ -558,6 +558,50 @@ const UI = {
                 </button>
             </div>`;
         }).join(''));
+
+        // 🏢 Рендер вкладки Корпорации (Кланы до 50 участников с должностями)
+        const corpContainer = document.getElementById('tab-syndicate');
+        if (corpContainer) {
+            const hasCorp = p.corp_id !== null && p.corp_id !== undefined;
+            
+            corpContainer.innerHTML = `
+                <div class="section-header">
+                    <h2>Логистическая Корпорация</h2>
+                    <p class="subtitle">Масштабный бизнес и командная работа</p>
+                </div>
+                
+                ${!hasCorp ? `
+                    <div class="card">
+                        <h3>Создать корпорацию</h3>
+                        <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Объединяйте до 50 игроков, делитесь заказами и развивайте общий баланс.</p>
+                        <div class="input-group">
+                            <label>Название корпорации:</label>
+                            <input type="text" id="input-corp-name" class="input-text" placeholder="например, CyberLogistics">
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="CorpLogic.createCorporation(document.getElementById('input-corp-name').value.trim())">Создать корпорацию</button>
+                    </div>
+                ` : `
+                    <div class="card bp-card">
+                        <div class="card-title"><span>🏢 ${p.syndicate || 'Корпорация'}</span><span class="level-badge">${p.corp_role}</span></div>
+                        <div class="specs-grid">
+                            <div>Участники: До 50</div>
+                            <div>Должность: ${p.corp_role}</div>
+                        </div>
+                        <div style="display:flex; gap:8px; margin-top:8px;">
+                            <button type="button" class="btn btn-outline" style="font-size:12px; padding:8px;" onclick="CorpLogic.donateToCorp(10000)">Внести 10k 🪙 в казну</button>
+                            <button type="button" class="btn btn-outline" style="font-size:12px; padding:8px; border-color: var(--danger-color); color: var(--danger-color);" onclick="CorpLogic.leaveCorporation()">Покинуть</button>
+                        </div>
+                    </div>
+
+                    <h3 class="subsection-title" style="margin-top:16px;">Должности и Права</h3>
+                    <div class="card" style="font-size: 13px; color: var(--hint-color);">
+                        <p>👑 <b>Директор:</b> Управление составом и казной.</p>
+                        <p style="margin-top: 6px;">💼 <b>Заместитель / Финансист:</b> Распределение контрактов.</p>
+                        <p style="margin-top: 6px;">🚚 <b>Логист / Водитель:</b> Выполнение корпоративных рейсов.</p>
+                    </div>
+                `}
+            `;
+        }
     }
 };
 
