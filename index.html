@@ -42,7 +42,8 @@
         <header class="app-header" onclick="switchTab('profile')">
             <div class="user-profile-preview">
                 <div class="avatar-wrapper">
-                    <img id="header-avatar" src="" class="avatar-small" alt="Avatar">
+                    <!-- Добавлен id="user-avatar" для динамической смены фото -->
+                    <img id="user-avatar" src="" class="avatar-small" alt="Avatar">
                 </div>
                 <div class="user-info">
                     <div class="name-row">
@@ -107,6 +108,28 @@
                 <div id="contracts-list" class="card-grid"></div>
             </section>
 
+            <!-- Вкладка: Рейтинг (Таблица лидеров) -->
+            <section id="tab-leaderboard" class="tab-content">
+                <div class="section-header">
+                    <h2>Рейтинг Логистов</h2>
+                    <p class="subtitle">Топ лучших игроков по заработку</p>
+                </div>
+                <div id="leaderboard-list">
+                    <!-- Сюда динамически подгружается рейтинг из БД -->
+                </div>
+            </section>
+
+            <!-- Вкладка: Сезонный пропуск (Battle Pass) -->
+            <section id="tab-pass" class="tab-content">
+                <div class="section-header">
+                    <h2>Season Pass: Cyber Tokyo</h2>
+                    <p class="subtitle">Получайте уникальные награды за уровни</p>
+                </div>
+                <div id="pass-tiers-list" class="card-grid">
+                    <!-- Сюда динамически рендерятся уровни пропуска -->
+                </div>
+            </section>
+
             <!-- Вкладка: Синдикат (Корпорации и Ко-оп) -->
             <section id="tab-syndicate" class="tab-content">
                 <div class="section-header">
@@ -131,11 +154,11 @@
                 </div>
             </section>
 
-            <!-- Вкладка: Профиль, Боевой Пропуск, Настройки -->
+            <!-- Вкладка: Профиль, Настройки -->
             <section id="tab-profile" class="tab-content">
                 <div class="section-header">
                     <h2>Профиль & Настройки</h2>
-                    <p class="subtitle">История, Premium и Музыка</p>
+                    <p class="subtitle">История, Аватар и Музыка</p>
                 </div>
                 
                 <!-- История компании -->
@@ -150,11 +173,12 @@
                     </div>
                 </div>
 
-                <!-- Battle Pass -->
-                <div class="card bp-card" style="margin-top: 12px;">
-                    <h3>🌟 Season Pass: Cyber Tokyo</h3>
-                    <p style="font-size: 12px; color: #ddd; margin-bottom: 8px;">Получайте уникальные скины и неон!</p>
-                    <button type="button" class="btn btn-action" onclick="UI.showToast('Сезонный пропуск будет доступен в следующем патче!', 'success')">Открыть пропуск</button>
+                <!-- Смена аватара из галереи -->
+                <div class="card" style="margin-top: 12px;">
+                    <h3>Аватар профиля</h3>
+                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 8px;">Загрузите свою фотографию из галереи</p>
+                    <input type="file" id="avatar-file-input" accept="image/*" style="display: none;" onchange="GameLogic.handleAvatarUpload(event)">
+                    <button type="button" class="btn btn-outline" onclick="document.getElementById('avatar-file-input').click()">Выбрать из галереи 🖼️</button>
                 </div>
 
                 <!-- Настройки -->
@@ -178,7 +202,7 @@
                     <button type="button" class="btn btn-save" onclick="GameLogic.saveProfile()">Сохранить профиль</button>
                 </div>
                 
-                <!-- Обратная связь (из пункта 17) -->
+                <!-- Обратная связь -->
                 <div class="card" style="margin-top: 12px;">
                     <h3>Обратная связь</h3>
                     <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
@@ -190,9 +214,12 @@
             </section>
         </main>
 
+        <!-- Нижняя навигация (добавлены кнопки Рейтинга и Пропуска) -->
         <nav class="nav-tabs bottom-nav">
             <button type="button" class="tab-btn active" onclick="switchTab('fleet')"><span class="icon">🚛</span></button>
             <button type="button" class="tab-btn" onclick="switchTab('logistics')"><span class="icon">🗺️</span></button>
+            <button type="button" class="tab-btn" onclick="switchTab('leaderboard')"><span class="icon">🏆</span></button>
+            <button type="button" class="tab-btn" onclick="switchTab('pass')"><span class="icon">🎫</span></button>
             <button type="button" class="tab-btn" onclick="switchTab('syndicate')"><span class="icon">🤝</span></button>
             <button type="button" class="tab-btn" onclick="switchTab('profile')"><span class="icon">👤</span></button>
         </nav>
