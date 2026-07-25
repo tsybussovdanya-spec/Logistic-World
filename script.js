@@ -462,10 +462,22 @@ const UI = {
         const xpFill = document.getElementById('xp-bar-fill');
         if (xpFill) xpFill.style.width = `${xpProg}%`;
 
-        const allLic = [{id:'basic', n:'Базовая'}, {id:'dangerous', n:'Опасные грузы'}, {id:'oversized', n:'Негабарит'}];
-        this.safeUpdateHTML('licenses-list', allLic.map(l => 
-            `<span class="license-badge ${p.licenses.includes(l.id) ? 'active' : ''}">${l.n}</span>`
-        ).join(''));
+        // 📜 Интерактивные лицензии с ценами и проверкой уровня
+        const allLic = [
+            { id: 'basic', n: 'Базовая', cost: 0, reqLvl: 1 },
+            { id: 'dangerous', n: 'Опасные грузы', cost: 15000, reqLvl: 3 },
+            { id: 'oversized', n: 'Негабарит', cost: 45000, reqLvl: 6 }
+        ];
+
+        this.safeUpdateHTML('licenses-list', allLic.map(l => {
+            const hasIt = p.licenses.includes(l.id);
+            return `<div class="license-badge ${hasIt ? 'active' : ''}" 
+                style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;"
+                onclick="${hasIt ? `UI.showToast('Лицензия "${l.n}" уже активна', 'info')` : `if(confirm('Купить лицензию "${l.n}" за ${l.cost.toLocaleString()} 🪙?')) GameLogic.buyLicense('${l.id}', ${l.cost}, ${l.reqLvl})`}">
+                <span>${l.n}</span>
+                <span style="font-size: 10px; opacity: 0.8;">${hasIt ? '✓ Активна' : `🔒 ${l.cost.toLocaleString()} 🪙`}</span>
+            </div>`;
+        }).join(''));
 
         this.safeUpdateHTML('fleet-list', AppState.trucks.map(t => `
             <div class="card rarity-${t.rarity || 'common'}">
