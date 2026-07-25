@@ -1,6 +1,3 @@
-// ============================================================================
-// 🚀 ИНИЦИАЛИЗАЦИЯ TELEGRAM WEB APP И БАЗЫ ДАННЫХ
-// ============================================================================
 const tg = window.Telegram.WebApp;
 try {
     tg.expand();
@@ -13,7 +10,7 @@ const CONFIG = {
     XP_MULTIPLIER: 0.15, 
     DAILY_BONUS_COINS: 15000,
     DAILY_BONUS_FUEL: 200,
-    BONUS_COOLDOWN_MS: 86400000, // 24 часа
+    BONUS_COOLDOWN_MS: 86400000,
     TIPS: [
         "Дождь увеличивает износ шин.",
         "Лицензия на опасные грузы приносит больше дохода.",
@@ -26,9 +23,6 @@ const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABAS
 const tgUser = tg.initDataUnsafe?.user;
 const telegramId = tgUser?.id ? Number(tgUser.id) : 123456789;
 
-// ============================================================================
-// 🎵 АУДИО СИСТЕМА И ВИБРАЦИЯ
-// ============================================================================
 const AudioSys = {
     musicOn: false,
     sfxOn: true,
@@ -38,7 +32,7 @@ const AudioSys = {
         this.musicOn = !this.musicOn;
         if (this.bgm) {
             if (this.musicOn) {
-                this.bgm.play().catch(err => console.log("Автозапуск аудио заблокирован браузером:", err));
+                this.bgm.play().catch(err => console.log("Блокировка аудио:", err));
             } else {
                 this.bgm.pause();
             }
@@ -65,9 +59,6 @@ const AudioSys = {
     }
 };
 
-// ============================================================================
-// 🌍 ПОГОДА И ГЛОБАЛЬНЫЕ ИВЕНТЫ
-// ============================================================================
 const WorldState = {
     weather: { name: '☀️ Ясно', timeMod: 1.0, fuelMod: 1.0, wearMod: 1.0 },
     
@@ -83,9 +74,6 @@ const WorldState = {
     }
 };
 
-// ============================================================================
-// ⚙️ ГЛОБАЛЬНОЕ СОСТОЯНИЕ (STATE)
-// ============================================================================
 const AppState = {
     player: {
         id: null, name: tgUser?.first_name || 'Логист', avatar: tgUser?.photo_url || '',
@@ -103,9 +91,6 @@ const AppState = {
     ]
 };
 
-// ============================================================================
-// 🤖 ИИ ДИСПЕТЧЕР
-// ============================================================================
 const AIDispatcher = {
     messages: [
         "Босс, скоро сезон дождей. Подготовьте шины.",
@@ -126,9 +111,6 @@ const AIDispatcher = {
     }
 };
 
-// ============================================================================
-// 🗄️ ВЗАИМОДЕЙСТВИЕ С БАЗОЙ ДАННЫХ
-// ============================================================================
 const DB = {
     async init() {
         try {
@@ -153,7 +135,7 @@ const DB = {
             UI.renderAll();
         } catch (err) {
             console.error(err);
-            UI.showToast("Ошибка соединения с БД (офлайн режим)", "error");
+            UI.showToast("Офлайн режим БД", "error");
             UI.renderAll();
         }
     },
@@ -202,7 +184,7 @@ const DB = {
             AppState.trucks = trucksRes.data || [];
             AppState.activeTrip = tripRes.data || null;
         } catch (e) {
-            console.error('Ошибка загрузки данных:', e);
+            console.error('Ошибка загрузки:', e);
         }
     },
 
@@ -213,9 +195,6 @@ const DB = {
     }
 };
 
-// ============================================================================
-// 🎮 ИГРОВАЯ ЛОГИКА
-// ============================================================================
 const GameLogic = {
     getReqXP(lvl) { return Math.floor(1000 * Math.pow(1.5, lvl - 1)); },
     
@@ -260,7 +239,7 @@ const GameLogic = {
             let { data, error } = await supabaseClient.from('active_trips').insert([tripData]).select().single();
             if (!error && data) AppState.activeTrip = data;
         } catch(e) {
-            AppState.activeTrip = tripData; // Фолбэк локально если бд не подключена
+            AppState.activeTrip = tripData;
         }
 
         await DB.syncPlayer();
@@ -302,6 +281,33 @@ const GameLogic = {
         AppState.player.fuel_stock += amount;
         await DB.syncPlayer();
         UI.showToast(`Куплено ${amount}л топлива`, 'success');
+        UI.renderAll();
+    },
+
+    async buyTruck(name, cost, capacity, fuel_use, rarity) {
+        if (AppState.player.money < cost) return UI.showToast('Недостаточно средств!', 'error');
+        AppState.player.money -= cost;
+
+        const newTruck = {
+            player_id: AppState.player.id || 1,
+            name: name,
+            capacity: capacity,
+            fuel_use: fuel_use,
+            engineLvl: 1,
+            tiresLvl: 1,
+            wear: 100,
+            rarity: rarity
+        };
+
+        try {
+            let { data } = await supabaseClient.from('trucks').insert([newTruck]).select().single();
+            if (data) AppState.trucks.push(data);
+        } catch(e) {
+            AppState.trucks.push({ ...newTruck, id: Date.now() });
+        }
+
+        await DB.syncPlayer();
+        UI.showToast('Новый грузовик приобретен!', 'success');
         UI.renderAll();
     },
 
@@ -357,9 +363,6 @@ const GameLogic = {
     }
 };
 
-// ============================================================================
-// 🎨 УПРАВЛЕНИЕ ИНТЕРФЕЙСОМ
-// ============================================================================
 const UI = {
     switchTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -392,28 +395,23 @@ const UI = {
     renderAll() {
         const p = AppState.player;
         
-        // Шапка и профиль
         this.safeUpdate('username', p.name);
         this.safeUpdate('user-money', `🪙 ${p.money.toLocaleString()}`);
         this.safeUpdate('user-fuel-stock', `⛽ ${p.fuel_stock}л`);
         this.safeUpdate('user-level-badge', `LVL ${p.level}`);
         
-        // Статистика
         this.safeUpdate('stat-total-profit', `${p.total_profit.toLocaleString()} 🪙`);
         this.safeUpdate('stat-total-trips', p.total_trips);
         this.safeUpdate('fuel-price', `🪙 ${p.fuel_price} / л`);
         
-        // Синдикат
         if(p.syndicate) {
             this.safeUpdate('corp-name', p.syndicate);
         }
 
-        // Полоса опыта
         const xpProg = Math.min((p.xp / GameLogic.getReqXP(p.level)) * 100, 100);
         const xpFill = document.getElementById('xp-bar-fill');
         if (xpFill) xpFill.style.width = `${xpProg}%`;
 
-        // Лицензии в профиле
         const allLic = [
             { id: 'basic', name: 'Базовая логистика', cost: 0 },
             { id: 'dangerous', name: '☢️ Опасные грузы (ADR)', cost: 25000 },
@@ -434,7 +432,6 @@ const UI = {
             `;
         }).join(''));
 
-        // Автопарк
         this.safeUpdateHTML('fleet-list', AppState.trucks.map(t => `
             <div class="card rarity-${t.rarity || 'common'}">
                 <div class="card-title"><span>${t.name}</span><span style="font-size:10px;text-transform:uppercase;">${t.rarity || 'common'}</span></div>
@@ -450,7 +447,6 @@ const UI = {
             </div>
         `).join(''));
 
-        // Активный рейс
         let tripHtml = '';
         if (AppState.activeTrip) {
             let left = Math.floor((AppState.activeTrip.end_time - Date.now()) / 1000);
@@ -465,7 +461,6 @@ const UI = {
         }
         this.safeUpdateHTML('active-trip-panel', tripHtml);
 
-        // Контракты
         this.safeUpdateHTML('contracts-list', AppState.contracts.map(c => {
             const lockedLvl = p.level < c.reqLvl;
             const lockedLic = !p.licenses.includes(c.reqLic);
@@ -483,9 +478,6 @@ const UI = {
     }
 };
 
-// ============================================================================
-// 🎮 ПАРАЛЛАКС И ЗАПУСК ИГРЫ
-// ============================================================================
 document.addEventListener('mousemove', (e) => {
     const bg = document.getElementById('parallax-bg');
     if (!bg) return;
@@ -527,15 +519,11 @@ document.addEventListener('DOMContentLoaded', () => {
         DB.init();
     }
 
-    // Игровой цикл таймеров рейса
     setInterval(() => { if (AppState.activeTrip) UI.renderAll(); }, 1000);
-    // Погода и диспетчер (раз в минуту)
     setInterval(() => { WorldState.generateWeather(); AIDispatcher.randomAdvice(); }, 60000);
-    // Рынок топлива (раз в 2 минуты)
     setInterval(() => { GameLogic.updateMarket(); }, 120000);
 });
 
-// Глобальные хэндлеры для HTML onclick
 window.switchTab = (id) => UI.switchTab(id);
 window.AudioSys = AudioSys;
 window.GameLogic = GameLogic;
