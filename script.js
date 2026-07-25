@@ -133,6 +133,7 @@ const DB = {
                 await this.createNewPlayer();
             } else {
                 AppState.player = { ...AppState.player, ...existingPlayer };
+                // Гарантируем массивы/поля для пасса
                 if (!AppState.player.pass_level) AppState.player.pass_level = 1;
                 if (!AppState.player.pass_claimed) AppState.player.pass_claimed = [];
             }
@@ -214,12 +215,13 @@ const DB = {
     async syncPlayer() {
         const { id, ...updateData } = AppState.player;
         await supabaseClient.from('players').update(updateData).eq('id', id);
+        // Фоновое обновление таблицы лидеров после синхронизации
         this.loadLeaderboard();
     }
 };
 
 // ============================================================================
-// 🎮 ИГРОВАЯ ЛОГИКА И СЕТЕВИК
+// 🎮 ИГРОВАЯ ЛОГИКА
 // ============================================================================
 const GameLogic = {
     getReqXP(lvl) { return Math.floor(1000 * Math.pow(1.5, lvl - 1)); },
@@ -232,6 +234,7 @@ const GameLogic = {
         while (AppState.player.xp >= req) {
             AppState.player.xp -= req;
             AppState.player.level++;
+            // Прогресс сезонного пропуска увеличивается вместе с уровнем
             AppState.player.pass_level++;
             req = this.getReqXP(AppState.player.level);
             leveledUp = true;
@@ -324,6 +327,7 @@ const GameLogic = {
         UI.renderAll();
     },
 
+    // 🖼️ СМЕНА ФОТО ИЗ ГАЛЕРЕИ
     handleAvatarUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -340,6 +344,7 @@ const GameLogic = {
         reader.readAsDataURL(file);
     },
 
+    // 🎫 ЛОГИКА СЕЗОННОГО ПРОПУСКА
     claimPassReward(tierLevel, coinReward) {
         if (AppState.player.pass_level < tierLevel) {
             return UI.showToast('Уровень пропуска еще не достигнут!', 'error');
@@ -353,25 +358,6 @@ const GameLogic = {
         DB.syncPlayer();
 
         UI.showToast(`Награда за пропуск получена: +${coinReward} 🪙!`, 'success');
-        UI.renderAll();
-    },
-
-    async buyLicense(licId, cost, reqLvl) {
-        if (AppState.player.level < reqLvl) {
-            return UI.showToast(`Нужен уровень ${reqLvl} для получения этой лицензии!`, 'error');
-        }
-        if (AppState.player.licenses.includes(licId)) {
-            return UI.showToast('Эта лицензия уже приобретена!', 'info');
-        }
-        if (AppState.player.money < cost) {
-            return UI.showToast('Недостаточно монет для покупки лицензии!', 'error');
-        }
-
-        AppState.player.money -= cost;
-        AppState.player.licenses.push(licId);
-        
-        await DB.syncPlayer();
-        UI.showToast('Лицензия успешно приобретена!', 'success');
         UI.renderAll();
     },
 
@@ -405,6 +391,155 @@ const GameLogic = {
         const maxPrice = 22;
         AppState.player.fuel_price = Math.floor(Math.random() * (maxPrice - minPrice + 1)) + minPrice;
         UI.renderAll();
+    }
+};
+
+// ============================================================================
+// 🎨 УПРАВЛЕНИЕ ИНТЕРФЕЙСОМ
+// ============================================================================
+const UI = {
+    switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(`tab-${tabId}`).classList.add('active');
+        document.querySelectorAll('.tab-btn').forEach(b => { if(b.getAttribute('onclick')?.includes(tabId)) b.classList.add('active'); });
+        AudioSys.playVibrate('click');
+        this.renderAll();
+    },
+
+    showToast(msg, type = 'success') {
+        const c = document.getElementById('toast-container');
+        if (!c) return;
+        const t = document.createElement('div');
+        t.className = `toast ${type}`; t.innerText = msg;
+        c.appendChild(t);
+        AudioSys.playVibrate(type);
+        setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
+    },
+
+    safeUpdate(id, text) { const el = document.getElementById(id); if (el) el.innerText = text; },
+    safeUpdateHTML(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html; },
+
+    renderAll() {
+        const p = AppState.player;
+        
+        // Шапка и профиль
+        this.safeUpdate('username', p.name);
+        this.safeUpdate('user-money', `🪙 ${p.money.toLocaleString()}`);
+        this.safeUpdate('user-fuel-stock', `⛽ ${p.fuel_stock}л`);
+        this.safeUpdate('user-level-badge', `LVL ${p.level}`);
+        
+        // Рендер аватара везде, где есть элемент с id="user-avatar"
+        document.querySelectorAll('#user-avatar').forEach(img => {
+            if (p.avatar) img.src = p.avatar;
+        });
+        
+        // Статистика
+        this.safeUpdate('stat-total-profit', `${p.total_profit.toLocaleString()} 🪙`);
+        this.safeUpdate('stat-total-trips', p.total_trips);
+        this.safeUpdate('fuel-price', `🪙 ${p.fuel_price}`);
+        
+        // Синдикат
+        if(p.syndicate) {
+            this.safeUpdate('corp-name', p.syndicate);
+            this.safeUpdate('corp-role', 'Ваша должность: Логист');
+        }
+
+        // Полоса опыта
+        const xpProg = Math.min((p.xp / GameLogic.getReqXP(p.level)) * 100, 100);
+        const xpFill = document.getElementById('xp-bar-fill');
+        if (xpFill) xpFill.style.width = `${xpProg}%`;
+
+        // Лицензии
+        const allLic = [{id:'basic', n:'Базовая'}, {id:'dangerous', n:'Опасные грузы'}, {id:'oversized', n:'Негабарит'}];
+        this.safeUpdateHTML('licenses-list', allLic.map(l => 
+            `<span class="license-badge ${p.licenses.includes(l.id) ? 'active' : ''}">${l.n}</span>`
+        ).join(''));
+
+        // Автопарк
+        this.safeUpdateHTML('fleet-list', AppState.trucks.map(t => `
+            <div class="card rarity-${t.rarity || 'common'}">
+                <div class="card-title"><span>${t.name}</span><span style="font-size:10px;text-transform:uppercase;">${t.rarity || 'common'}</span></div>
+                <div class="specs-grid">
+                    <div>Двигатель: Ур.${t.engineLvl}</div>
+                    <div>Шины: Ур.${t.tiresLvl}</div>
+                    <div>Состояние: ${t.wear}%</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn btn-outline" style="font-size:11px;padding:8px;" onclick="GameLogic.upgradeTruck(${t.id}, 'engine')">Двигатель (5k)</button>
+                    <button class="btn btn-outline" style="font-size:11px;padding:8px;" onclick="GameLogic.upgradeTruck(${t.id}, 'tires')">Шины (5k)</button>
+                </div>
+            </div>
+        `).join(''));
+
+        // Активный рейс
+        let tripHtml = '';
+        if (AppState.activeTrip) {
+            let left = Math.floor((AppState.activeTrip.end_time - Date.now()) / 1000);
+            if (left > 0) {
+                tripHtml = `<div class="card rarity-epic">
+                    <div class="card-title"><span>🚚 В рейсе...</span><span style="color:var(--accent-pink);">⏳ ${left} сек</span></div>
+                    <p style="font-size:12px; color:var(--hint-color);">${AppState.activeTrip.title}</p>
+                </div>`;
+            } else GameLogic.finishTrip();
+        }
+        this.safeUpdateHTML('active-trip-panel', tripHtml);
+
+        // Контракты
+        this.safeUpdateHTML('contracts-list', AppState.contracts.map(c => {
+            const lockedLvl = p.level < c.reqLvl;
+            const lockedLic = !p.licenses.includes(c.reqLic);
+            const isLocked = lockedLvl || lockedLic;
+            
+            return `<div class="card" style="${isLocked ? 'opacity:0.6' : ''}">
+                <div class="card-title"><span>${c.title}</span><span style="color:var(--accent-pink);">+${c.reward} 🪙</span></div>
+                <div class="specs-grid"><div>Время: ${c.duration}с</div><div>Топливо: ${c.fuel}л</div></div>
+                <button class="btn btn-primary" ${AppState.activeTrip || isLocked ? 'disabled' : ''} 
+                    onclick="GameLogic.startTrip(${c.reward}, ${c.fuel}, ${c.duration}, '${c.title}', ${c.reqLvl}, '${c.reqLic}')">
+                    ${lockedLvl ? `Нужен Ур. ${c.reqLvl}` : (lockedLic ? 'Нет лицензии' : (AppState.activeTrip ? 'Транспорт занят' : 'Начать рейс'))}
+                </button>
+            </div>`;
+        }).join(''));
+
+        // 🏆 РЕНДЕР ТАБЛИЦЫ ЛИДЕРОВ (РЕЙТИНГ)
+        this.safeUpdateHTML('leaderboard-list', AppState.leaderboard.map((user, index) => `
+            <div class="card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; margin-bottom: 6px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-weight: bold; font-size: 16px; color: ${index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : 'var(--hint-color)'};">#${index + 1}</span>
+                    <img src="${user.avatar || 'https://via.placeholder.com/40'}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;" />
+                    <div>
+                        <div style="font-weight: 600; font-size: 14px;">${user.name}</div>
+                        <div style="font-size: 11px; color: var(--hint-color);">Уровень: ${user.level}</div>
+                    </div>
+                </div>
+                <div style="font-weight: bold; color: var(--accent-pink); font-size: 14px;">🪙 ${user.total_profit.toLocaleString()}</div>
+            </div>
+        `).join(''));
+
+        // 🎫 РЕНДЕР СЕЗОННОГО ПРОПУСКА
+        const passTiers = [
+            { level: 1, reward: 10000, title: 'Уровень 1: Старт Cyber Tokyo' },
+            { level: 3, reward: 25000, title: 'Уровень 3: Неоновый обвес' },
+            { level: 5, reward: 60000, title: 'Уровень 5: Элитный скин фуры' }
+        ];
+
+        this.safeUpdateHTML('pass-tiers-list', passTiers.map(tier => {
+            const isReached = p.pass_level >= tier.level;
+            const isClaimed = p.pass_claimed.includes(tier.level);
+            
+            return `<div class="card" style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <div class="card-title"><span>${tier.title}</span></div>
+                    <p style="font-size:12px; color:var(--hint-color);">Награда: +${tier.reward.toLocaleString()} 🪙</p>
+                </div>
+                <button class="btn ${isClaimed ? 'btn-outline' : 'btn-primary'}" 
+                    style="font-size:12px; padding:8px 12px;"
+                    ${!isReached || isClaimed ? 'disabled' : ''}
+                    onclick="GameLogic.claimPassReward(${tier.level}, ${tier.reward})">
+                    ${isClaimed ? 'Получено' : (isReached ? 'Забрать' : `Нужен ур. ${tier.level}`)}
+                </button>
+            </div>`;
+        }).join(''));
     }
 };
 
