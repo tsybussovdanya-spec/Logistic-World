@@ -219,108 +219,272 @@ const DB = {
 };
 
 // ============================================================================
-// 🎮 ИГРОВАЯ ЛОГИКА
+// 🎮 ИГРОВАЯ ЛОГИКА И СЕТЕВИК
 // ============================================================================
+const GameLogic = {
+    getReqXP(lvl) { return Math.floor(1000 * Math.pow(1.5, lvl - 1)); },
+    
+    async addXP(amount) {
+        AppState.player.xp += amount;
+        let req = this.getReqXP(AppState.player.level);
+        let leveledUp = false;
 
-Const DB = {
-    async init() {
-        try {
-            let { data: existingPlayer, error: searchError } = await supabaseClient
-                .from('players')
-                .select('*')
-                .eq('telegram_id', telegramId)
-                .maybeSingle();
+        while (AppState.player.xp >= req) {
+            AppState.player.xp -= req;
+            AppState.player.level++;
+            AppState.player.pass_level++;
+            req = this.getReqXP(AppState.player.level);
+            leveledUp = true;
+        }
 
-            if (searchError) throw searchError;
+        if (leveledUp) {
+            UI.showToast(`🎉 НОВЫЙ УРОВЕНЬ: ${AppState.player.level}! (Пропуск обновился)`, 'success');
+        }
+    },
 
-            if (!existingPlayer) {
-                await this.createNewPlayer();
-            } else {
-                AppState.player = { ...AppState.player, ...existingPlayer };
-                if (!AppState.player.pass_level) AppState.player.pass_level = 1;
-                if (!AppState.player.pass_claimed) AppState.player.pass_claimed = [];
-            }
+    async startTrip(reward, fuel, duration, title, reqLvl, reqLic) {
+        if (AppState.player.level < reqLvl) return UI.showToast(`Требуется уровень ${reqLvl}!`, 'error');
+        if (!AppState.player.licenses.includes(reqLic)) return UI.showToast('Отсутствует нужная лицензия!', 'error');
+        
+        let finalFuel = Math.floor(fuel * WorldState.weather.fuelMod);
+        let finalDur = Math.floor(duration * WorldState.weather.timeMod);
 
-            await this.loadGameData();
-            await this.loadLeaderboard();
+        if (AppState.player.fuel_stock < finalFuel) return UI.showToast(`Нужно ${finalFuel}л топлива (из-за погоды)!`, 'error');
+
+        let endTime = Date.now() + (finalDur * 1000);
+        AppState.player.fuel_stock -= finalFuel;
+        
+        let { data, error } = await supabaseClient.from('active_trips').insert([{
+            player_id: AppState.player.id,
+            title: title,
+            reward: reward,
+            fuel_req: finalFuel,
+            end_time: endTime
+        }]).select().single();
+
+        if (error) return UI.showToast("Ошибка запуска рейса", "error");
+
+        AppState.activeTrip = data;
+        await DB.syncPlayer();
+        UI.showToast('Рейс начат!', 'success');
+        UI.renderAll();
+    },
+
+    async finishTrip() {
+        if (!AppState.activeTrip) return;
+        
+        let p = AppState.activeTrip.reward;
+        let earnedXP = Math.floor(p * CONFIG.XP_MULTIPLIER);
+        
+        AppState.player.money += p;
+        AppState.player.total_profit += p;
+        AppState.player.total_trips += 1;
+
+        await this.addXP(earnedXP);
+
+        await supabaseClient.from('active_trips').delete().eq('player_id', AppState.player.id);
+        AppState.activeTrip = null;
+
+        await DB.syncPlayer();
+        UI.showToast(`Рейс завершен! +${p} 🪙 | +${earnedXP} XP`, 'success');
+        AIDispatcher.randomAdvice();
+        UI.renderAll();
+    },
+
+    async buyFuel(amount) {
+        let cost = amount * AppState.player.fuel_price;
+        if (AppState.player.money < cost) return UI.showToast('Недостаточно монет!', 'error');
+        
+        AppState.player.money -= cost;
+        AppState.player.fuel_stock += amount;
+        await DB.syncPlayer();
+        UI.showToast(`Куплено ${amount}л топлива`, 'success');
+        UI.renderAll();
+    },
+
+    async claimDailyBonus() {
+        let now = Date.now();
+        if (now - AppState.player.last_bonus_time < CONFIG.BONUS_COOLDOWN_MS) {
+            let hours = Math.ceil((CONFIG.BONUS_COOLDOWN_MS - (now - AppState.player.last_bonus_time)) / 3600000);
+            return UI.showToast(`Бонус будет доступен через ${hours} ч.`, 'error');
+        }
+        AppState.player.last_bonus_time = now;
+        AppState.player.money += CONFIG.DAILY_BONUS_COINS;
+        AppState.player.fuel_stock += CONFIG.DAILY_BONUS_FUEL;
+        await DB.syncPlayer();
+        UI.showToast(`Бонус получен: +${CONFIG.DAILY_BONUS_COINS} 🪙, +${CONFIG.DAILY_BONUS_FUEL}л`, 'success');
+        UI.renderAll();
+    },
+
+    async saveProfile() {
+        let name = document.getElementById('input-username').value.trim();
+        if (name) AppState.player.name = name;
+        await DB.syncPlayer();
+        UI.showToast('Профиль успешно сохранен', 'success');
+        UI.renderAll();
+    },
+
+    handleAvatarUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        if (file.size > 2 * 1024 * 1024) {
+            return UI.showToast('Файл слишком большой (макс. 2МБ)', 'error');
+        }
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            AppState.player.avatar = e.target.result;
+            await DB.syncPlayer();
+            UI.showToast('Аватар успешно изменен!', 'success');
             UI.renderAll();
-        } catch (err) {
-            UI.showToast("Ошибка соединения с БД: " + err.message, "error");
-        }
+        };
+        reader.readAsDataURL(file);
     },
 
-    async createNewPlayer() {
-        let { data: newP, error: insertError } = await supabaseClient
-            .from('players')
-            .insert([{
-                telegram_id: telegramId,
-                name: AppState.player.name,
-                avatar: AppState.player.avatar,
-                money: AppState.player.money,
-                fuel_stock: AppState.player.fuel_stock,
-                level: AppState.player.level,
-                xp: AppState.player.xp,
-                total_trips: 0,
-                licenses: ['basic'],
-                pass_level: 1,
-                pass_claimed: []
-            }])
-            .select()
-            .single();
-
-        if (insertError) throw insertError;
-
-        if (newP) {
-            AppState.player = { ...AppState.player, ...newP };
-            await supabaseClient.from('trucks').insert([{
-                player_id: AppState.player.id,
-                name: 'LW-CyberTruck Alpha',
-                capacity: 5000,
-                fuel_use: 45,
-                engineLvl: 1,
-                tiresLvl: 1,
-                wear: 100,
-                rarity: 'common'
-            }]);
+    claimPassReward(tierLevel, coinReward) {
+        if (AppState.player.pass_level < tierLevel) {
+            return UI.showToast('Уровень пропуска еще не достигнут!', 'error');
         }
+        if (AppState.player.pass_claimed.includes(tierLevel)) {
+            return UI.showToast('Награда уже получена!', 'info');
+        }
+
+        AppState.player.pass_claimed.push(tierLevel);
+        AppState.player.money += coinReward;
+        DB.syncPlayer();
+
+        UI.showToast(`Награда за пропуск получена: +${coinReward} 🪙!`, 'success');
+        UI.renderAll();
     },
 
-    async loadGameData() {
-        try {
-            const [trucksRes, tripRes] = await Promise.all([
-                supabaseClient.from('trucks').select('*').eq('player_id', AppState.player.id),
-                supabaseClient.from('active_trips').select('*').eq('player_id', AppState.player.id).maybeSingle()
-            ]);
-
-            AppState.trucks = trucksRes.data || [];
-            AppState.activeTrip = tripRes.data || null;
-        } catch (e) {
-            console.error('Ошибка загрузки данных:', e);
+    async buyLicense(licId, cost, reqLvl) {
+        if (AppState.player.level < reqLvl) {
+            return UI.showToast(`Нужен уровень ${reqLvl} для получения этой лицензии!`, 'error');
         }
+        if (AppState.player.licenses.includes(licId)) {
+            return UI.showToast('Эта лицензия уже приобретена!', 'info');
+        }
+        if (AppState.player.money < cost) {
+            return UI.showToast('Недостаточно монет для покупки лицензии!', 'error');
+        }
+
+        AppState.player.money -= cost;
+        AppState.player.licenses.push(licId);
+        
+        await DB.syncPlayer();
+        UI.showToast('Лицензия успешно приобретена!', 'success');
+        UI.renderAll();
     },
 
-    async loadLeaderboard() {
-        try {
-            const { data, error } = await supabaseClient
-                .from('players')
-                .select('id, name, avatar, total_profit, level')
-                .order('total_profit', { ascending: false })
-                .limit(20);
-
-            if (!error && data) {
-                AppState.leaderboard = data;
-            }
-        } catch (e) {
-            console.error('Ошибка загрузки таблицы лидеров:', e);
-        }
+    async joinSyndicate(name) {
+        if (AppState.player.syndicate === name) return UI.showToast('Вы уже в этом синдикате', 'info');
+        AppState.player.syndicate = name;
+        await DB.syncPlayer();
+        UI.showToast(`Вы вступили в ${name}!`, 'success');
+        UI.renderAll();
     },
 
-    async syncPlayer() {
-        const { id, ...updateData } = AppState.player;
-        await supabaseClient.from('players').update(updateData).eq('id', id);
-        this.loadLeaderboard();
+    async upgradeTruck(id, part) {
+        const t = AppState.trucks.find(x => x.id === id);
+        if (!t) return;
+        const cost = 5000;
+        if(AppState.player.money < cost) return UI.showToast('Недостаточно средств!', 'error');
+        
+        AppState.player.money -= cost;
+        if(part === 'engine') t.engineLvl++;
+        if(part === 'tires') t.tiresLvl++;
+        
+        await supabaseClient.from('trucks').update({ engineLvl: t.engineLvl, tiresLvl: t.tiresLvl }).eq('id', id);
+        await DB.syncPlayer();
+        
+        UI.showToast(`Узел улучшен!`, 'success');
+        UI.renderAll();
+    },
+    
+    updateMarket() {
+        const minPrice = 8;
+        const maxPrice = 22;
+        AppState.player.fuel_price = Math.floor(Math.random() * (maxPrice - minPrice + 1)) + minPrice;
+        UI.renderAll();
     }
 };
+
+// ============================================================================
+// 🏢 ЛОГИКА КОРПОРАЦИЙ (КЛАНОВ)
+// ============================================================================
+const CorpLogic = {
+    async createCorporation(name) {
+        if (!name || name.length < 3) {
+            return UI.showToast('Название должно быть не менее 3 символов!', 'error');
+        }
+
+        const creationCost = 100000; // Стоимость создания корпорации
+        if (AppState.player.money < creationCost) {
+            return UI.showToast(`Недостаточно средств! Нужно ${creationCost.toLocaleString()} 🪙`, 'error');
+        }
+
+        try {
+            let { data: corpData, error: corpError } = await supabaseClient
+                .from('corporations')
+                .insert([{
+                    name: name,
+                    owner_id: AppState.player.id,
+                    treasury: 0
+                }])
+                .select()
+                .single();
+
+            if (corpError) throw corpError;
+
+            AppState.player.money -= creationCost;
+            AppState.player.corp_id = corpData.id;
+            AppState.player.syndicate = name;
+            AppState.player.corp_role = 'Директор';
+
+            await DB.syncPlayer();
+
+            UI.showToast(`Корпорация "${name}" успешно создана!`, 'success');
+            UI.renderAll();
+        } catch (err) {
+            console.error('Ошибка создания корпорации:', err);
+            UI.showToast('Ошибка при создании корпорации (возможно, имя занято)', 'error');
+        }
+    },
+
+    async donateToCorp(amount) {
+        if (AppState.player.money < amount) {
+            return UI.showToast('Недостаточно монет для взноса!', 'error');
+        }
+        if (!AppState.player.corp_id) {
+            return UI.showToast('Вы не состоите в корпорации!', 'error');
+        }
+
+        try {
+            AppState.player.money -= amount;
+            await DB.syncPlayer();
+            UI.showToast(`Вы внесли ${amount.toLocaleString()} 🪙 в казну`, 'success');
+            UI.renderAll();
+        } catch (err) {
+            UI.showToast('Ошибка при переводе в казну', 'error');
+        }
+    },
+
+    async leaveCorporation() {
+        if (!confirm('Вы уверены, что хотите покинуть корпорацию?')) return;
+
+        try {
+            AppState.player.corp_id = null;
+            AppState.player.syndicate = null;
+            AppState.player.corp_role = null;
+
+            await DB.syncPlayer();
+            UI.showToast('Вы покинули корпорацию', 'info');
+            UI.renderAll();
+        } catch (err) {
+            UI.showToast('Ошибка при выходе из корпорации', 'error');
+        }
+    }
+};
+
 // ============================================================================
 // 🎮 ПАРАЛЛАКС И ЗАПУСК ИГРЫ
 // ============================================================================
