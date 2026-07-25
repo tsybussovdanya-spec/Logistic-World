@@ -13,10 +13,9 @@ const CONFIG = {
     DAILY_BONUS_FUEL: 200,
     BONUS_COOLDOWN_MS: 86400000, // 24 часа
     TIPS: [
-        "Дождь увеличивает износ шин.",
-        "Лицензия на опасные грузы приносит больше дохода.",
-        "Ремонтируйте фуру вовремя, чтобы избежать штрафов.",
-        "Следите за биржей, цены меняются!"
+        "Дождь увеличивает износ шин и тормозов.",
+        "Следите за коробкой передач: 0% износа блокирует рейсы!",
+        "Ремонтируйте узлы вовремя, чтобы избежать поломки в пути."
     ]
 };
 
@@ -63,9 +62,9 @@ const WorldState = {
     generateWeather() {
         const types = [
             { name: '☀️ Ясно', timeMod: 1.0, fuelMod: 1.0, wearMod: 1.0 },
-            { name: '🔥 Жара', timeMod: 1.0, fuelMod: 1.2, wearMod: 1.1 },
-            { name: '🌨 Снег', timeMod: 1.3, fuelMod: 1.1, wearMod: 1.2 },
-            { name: '🌧 Ливень', timeMod: 1.1, fuelMod: 1.0, wearMod: 1.3 }
+            { name: '🔥 Жара', timeMod: 1.0, fuelMod: 1.2, wearMod: 1.2 },
+            { name: '🌨 Снег', timeMod: 1.3, fuelMod: 1.1, wearMod: 1.4 },
+            { name: '🌧 Ливень', timeMod: 1.1, fuelMod: 1.0, wearMod: 1.5 }
         ];
         this.weather = types[Math.floor(Math.random() * types.length)];
         UI.safeUpdate('weather-info', this.weather.name);
@@ -108,7 +107,7 @@ const AppState = {
 // ============================================================================
 const AIDispatcher = {
     messages: [
-        "Босс, скоро сезон дождей. Подготовьте шины.",
+        "Босс, проверить износ тормозов перед выездом!",
         "Цены на бирже изменились, проверьте вкладку!",
         "Ваш водитель готов к новому контракту.",
         "Не забывайте собирать ежедневный бонус."
@@ -144,7 +143,6 @@ const DB = {
                 await this.createNewPlayer();
             } else {
                 AppState.player = { ...AppState.player, ...existingPlayer };
-                // Гарантируем массивы/поля для пасса
                 if (!AppState.player.pass_level) AppState.player.pass_level = 1;
                 if (!AppState.player.pass_claimed) AppState.player.pass_claimed = [];
             }
@@ -180,14 +178,16 @@ const DB = {
 
         if (newP) {
             AppState.player = { ...AppState.player, ...newP };
+            // Базовый тягач со 100% здоровьем узлов
             await supabaseClient.from('trucks').insert([{
                 player_id: AppState.player.id,
                 name: 'LW-CyberTruck Alpha',
                 capacity: 5000,
                 fuel_use: 45,
-                engineLvl: 1,
-                tiresLvl: 1,
-                wear: 100,
+                engineLvl: 100,
+                tiresLvl: 100,
+                gearLvl: 100,
+                brakesLvl: 100,
                 rarity: 'common'
             }]);
         }
@@ -201,6 +201,15 @@ const DB = {
             ]);
 
             AppState.trucks = trucksRes.data || [];
+            
+            // Защита от старых записей без новых полей
+            AppState.trucks.forEach(t => {
+                if (t.engineLvl === undefined) t.engineLvl = 100;
+                if (t.tiresLvl === undefined) t.tiresLvl = 100;
+                if (t.gearLvl === undefined) t.gearLvl = 100;
+                if (t.brakesLvl === undefined) t.brakesLvl = 100;
+            });
+
             AppState.activeTrip = tripRes.data || null;
         } catch (e) {
             console.error('Ошибка загрузки данных:', e);
@@ -215,9 +224,7 @@ const DB = {
                 .order('total_profit', { ascending: false })
                 .limit(20);
 
-            if (!error && data) {
-                AppState.leaderboard = data;
-            }
+            if (!error && data) AppState.leaderboard = data;
         } catch (e) {
             console.error('Ошибка загрузки таблицы лидеров:', e);
         }
@@ -225,12 +232,8 @@ const DB = {
 
     async syncPlayer() {
         const p = AppState.player;
-        
-        if (!p.id) {
-            return UI.showToast("Ошибка: ID профиля не найден", "error");
-        }
+        if (!p.id) return UI.showToast("Ошибка: ID профиля не найден", "error");
 
-        // Явно указываем поля и конвертируем числа
         const updateData = {
             name: p.name,
             avatar: p.avatar,
@@ -248,16 +251,11 @@ const DB = {
             pass_claimed: p.pass_claimed
         };
 
-        const { error } = await supabaseClient
-            .from('players')
-            .update(updateData)
-            .eq('id', p.id);
+        const { error } = await supabaseClient.from('players').update(updateData).eq('id', p.id);
 
         if (error) {
-            console.error("Ошибка сохранения профиля:", error);
             UI.showToast("Ошибка БД: " + error.message, "error");
         } else {
-            // Обновляем таблицу лидеров только после успешной записи
             this.loadLeaderboard();
         }
     }
@@ -267,7 +265,7 @@ const DB = {
 // 🎮 ИГРОВАЯ ЛОГИКА
 // ============================================================================
 const GameLogic = {
-    isFinishing: false, // Блокировка от множественного вызова таймером
+    isFinishing: false,
 
     getReqXP(lvl) { return Math.floor(1000 * Math.pow(1.5, lvl - 1)); },
     
@@ -279,14 +277,13 @@ const GameLogic = {
         while (AppState.player.xp >= req) {
             AppState.player.xp -= req;
             AppState.player.level = Number(AppState.player.level) + 1;
-            // Прогресс сезонного пропуска увеличивается вместе с уровнем
             AppState.player.pass_level = Number(AppState.player.pass_level) + 1;
             req = this.getReqXP(AppState.player.level);
             leveledUp = true;
         }
 
         if (leveledUp) {
-            UI.showToast(`🎉 НОВЫЙ УРОВЕНЬ: ${AppState.player.level}! (Пропуск обновился)`, 'success');
+            UI.showToast(`🎉 НОВЫЙ УРОВЕНЬ: ${AppState.player.level}!`, 'success');
         }
     },
 
@@ -294,10 +291,18 @@ const GameLogic = {
         if (AppState.player.level < reqLvl) return UI.showToast(`Требуется уровень ${reqLvl}!`, 'error');
         if (!AppState.player.licenses.includes(reqLic)) return UI.showToast('Отсутствует нужная лицензия!', 'error');
         
+        // Проверка состояния техники
+        const mainTruck = AppState.trucks[0];
+        if (mainTruck) {
+            if (mainTruck.engineLvl <= 0 || mainTruck.tiresLvl <= 0 || mainTruck.gearLvl <= 0 || mainTruck.brakesLvl <= 0) {
+                return UI.showToast('⚠️ Тягач сломан! Отремонтируйте узлы в Гараже!', 'error');
+            }
+        }
+
         let finalFuel = Math.floor(fuel * WorldState.weather.fuelMod);
         let finalDur = Math.floor(duration * WorldState.weather.timeMod);
 
-        if (AppState.player.fuel_stock < finalFuel) return UI.showToast(`Нужно ${finalFuel}л топлива (из-за погоды)!`, 'error');
+        if (AppState.player.fuel_stock < finalFuel) return UI.showToast(`Нужно ${finalFuel}л топлива!`, 'error');
 
         let endTime = Date.now() + (finalDur * 1000);
         AppState.player.fuel_stock = Number(AppState.player.fuel_stock) - finalFuel;
@@ -314,7 +319,7 @@ const GameLogic = {
 
         AppState.activeTrip = data;
         await DB.syncPlayer();
-        UI.showToast('Рейс начат!', 'success');
+        UI.showToast('Рейс начат! Удачной дороги!', 'success');
         UI.renderAll();
     },
 
@@ -329,6 +334,26 @@ const GameLogic = {
         AppState.player.total_profit = Number(AppState.player.total_profit) + p;
         AppState.player.total_trips = Number(AppState.player.total_trips) + 1;
 
+        // Рассчитываем износ за рейс (зависит от погоды)
+        const mainTruck = AppState.trucks[0];
+        if (mainTruck) {
+            const baseWear = Math.floor(Math.random() * 6) + 5; // 5-10% износа
+            const wMod = WorldState.weather.wearMod;
+
+            mainTruck.engineLvl = Math.max(0, mainTruck.engineLvl - Math.floor(baseWear * wMod));
+            mainTruck.tiresLvl = Math.max(0, mainTruck.tiresLvl - Math.floor((baseWear + 3) * wMod));
+            mainTruck.gearLvl = Math.max(0, mainTruck.gearLvl - Math.floor(baseWear * wMod));
+            mainTruck.brakesLvl = Math.max(0, mainTruck.brakesLvl - Math.floor((baseWear + 2) * wMod));
+
+            // Сохраняем состояние узлов грузовика в БД
+            await supabaseClient.from('trucks').update({
+                engineLvl: mainTruck.engineLvl,
+                tiresLvl: mainTruck.tiresLvl,
+                gearLvl: mainTruck.gearLvl,
+                brakesLvl: mainTruck.brakesLvl
+            }).eq('id', mainTruck.id);
+        }
+
         await this.addXP(earnedXP);
 
         await supabaseClient.from('active_trips').delete().eq('player_id', AppState.player.id);
@@ -338,6 +363,32 @@ const GameLogic = {
         await DB.syncPlayer();
         UI.showToast(`Рейс завершен! +${p} 🪙 | +${earnedXP} XP`, 'success');
         AIDispatcher.randomAdvice();
+        UI.renderAll();
+    },
+
+    // 🔧 СИСТЕМА РЕМОНТА УЗЛОВ
+    async repairPart(partName) {
+        const truck = AppState.trucks[0];
+        if (!truck) return;
+
+        const currentVal = truck[partName] || 0;
+        if (currentVal >= 100) return UI.showToast('Узел в идеальном состоянии!', 'info');
+
+        // Стоимость ремонта зависит от того, насколько сильно изношена деталь
+        const missing = 100 - currentVal;
+        const repairCost = missing * 100; // 100 монет за 1% ремонта
+
+        if (AppState.player.money < repairCost) {
+            return UI.showToast(`Для ремонта нужно ${repairCost.toLocaleString()} 🪙`, 'error');
+        }
+
+        AppState.player.money -= repairCost;
+        truck[partName] = 100;
+
+        await supabaseClient.from('trucks').update({ [partName]: 100 }).eq('id', truck.id);
+        await DB.syncPlayer();
+
+        UI.showToast('Узел полностью отремонтирован!', 'success');
         UI.renderAll();
     },
 
@@ -367,29 +418,19 @@ const GameLogic = {
     },
 
     async buyLicense(licId) {
-        if (AppState.player.licenses.includes(licId)) {
-            return UI.showToast('Лицензия уже куплена!', 'info');
-        }
+        if (AppState.player.licenses.includes(licId)) return UI.showToast('Лицензия уже куплена!', 'info');
 
-        // Цены на лицензии
-        const prices = {
-            'dangerous': 50000,
-            'oversized': 150000
-        };
-
+        const prices = { 'dangerous': 50000, 'oversized': 150000 };
         const cost = prices[licId];
         if (!cost) return;
 
-        if (AppState.player.money < cost) {
-            return UI.showToast(`Нужно ${cost.toLocaleString()} 🪙`, 'error');
-        }
+        if (AppState.player.money < cost) return UI.showToast(`Нужно ${cost.toLocaleString()} 🪙`, 'error');
 
-        // Списываем деньги и выдаем лицензию
         AppState.player.money = Number(AppState.player.money) - cost;
         AppState.player.licenses.push(licId);
         
         await DB.syncPlayer();
-        UI.showToast('Лицензия успешно приобретена!', 'success');
+        UI.showToast('Лицензия приобретена!', 'success');
         UI.renderAll();
     },
 
@@ -397,41 +438,34 @@ const GameLogic = {
         let name = document.getElementById('input-username').value.trim();
         if (name) AppState.player.name = name;
         await DB.syncPlayer();
-        UI.showToast('Профиль успешно сохранен', 'success');
+        UI.showToast('Профиль сохранен', 'success');
         UI.renderAll();
     },
 
-    // 🖼️ СМЕНА ФОТО ИЗ ГАЛЕРЕИ
     handleAvatarUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
-        if (file.size > 2 * 1024 * 1024) {
-            return UI.showToast('Файл слишком большой (макс. 2МБ)', 'error');
-        }
+        if (file.size > 2 * 1024 * 1024) return UI.showToast('Файл слишком большой (макс. 2МБ)', 'error');
+        
         const reader = new FileReader();
         reader.onload = async (e) => {
             AppState.player.avatar = e.target.result;
             await DB.syncPlayer();
-            UI.showToast('Аватар успешно изменен!', 'success');
+            UI.showToast('Аватар изменен!', 'success');
             UI.renderAll();
         };
         reader.readAsDataURL(file);
     },
 
-    // 🎫 ЛОГИКА СЕЗОННОГО ПРОПУСКА
     claimPassReward(tierLevel, coinReward) {
-        if (AppState.player.pass_level < tierLevel) {
-            return UI.showToast('Уровень пропуска еще не достигнут!', 'error');
-        }
-        if (AppState.player.pass_claimed.includes(tierLevel)) {
-            return UI.showToast('Награда уже получена!', 'info');
-        }
+        if (AppState.player.pass_level < tierLevel) return UI.showToast('Уровень пропуска не достигнут!', 'error');
+        if (AppState.player.pass_claimed.includes(tierLevel)) return UI.showToast('Награда уже получена!', 'info');
 
         AppState.player.pass_claimed.push(tierLevel);
         AppState.player.money = Number(AppState.player.money) + Number(coinReward);
         DB.syncPlayer();
 
-        UI.showToast(`Награда за пропуск получена: +${coinReward} 🪙!`, 'success');
+        UI.showToast(`Награда за пропуск полученa: +${coinReward} 🪙!`, 'success');
         UI.renderAll();
     },
 
@@ -443,23 +477,6 @@ const GameLogic = {
         UI.renderAll();
     },
 
-    async upgradeTruck(id, part) {
-        const t = AppState.trucks.find(x => x.id === id);
-        if (!t) return;
-        const cost = 5000;
-        if(AppState.player.money < cost) return UI.showToast('Недостаточно средств!', 'error');
-        
-        AppState.player.money -= cost;
-        if(part === 'engine') t.engineLvl++;
-        if(part === 'tires') t.tiresLvl++;
-        
-        await supabaseClient.from('trucks').update({ engineLvl: t.engineLvl, tiresLvl: t.tiresLvl }).eq('id', id);
-        await DB.syncPlayer();
-        
-        UI.showToast(`Узел улучшен!`, 'success');
-        UI.renderAll();
-    },
-    
     updateMarket() {
         const minPrice = 8;
         const maxPrice = 22;
@@ -494,6 +511,13 @@ const UI = {
     safeUpdate(id, text) { const el = document.getElementById(id); if (el) el.innerText = text; },
     safeUpdateHTML(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html; },
 
+    // Вспомогательная функция цветного индикатора износа
+    getHealthColor(val) {
+        if (val > 60) return '#10B981'; // Зеленый
+        if (val > 25) return '#F59E0B'; // Оранжевый
+        return '#EF4444'; // Красный
+    },
+
     renderAll() {
         const p = AppState.player;
         
@@ -503,26 +527,67 @@ const UI = {
         this.safeUpdate('user-fuel-stock', `⛽ ${Number(p.fuel_stock)}л`);
         this.safeUpdate('user-level-badge', `LVL ${p.level}`);
         
-        // Рендер аватара везде, где есть элемент с id="user-avatar"
         document.querySelectorAll('#user-avatar').forEach(img => {
             if (p.avatar) img.src = p.avatar;
         });
         
-        // Статистика
         this.safeUpdate('stat-total-profit', `${Number(p.total_profit).toLocaleString()} 🪙`);
         this.safeUpdate('stat-total-trips', p.total_trips);
         this.safeUpdate('fuel-price', `🪙 ${p.fuel_price}`);
         
-        // Синдикат
         if(p.syndicate) {
             this.safeUpdate('corp-name', p.syndicate);
             this.safeUpdate('corp-role', 'Ваша должность: Логист');
         }
 
-        // Полоса опыта
         const xpProg = Math.min((p.xp / GameLogic.getReqXP(p.level)) * 100, 100);
         const xpFill = document.getElementById('xp-bar-fill');
         if (xpFill) xpFill.style.width = `${xpProg}%`;
+
+        // 🚛 ГЛАВНЫЙ ЭКРАН: АВТОПАРК И СИСТЕМА ДЕТАЛЕЙ (СТО)
+        const t = AppState.trucks[0] || { name: 'LW-CyberTruck Alpha', engineLvl: 100, tiresLvl: 100, gearLvl: 100, brakesLvl: 100 };
+        
+        const parts = [
+            { key: 'engineLvl', name: '🛠 Двигатель' },
+            { key: 'tiresLvl', name: '🛞 Шины' },
+            { key: 'gearLvl', name: '⚙️ Коробка передач' },
+            { key: 'brakesLvl', name: '🧯 Тормоза' }
+        ];
+
+        this.safeUpdateHTML('fleet-list', `
+            <div class="card rarity-epic">
+                <div class="card-title">
+                    <span>🚚 ${t.name}</span>
+                    <span style="font-size:11px; color:var(--accent-pink);">ГЛАВНЫЙ ТЯГАЧ</span>
+                </div>
+                
+                <p style="font-size:12px; color:var(--hint-color); margin-bottom: 8px;">Техническое состояние узлов:</p>
+
+                <div class="parts-grid">
+                    ${parts.map(pt => {
+                        const val = t[pt.key] !== undefined ? t[pt.key] : 100;
+                        const color = this.getHealthColor(val);
+                        const cost = (100 - val) * 100;
+                        
+                        return `
+                        <div class="part-card">
+                            <div class="part-header">
+                                <span>${pt.name}</span>
+                                <span style="color:${color};">${val}%</span>
+                            </div>
+                            <div class="part-bar">
+                                <div class="part-bar-fill" style="width:${val}%; background-color:${color};"></div>
+                            </div>
+                            ${val < 100 ? `
+                                <button class="btn btn-outline btn-repair" onclick="GameLogic.repairPart('${pt.key}')">
+                                    Ремонт (${cost.toLocaleString()} 🪙)
+                                </button>
+                            ` : `<span style="font-size:10px; color:var(--hint-color); text-align:center;">Исправен</span>`}
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+        `);
 
         // Лицензии
         const allLic = [
@@ -541,22 +606,6 @@ const UI = {
                 </span>`;
             }
         }).join(''));
-
-        // Автопарк
-        this.safeUpdateHTML('fleet-list', AppState.trucks.map(t => `
-            <div class="card rarity-${t.rarity || 'common'}">
-                <div class="card-title"><span>${t.name}</span><span style="font-size:10px;text-transform:uppercase;">${t.rarity || 'common'}</span></div>
-                <div class="specs-grid">
-                    <div>Двигатель: Ур.${t.engineLvl}</div>
-                    <div>Шины: Ур.${t.tiresLvl}</div>
-                    <div>Состояние: ${t.wear}%</div>
-                </div>
-                <div style="display:flex;gap:8px;">
-                    <button class="btn btn-outline" style="font-size:11px;padding:8px;" onclick="GameLogic.upgradeTruck(${t.id}, 'engine')">Двигатель (5k)</button>
-                    <button class="btn btn-outline" style="font-size:11px;padding:8px;" onclick="GameLogic.upgradeTruck(${t.id}, 'tires')">Шины (5k)</button>
-                </div>
-            </div>
-        `).join(''));
 
         // Активный рейс
         let tripHtml = '';
@@ -578,7 +627,7 @@ const UI = {
             const isLocked = lockedLvl || lockedLic;
             
             return `<div class="card" style="${isLocked ? 'opacity:0.6' : ''}">
-                <div class="card-title"><span>${c.title}</span><span style="color:var(--accent-pink);">+${c.reward} 🪙</span></div>
+                <div class="card-title"><span>${c.title}</span><span style="color:var(--accent-pink);">+${c.reward.toLocaleString()} 🪙</span></div>
                 <div class="specs-grid"><div>Время: ${c.duration}с</div><div>Топливо: ${c.fuel}л</div></div>
                 <button class="btn btn-primary" ${AppState.activeTrip || isLocked ? 'disabled' : ''} 
                     onclick="GameLogic.startTrip(${c.reward}, ${c.fuel}, ${c.duration}, '${c.title}', ${c.reqLvl}, '${c.reqLic}')">
@@ -587,7 +636,7 @@ const UI = {
             </div>`;
         }).join(''));
 
-        // 🏆 РЕНДЕР ТАБЛИЦЫ ЛИДЕРОВ (РЕЙТИНГ)
+        // 🏆 Таблица лидеров
         this.safeUpdateHTML('leaderboard-list', AppState.leaderboard.map((user, index) => `
             <div class="card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; margin-bottom: 6px;">
                 <div style="display: flex; align-items: center; gap: 12px;">
@@ -602,7 +651,7 @@ const UI = {
             </div>
         `).join(''));
 
-        // 🎫 РЕНДЕР СЕЗОННОГО ПРОПУСКА
+        // 🎫 Сезонный пропуск
         const passTiers = [
             { level: 1, reward: 10000, title: 'Уровень 1: Старт Cyber Tokyo' },
             { level: 3, reward: 25000, title: 'Уровень 3: Неоновый обвес' },
@@ -672,7 +721,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(() => { GameLogic.updateMarket(); }, 120000);
 });
 
-// Глобальные прокси для HTML onclick
+// Глобальные прокси
 window.switchTab = (id) => UI.switchTab(id);
 window.AudioSys = AudioSys;
 window.GameLogic = GameLogic;
