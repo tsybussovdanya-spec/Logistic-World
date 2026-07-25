@@ -1,1 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Logistic World</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div id="splash-screen">
+    <div class="logo-box">
+      <img src="assets/logo.png" alt="Logistic World Logo" class="splash-logo">
+      <h1 class="brand-title">LOGISTIC</h1>
+      <span class="brand-subtitle">WORLD</span>
+    </div>
+
+    <div class="loader-box">
+      <div class="progress-bar">
+        <div id="progress-fill" class="progress-fill"></div>
+      </div>
+      <p id="status-text" class="status-text">ПОДКЛЮЧЕНИЕ К СИНДИКАТУ...</p>
+      <button id="start-btn" class="btn-neon" onclick="enterGame()" style="display: none;">ПРОДОЛЖИТЬ</button>
+    </div>
+  </div>
+
+  <div id="app-content" class="hidden">
+    
+    <header class="header-bar">
+      <div class="user-info">
+        <span id="user-name">Водитель</span>
+        <span id="user-level" class="level-badge">Ур. 1</span>
+      </div>
+      <div class="balances">
+        <div class="balance-item rub"><span id="bal-rub">10 000</span> ₽</div>
+        <div class="balance-item usd"><span id="bal-usd">0</span> $</div>
+      </div>
+    </header>
+
+    <main class="main-screen">
+      
+      <section id="screen-garage" class="tab-screen active">
+        <h2>Мой Автопарк</h2>
+        <div id="garage-list" class="cards-container">
+          </div>
+      </section>
+
+      <section id="screen-contracts" class="tab-screen hidden">
+        <h2>Доска Контрактов</h2>
+        <div id="contracts-list" class="cards-container">
+          </div>
+      </section>
+
+      <section id="screen-profile" class="tab-screen hidden">
+        <h2>Профиль Логиста</h2>
+        <div class="profile-card glass">
+          <p>Опыт: <span id="user-xp">0</span> XP</p>
+          <p>Статус: <span class="text-neon">Свободный перевозчик</span></p>
+        </div>
+      </section>
+
+    </main>
+
+    <nav class="bottom-nav">
+      <button class="nav-btn active" onclick="switchTab('garage')">Гараж</button>
+      <button class="nav-btn" onclick="switchTab('contracts')">Биржа</button>
+      <button class="nav-btn" onclick="switchTab('profile')">Профиль</button>
+    </nav>
+
+  </div>
+
+  <script src="js/supabase.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
 
