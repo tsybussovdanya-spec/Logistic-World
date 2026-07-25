@@ -142,11 +142,9 @@ body {
 
 /* Лицензии, Статы, Ивенты */
 .licenses-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; }
-.license-badge { padding: 6px 12px; border-radius: 8px; font-size: 11px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; }
-.license-badge.active { background: rgba(16,185,129,0.15); border-color: var(--success-color); color: var(--success-color); }
+.license-card { background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
+.license-card.active { border-color: var(--success-color); background: rgba(16,185,129,0.05); }
 .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .stat-box { background: rgba(0,0,0,0.2); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; }
 .stat-label { font-size: 11px; color: var(--hint-color); }
 .stat-value { font-size: 16px; font-weight: 700; color: var(--accent-purple); margin-top: 4px; }
-.global-event-banner { background: linear-gradient(90deg, rgba(239, 68, 68, 0.2), transparent); border-left: 4px solid var(--danger-color); padding: 12px; border-radius: 8px; margin-bottom: 12px; }
-.bp-card { background: linear-gradient(135deg, rgba(236,72,153,0.1), rgba(139,92,246,0.1)); border-color: var(--accent-pink); }
