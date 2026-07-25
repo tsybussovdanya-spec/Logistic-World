@@ -1,78 +1,77 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Logistic World</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link rel="stylesheet" href="css/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Logistic World — Cyber-Luxury</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
+    <div class="app-container">
+        <!-- Шапка профиля -->
+        <header class="app-header">
+            <div class="user-info">
+                <span id="username">Логист #777</span>
+                <div class="balance-container">
+                    <span id="user-money">🪙 15,000</span>
+                    <span id="user-fuel-stock">⛽ 500л</span>
+                </div>
+            </div>
+            <div class="syndicate-badge" id="syndicate-info">Синдикат: Одиночка</div>
+        </header>
 
-  <div id="splash-screen">
-    <div class="logo-box">
-      <img src="assets/logo.png" alt="Logistic World Logo" class="splash-logo">
-      <h1 class="brand-title">LOGISTIC</h1>
-      <span class="brand-subtitle">WORLD</span>
+        <!-- Навигация по вкладкам -->
+        <nav class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('fleet')">Гараж</button>
+            <button class="tab-btn" onclick="switchTab('logistics')">Логистика</button>
+            <button class="tab-btn" onclick="switchTab('market')">Биржа</button>
+            <button class="tab-btn" onclick="switchTab('syndicate')">Синдикат</button>
+        </nav>
+
+        <!-- Основной контент -->
+        <main class="content-area">
+            
+            <!-- Вкладка 1: Гараж и Автопарк -->
+            <section id="tab-fleet" class="tab-content active">
+                <h2>Ваш Автопарк</h2>
+                <div id="fleet-list" class="card-grid"></div>
+                <div class="upgrade-section">
+                    <h3>Модернизация Гаража</h3>
+                    <p>Ремонтные боксы и АЗС снижают издержки.</p>
+                    <button class="btn" onclick="upgradeGarage()">Улучшить гараж (🪙 10,000)</button>
+                </div>
+            </section>
+
+            <!-- Вкладка 2: Логистика и Контракты -->
+            <section id="tab-logistics" class="tab-content">
+                <h2>Доступные Контракты</h2>
+                <div id="contracts-list" class="card-grid"></div>
+            </section>
+
+            <!-- Вкладка 3: Живая Биржа и Маркет -->
+            <section id="tab-market" class="tab-content">
+                <h2>P2P Биржа и Топливо</h2>
+                <div class="market-panel">
+                    <p>Текущая цена топлива на бирже: <b id="fuel-price">🪙 12</b> / литр</p>
+                    <button class="btn" onclick="buyFuel(100)">Купить 100л топлива</button>
+                </div>
+                <h3>Черный Рынок Деталей</h3>
+                <div id="p2p-list" class="card-grid"></div>
+            </section>
+
+            <!-- Вкладка 4: Синдикаты -->
+            <section id="tab-syndicate" class="tab-content">
+                <h2>Логистические Синдикаты</h2>
+                <div id="syndicate-container">
+                    <p>Вступите в синдикат, чтобы снизить налоги и участвовать в битвах за города.</p>
+                    <button class="btn" onclick="joinSyndicate('CyberTransport')">Вступить в CyberTransport</button>
+                </div>
+            </section>
+
+        </main>
     </div>
 
-    <div class="loader-box">
-      <div class="progress-bar">
-        <div id="progress-fill" class="progress-fill"></div>
-      </div>
-      <p id="status-text" class="status-text">ПОДКЛЮЧЕНИЕ К СИНДИКАТУ...</p>
-      <button id="start-btn" class="btn-neon" onclick="enterGame()" style="display: none;">ПРОДОЛЖИТЬ</button>
-    </div>
-  </div>
-
-  <div id="app-content" class="hidden">
-    
-    <header class="header-bar">
-      <div class="user-info">
-        <span id="user-name">Водитель</span>
-        <span id="user-level" class="level-badge">Ур. 1</span>
-      </div>
-      <div class="balances">
-        <div class="balance-item rub"><span id="bal-rub">10 000</span> ₽</div>
-        <div class="balance-item usd"><span id="bal-usd">0</span> $</div>
-      </div>
-    </header>
-
-    <main class="main-screen">
-      
-      <section id="screen-garage" class="tab-screen active">
-        <h2>Мой Автопарк</h2>
-        <div id="garage-list" class="cards-container">
-          </div>
-      </section>
-
-      <section id="screen-contracts" class="tab-screen hidden">
-        <h2>Доска Контрактов</h2>
-        <div id="contracts-list" class="cards-container">
-          </div>
-      </section>
-
-      <section id="screen-profile" class="tab-screen hidden">
-        <h2>Профиль Логиста</h2>
-        <div class="profile-card glass">
-          <p>Опыт: <span id="user-xp">0</span> XP</p>
-          <p>Статус: <span class="text-neon">Свободный перевозчик</span></p>
-        </div>
-      </section>
-
-    </main>
-
-    <nav class="bottom-nav">
-      <button class="nav-btn active" onclick="switchTab('garage')">Гараж</button>
-      <button class="nav-btn" onclick="switchTab('contracts')">Биржа</button>
-      <button class="nav-btn" onclick="switchTab('profile')">Профиль</button>
-    </nav>
-
-  </div>
-
-  <script src="js/supabase.js"></script>
-  <script src="js/app.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
-
