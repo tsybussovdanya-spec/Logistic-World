@@ -3,8 +3,8 @@ tg.ready();
 tg.expand();
 
 // НАСТРОЙКИ ПОДКЛЮЧЕНИЯ К SUPABASE (ЗАМЕНИТЕ НА СВОИ)
-const SUPABASE_URL = 'https://iqnwxtfievadrqaglqqs.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_tk5ZZxQvR68QF0sWI8_y-Q_M3jy4A_-';
+const SUPABASE_URL = 'https://aiqlcndsayerxjtcwqbj.supabase.co/rest/v1/';
+const SUPABASE_ANON_KEY = 'sb_publishable_zKJ28h0HfzaojbT9s1uwmw_eX7UQZz0';
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
