@@ -222,6 +222,9 @@ const DB = {
 // 🎮 ИГРОВАЯ ЛОГИКА
 // ============================================================================
 
+// ============================================================================
+// 🎮 ИГРОВАЯ ЛОГИКА И СЕТЕВИК
+// ============================================================================
 const GameLogic = {
     getReqXP(lvl) { return Math.floor(1000 * Math.pow(1.5, lvl - 1)); },
     
@@ -409,201 +412,83 @@ const GameLogic = {
     }
 };
 
-
-
 // ============================================================================
-// 🎨 УПРАВЛЕНИЕ ИНТЕРФЕЙСОМ
+// 🏢 ЛОГИКА КОРПОРАЦИЙ (КЛАНОВ)
 // ============================================================================
-const UI = {
-    switchTab(tabId) {
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-        document.getElementById(`tab-${tabId}`).classList.add('active');
-        document.querySelectorAll('.tab-btn').forEach(b => { if(b.getAttribute('onclick')?.includes(tabId)) b.classList.add('active'); });
-        AudioSys.playVibrate('click');
-        this.renderAll();
-    },
-
-    showToast(msg, type = 'success') {
-        const c = document.getElementById('toast-container');
-        if (!c) return;
-        const t = document.createElement('div');
-        t.className = `toast ${type}`; t.innerText = msg;
-        c.appendChild(t);
-        AudioSys.playVibrate(type);
-        setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
-    },
-
-    safeUpdate(id, text) { const el = document.getElementById(id); if (el) el.innerText = text; },
-    safeUpdateHTML(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html; },
-
-    renderAll() {
-        const p = AppState.player;
-        
-        this.safeUpdate('username', p.name);
-        this.safeUpdate('user-money', `🪙 ${p.money.toLocaleString()}`);
-        this.safeUpdate('user-fuel-stock', `⛽ ${p.fuel_stock}л`);
-        this.safeUpdate('user-level-badge', `LVL ${p.level}`);
-        
-        document.querySelectorAll('#user-avatar').forEach(img => {
-            if (p.avatar) img.src = p.avatar;
-        });
-        
-        this.safeUpdate('stat-total-profit', `${p.total_profit.toLocaleString()} 🪙`);
-        this.safeUpdate('stat-total-trips', p.total_trips);
-        this.safeUpdate('fuel-price', `🪙 ${p.fuel_price}`);
-        
-        if(p.syndicate) {
-            this.safeUpdate('corp-name', p.syndicate);
-            this.safeUpdate('corp-role', `Должность: ${p.corp_role || 'Водитель'}`);
+const CorpLogic = {
+    async createCorporation(name) {
+        if (!name || name.length < 3) {
+            return UI.showToast('Название должно быть не менее 3 символов!', 'error');
         }
 
-        const xpProg = Math.min((p.xp / GameLogic.getReqXP(p.level)) * 100, 100);
-        const xpFill = document.getElementById('xp-bar-fill');
-        if (xpFill) xpFill.style.width = `${xpProg}%`;
-
-        // 📜 Интерактивные лицензии с ценами и проверкой уровня
-        const allLic = [
-            { id: 'basic', n: 'Базовая', cost: 0, reqLvl: 1 },
-            { id: 'dangerous', n: 'Опасные грузы', cost: 15000, reqLvl: 3 },
-            { id: 'oversized', n: 'Негабарит', cost: 45000, reqLvl: 6 }
-        ];
-
-        this.safeUpdateHTML('licenses-list', allLic.map(l => {
-            const hasIt = p.licenses.includes(l.id);
-            return `<div class="license-badge ${hasIt ? 'active' : ''}" 
-                style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;"
-                onclick="${hasIt ? `UI.showToast('Лицензия "${l.n}" уже активна', 'info')` : `if(confirm('Купить лицензию "${l.n}" за ${l.cost.toLocaleString()} 🪙?')) GameLogic.buyLicense('${l.id}', ${l.cost}, ${l.reqLvl})`}">
-                <span>${l.n}</span>
-                <span style="font-size: 10px; opacity: 0.8;">${hasIt ? '✓ Активна' : `🔒 ${l.cost.toLocaleString()} 🪙`}</span>
-            </div>`;
-        }).join(''));
-
-        this.safeUpdateHTML('fleet-list', AppState.trucks.map(t => `
-            <div class="card rarity-${t.rarity || 'common'}">
-                <div class="card-title"><span>${t.name}</span><span style="font-size:10px;text-transform:uppercase;">${t.rarity || 'common'}</span></div>
-                <div class="specs-grid">
-                    <div>Двигатель: Ур.${t.engineLvl}</div>
-                    <div>Шины: Ур.${t.tiresLvl}</div>
-                    <div>Состояние: ${t.wear}%</div>
-                </div>
-                <div style="display:flex;gap:8px;">
-                    <button class="btn btn-outline" style="font-size:11px;padding:8px;" onclick="GameLogic.upgradeTruck(${t.id}, 'engine')">Двигатель (5k)</button>
-                    <button class="btn btn-outline" style="font-size:11px;padding:8px;" onclick="GameLogic.upgradeTruck(${t.id}, 'tires')">Шины (5k)</button>
-                </div>
-            </div>
-        `).join(''));
-
-        let tripHtml = '';
-        if (AppState.activeTrip) {
-            let left = Math.floor((AppState.activeTrip.end_time - Date.now()) / 1000);
-            if (left > 0) {
-                tripHtml = `<div class="card rarity-epic">
-                    <div class="card-title"><span>🚚 В рейсе...</span><span style="color:var(--accent-pink);">⏳ ${left} сек</span></div>
-                    <p style="font-size:12px; color:var(--hint-color);">${AppState.activeTrip.title}</p>
-                </div>`;
-            } else GameLogic.finishTrip();
+        const creationCost = 100000; // Стоимость создания корпорации
+        if (AppState.player.money < creationCost) {
+            return UI.showToast(`Недостаточно средств! Нужно ${creationCost.toLocaleString()} 🪙`, 'error');
         }
-        this.safeUpdateHTML('active-trip-panel', tripHtml);
 
-        this.safeUpdateHTML('contracts-list', AppState.contracts.map(c => {
-            const lockedLvl = p.level < c.reqLvl;
-            const lockedLic = !p.licenses.includes(c.reqLic);
-            const isLocked = lockedLvl || lockedLic;
-            
-            return `<div class="card" style="${isLocked ? 'opacity:0.6' : ''}">
-                <div class="card-title"><span>${c.title}</span><span style="color:var(--accent-pink);">+${c.reward} 🪙</span></div>
-                <div class="specs-grid"><div>Время: ${c.duration}с</div><div>Топливо: ${c.fuel}л</div></div>
-                <button class="btn btn-primary" ${AppState.activeTrip || isLocked ? 'disabled' : ''} 
-                    onclick="GameLogic.startTrip(${c.reward}, ${c.fuel}, ${c.duration}, '${c.title}', ${c.reqLvl}, '${c.reqLic}')">
-                    ${lockedLvl ? `Нужен Ур. ${c.reqLvl}` : (lockedLic ? 'Нет лицензии' : (AppState.activeTrip ? 'Транспорт занят' : 'Начать рейс'))}
-                </button>
-            </div>`;
-        }).join(''));
+        try {
+            let { data: corpData, error: corpError } = await supabaseClient
+                .from('corporations')
+                .insert([{
+                    name: name,
+                    owner_id: AppState.player.id,
+                    treasury: 0
+                }])
+                .select()
+                .single();
 
-        this.safeUpdateHTML('leaderboard-list', AppState.leaderboard.map((user, index) => `
-            <div class="card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; margin-bottom: 6px;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <span style="font-weight: bold; font-size: 16px; color: ${index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : 'var(--hint-color)'};">#${index + 1}</span>
-                    <img src="${user.avatar || 'https://via.placeholder.com/40'}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;" />
-                    <div>
-                        <div style="font-weight: 600; font-size: 14px;">${user.name}</div>
-                        <div style="font-size: 11px; color: var(--hint-color);">Уровень: ${user.level}</div>
-                    </div>
-                </div>
-                <div style="font-weight: bold; color: var(--accent-pink); font-size: 14px;">🪙 ${user.total_profit.toLocaleString()}</div>
-            </div>
-        `).join(''));
+            if (corpError) throw corpError;
 
-        const passTiers = [
-            { level: 1, reward: 10000, title: 'Уровень 1: Старт Cyber Tokyo' },
-            { level: 3, reward: 25000, title: 'Уровень 3: Неоновый обвес' },
-            { level: 5, reward: 60000, title: 'Уровень 5: Элитный скин фуры' }
-        ];
+            AppState.player.money -= creationCost;
+            AppState.player.corp_id = corpData.id;
+            AppState.player.syndicate = name;
+            AppState.player.corp_role = 'Директор';
 
-        this.safeUpdateHTML('pass-tiers-list', passTiers.map(tier => {
-            const isReached = p.pass_level >= tier.level;
-            const isClaimed = p.pass_claimed.includes(tier.level);
-            
-            return `<div class="card" style="display: flex; align-items: center; justify-content: space-between;">
-                <div>
-                    <div class="card-title"><span>${tier.title}</span></div>
-                    <p style="font-size:12px; color:var(--hint-color);">Награда: +${tier.reward.toLocaleString()} 🪙</p>
-                </div>
-                <button class="btn ${isClaimed ? 'btn-outline' : 'btn-primary'}" 
-                    style="font-size:12px; padding:8px 12px;"
-                    ${!isReached || isClaimed ? 'disabled' : ''}
-                    onclick="GameLogic.claimPassReward(${tier.level}, ${tier.reward})">
-                    ${isClaimed ? 'Получено' : (isReached ? 'Забрать' : `Нужен ур. ${tier.level}`)}
-                </button>
-            </div>`;
-        }).join(''));
+            await DB.syncPlayer();
 
-        // 🏢 Рендер вкладки Корпорации (Кланы до 50 участников с должностями)
-        const corpContainer = document.getElementById('tab-syndicate');
-        if (corpContainer) {
-            const hasCorp = p.corp_id !== null && p.corp_id !== undefined;
-            
-            corpContainer.innerHTML = `
-                <div class="section-header">
-                    <h2>Логистическая Корпорация</h2>
-                    <p class="subtitle">Масштабный бизнес и командная работа</p>
-                </div>
-                
-                ${!hasCorp ? `
-                    <div class="card">
-                        <h3>Создать корпорацию</h3>
-                        <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Объединяйте до 50 игроков, делитесь заказами и развивайте общий баланс.</p>
-                        <div class="input-group">
-                            <label>Название корпорации:</label>
-                            <input type="text" id="input-corp-name" class="input-text" placeholder="например, CyberLogistics">
-                        </div>
-                        <button type="button" class="btn btn-primary" onclick="CorpLogic.createCorporation(document.getElementById('input-corp-name').value.trim())">Создать корпорацию</button>
-                    </div>
-                ` : `
-                    <div class="card bp-card">
-                        <div class="card-title"><span>🏢 ${p.syndicate || 'Корпорация'}</span><span class="level-badge">${p.corp_role}</span></div>
-                        <div class="specs-grid">
-                            <div>Участники: До 50</div>
-                            <div>Должность: ${p.corp_role}</div>
-                        </div>
-                        <div style="display:flex; gap:8px; margin-top:8px;">
-                            <button type="button" class="btn btn-outline" style="font-size:12px; padding:8px;" onclick="CorpLogic.donateToCorp(10000)">Внести 10k 🪙 в казну</button>
-                            <button type="button" class="btn btn-outline" style="font-size:12px; padding:8px; border-color: var(--danger-color); color: var(--danger-color);" onclick="CorpLogic.leaveCorporation()">Покинуть</button>
-                        </div>
-                    </div>
+            UI.showToast(`Корпорация "${name}" успешно создана!`, 'success');
+            UI.renderAll();
+        } catch (err) {
+            console.error('Ошибка создания корпорации:', err);
+            UI.showToast('Ошибка при создании корпорации (возможно, имя занято)', 'error');
+        }
+    },
 
-                    <h3 class="subsection-title" style="margin-top:16px;">Должности и Права</h3>
-                    <div class="card" style="font-size: 13px; color: var(--hint-color);">
-                        <p>👑 <b>Директор:</b> Управление составом и казной.</p>
-                        <p style="margin-top: 6px;">💼 <b>Заместитель / Финансист:</b> Распределение контрактов.</p>
-                        <p style="margin-top: 6px;">🚚 <b>Логист / Водитель:</b> Выполнение корпоративных рейсов.</p>
-                    </div>
-                `}
-            `;
+    async donateToCorp(amount) {
+        if (AppState.player.money < amount) {
+            return UI.showToast('Недостаточно монет для взноса!', 'error');
+        }
+        if (!AppState.player.corp_id) {
+            return UI.showToast('Вы не состоите в корпорации!', 'error');
+        }
+
+        try {
+            AppState.player.money -= amount;
+            await DB.syncPlayer();
+            UI.showToast(`Вы внесли ${amount.toLocaleString()} 🪙 в казну`, 'success');
+            UI.renderAll();
+        } catch (err) {
+            UI.showToast('Ошибка при переводе в казну', 'error');
+        }
+    },
+
+    async leaveCorporation() {
+        if (!confirm('Вы уверены, что хотите покинуть корпорацию?')) return;
+
+        try {
+            AppState.player.corp_id = null;
+            AppState.player.syndicate = null;
+            AppState.player.corp_role = null;
+
+            await DB.syncPlayer();
+            UI.showToast('Вы покинули корпорацию', 'info');
+            UI.renderAll();
+        } catch (err) {
+            UI.showToast('Ошибка при выходе из корпорации', 'error');
         }
     }
 };
+
 
 // ============================================================================
 // 🎮 ПАРАЛЛАКС И ЗАПУСК ИГРЫ
