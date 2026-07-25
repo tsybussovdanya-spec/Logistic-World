@@ -213,10 +213,38 @@ const DB = {
     },
 
     async syncPlayer() {
-        const { id, ...updateData } = AppState.player;
-        await supabaseClient.from('players').update(updateData).eq('id', id);
-        // Фоновое обновление таблицы лидеров после синхронизации
-        this.loadLeaderboard();
+        const p = AppState.player;
+        
+        // Явно указываем поля и конвертируем числа
+        const updateData = {
+            name: p.name,
+            avatar: p.avatar,
+            money: Number(p.money),
+            fuel_stock: Number(p.fuel_stock),
+            fuel_price: Number(p.fuel_price),
+            level: Number(p.level),
+            xp: Number(p.xp),
+            total_profit: Number(p.total_profit),
+            total_trips: Number(p.total_trips),
+            syndicate: p.syndicate,
+            last_bonus_time: Number(p.last_bonus_time),
+            licenses: p.licenses,
+            pass_level: p.pass_level,
+            pass_claimed: p.pass_claimed
+        };
+
+        const { error } = await supabaseClient
+            .from('players')
+            .update(updateData)
+            .eq('id', p.id);
+
+        if (error) {
+            console.error("Ошибка сохранения профиля:", error);
+            UI.showToast("Ошибка сохранения данных на сервере", "error");
+        } else {
+            // Обновляем таблицу лидеров только после успешной записи
+            this.loadLeaderboard();
+        }
     }
 };
 
@@ -224,18 +252,20 @@ const DB = {
 // 🎮 ИГРОВАЯ ЛОГИКА
 // ============================================================================
 const GameLogic = {
+    isFinishing: false, // Блокировка от множественного вызова таймером
+
     getReqXP(lvl) { return Math.floor(1000 * Math.pow(1.5, lvl - 1)); },
     
     async addXP(amount) {
-        AppState.player.xp += amount;
+        AppState.player.xp = Number(AppState.player.xp) + Number(amount);
         let req = this.getReqXP(AppState.player.level);
         let leveledUp = false;
 
         while (AppState.player.xp >= req) {
             AppState.player.xp -= req;
-            AppState.player.level++;
+            AppState.player.level = Number(AppState.player.level) + 1;
             // Прогресс сезонного пропуска увеличивается вместе с уровнем
-            AppState.player.pass_level++;
+            AppState.player.pass_level = Number(AppState.player.pass_level) + 1;
             req = this.getReqXP(AppState.player.level);
             leveledUp = true;
         }
@@ -255,7 +285,7 @@ const GameLogic = {
         if (AppState.player.fuel_stock < finalFuel) return UI.showToast(`Нужно ${finalFuel}л топлива (из-за погоды)!`, 'error');
 
         let endTime = Date.now() + (finalDur * 1000);
-        AppState.player.fuel_stock -= finalFuel;
+        AppState.player.fuel_stock = Number(AppState.player.fuel_stock) - finalFuel;
         
         let { data, error } = await supabaseClient.from('active_trips').insert([{
             player_id: AppState.player.id,
@@ -274,19 +304,21 @@ const GameLogic = {
     },
 
     async finishTrip() {
-        if (!AppState.activeTrip) return;
+        if (!AppState.activeTrip || this.isFinishing) return;
+        this.isFinishing = true;
         
-        let p = AppState.activeTrip.reward;
+        let p = Number(AppState.activeTrip.reward);
         let earnedXP = Math.floor(p * CONFIG.XP_MULTIPLIER);
         
-        AppState.player.money += p;
-        AppState.player.total_profit += p;
-        AppState.player.total_trips += 1;
+        AppState.player.money = Number(AppState.player.money) + p;
+        AppState.player.total_profit = Number(AppState.player.total_profit) + p;
+        AppState.player.total_trips = Number(AppState.player.total_trips) + 1;
 
         await this.addXP(earnedXP);
 
         await supabaseClient.from('active_trips').delete().eq('player_id', AppState.player.id);
         AppState.activeTrip = null;
+        this.isFinishing = false;
 
         await DB.syncPlayer();
         UI.showToast(`Рейс завершен! +${p} 🪙 | +${earnedXP} XP`, 'success');
@@ -295,11 +327,11 @@ const GameLogic = {
     },
 
     async buyFuel(amount) {
-        let cost = amount * AppState.player.fuel_price;
+        let cost = amount * Number(AppState.player.fuel_price);
         if (AppState.player.money < cost) return UI.showToast('Недостаточно монет!', 'error');
         
         AppState.player.money -= cost;
-        AppState.player.fuel_stock += amount;
+        AppState.player.fuel_stock = Number(AppState.player.fuel_stock) + amount;
         await DB.syncPlayer();
         UI.showToast(`Куплено ${amount}л топлива`, 'success');
         UI.renderAll();
@@ -312,8 +344,8 @@ const GameLogic = {
             return UI.showToast(`Бонус будет доступен через ${hours} ч.`, 'error');
         }
         AppState.player.last_bonus_time = now;
-        AppState.player.money += CONFIG.DAILY_BONUS_COINS;
-        AppState.player.fuel_stock += CONFIG.DAILY_BONUS_FUEL;
+        AppState.player.money = Number(AppState.player.money) + CONFIG.DAILY_BONUS_COINS;
+        AppState.player.fuel_stock = Number(AppState.player.fuel_stock) + CONFIG.DAILY_BONUS_FUEL;
         await DB.syncPlayer();
         UI.showToast(`Бонус получен: +${CONFIG.DAILY_BONUS_COINS} 🪙, +${CONFIG.DAILY_BONUS_FUEL}л`, 'success');
         UI.renderAll();
@@ -354,7 +386,7 @@ const GameLogic = {
         }
 
         AppState.player.pass_claimed.push(tierLevel);
-        AppState.player.money += coinReward;
+        AppState.player.money = Number(AppState.player.money) + Number(coinReward);
         DB.syncPlayer();
 
         UI.showToast(`Награда за пропуск получена: +${coinReward} 🪙!`, 'success');
@@ -425,8 +457,8 @@ const UI = {
         
         // Шапка и профиль
         this.safeUpdate('username', p.name);
-        this.safeUpdate('user-money', `🪙 ${p.money.toLocaleString()}`);
-        this.safeUpdate('user-fuel-stock', `⛽ ${p.fuel_stock}л`);
+        this.safeUpdate('user-money', `🪙 ${Number(p.money).toLocaleString()}`);
+        this.safeUpdate('user-fuel-stock', `⛽ ${Number(p.fuel_stock)}л`);
         this.safeUpdate('user-level-badge', `LVL ${p.level}`);
         
         // Рендер аватара везде, где есть элемент с id="user-avatar"
@@ -435,7 +467,7 @@ const UI = {
         });
         
         // Статистика
-        this.safeUpdate('stat-total-profit', `${p.total_profit.toLocaleString()} 🪙`);
+        this.safeUpdate('stat-total-profit', `${Number(p.total_profit).toLocaleString()} 🪙`);
         this.safeUpdate('stat-total-trips', p.total_trips);
         this.safeUpdate('fuel-price', `🪙 ${p.fuel_price}`);
         
@@ -512,7 +544,7 @@ const UI = {
                         <div style="font-size: 11px; color: var(--hint-color);">Уровень: ${user.level}</div>
                     </div>
                 </div>
-                <div style="font-weight: bold; color: var(--accent-pink); font-size: 14px;">🪙 ${user.total_profit.toLocaleString()}</div>
+                <div style="font-weight: bold; color: var(--accent-pink); font-size: 14px;">🪙 ${Number(user.total_profit).toLocaleString()}</div>
             </div>
         `).join(''));
 
