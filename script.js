@@ -80,10 +80,11 @@ const AppState = {
         id: null, name: tgUser?.first_name || 'Логист', avatar: tgUser?.photo_url || '',
         money: 35000, fuel_stock: 400, fuel_price: 12, level: 1, xp: 0,
         total_profit: 0, total_trips: 0, syndicate: null, last_bonus_time: 0,
-        licenses: ['basic']
+        licenses: ['basic'], pass_level: 1, pass_claimed: []
     },
     trucks: [],
     activeTrip: null,
+    leaderboard: [],
     contracts: [
         { id: 1, title: 'Обычный: Стройматериалы', reward: 5200, fuel: 70, duration: 15, reqLvl: 1, reqLic: 'basic' },
         { id: 2, title: 'Срочный: Медикаменты', reward: 11500, fuel: 140, duration: 30, reqLvl: 3, reqLic: 'basic' },
@@ -115,7 +116,7 @@ const AIDispatcher = {
 };
 
 // ============================================================================
-// 🗄️ ВЗАИМОДЕЙСТВИЕ С БАЗОЙ ДАННЫХ
+// 🗄️ ВЗАИМОДЕЙСТВИЕ С БАЗОЙ ДАННЫХ И РЕЙТИНГ
 // ============================================================================
 const DB = {
     async init() {
@@ -131,11 +132,14 @@ const DB = {
             if (!existingPlayer) {
                 await this.createNewPlayer();
             } else {
-                // Мержим данные из БД с дефолтными
                 AppState.player = { ...AppState.player, ...existingPlayer };
+                // Гарантируем массивы/поля для пасса
+                if (!AppState.player.pass_level) AppState.player.pass_level = 1;
+                if (!AppState.player.pass_claimed) AppState.player.pass_claimed = [];
             }
 
             await this.loadGameData();
+            await this.loadLeaderboard();
             UI.renderAll();
         } catch (err) {
             UI.showToast("Ошибка соединения с БД: " + err.message, "error");
@@ -154,7 +158,9 @@ const DB = {
                 level: AppState.player.level,
                 xp: AppState.player.xp,
                 total_trips: 0,
-                licenses: ['basic']
+                licenses: ['basic'],
+                pass_level: 1,
+                pass_claimed: []
             }])
             .select()
             .single();
@@ -190,9 +196,27 @@ const DB = {
         }
     },
 
+    async loadLeaderboard() {
+        try {
+            const { data, error } = await supabaseClient
+                .from('players')
+                .select('id, name, avatar, total_profit, level')
+                .order('total_profit', { ascending: false })
+                .limit(20);
+
+            if (!error && data) {
+                AppState.leaderboard = data;
+            }
+        } catch (e) {
+            console.error('Ошибка загрузки таблицы лидеров:', e);
+        }
+    },
+
     async syncPlayer() {
         const { id, ...updateData } = AppState.player;
         await supabaseClient.from('players').update(updateData).eq('id', id);
+        // Фоновое обновление таблицы лидеров после синхронизации
+        this.loadLeaderboard();
     }
 };
 
@@ -210,12 +234,14 @@ const GameLogic = {
         while (AppState.player.xp >= req) {
             AppState.player.xp -= req;
             AppState.player.level++;
+            // Прогресс сезонного пропуска увеличивается вместе с уровнем
+            AppState.player.pass_level++;
             req = this.getReqXP(AppState.player.level);
             leveledUp = true;
         }
 
         if (leveledUp) {
-            UI.showToast(`🎉 НОВЫЙ УРОВЕНЬ: ${AppState.player.level}!`, 'success');
+            UI.showToast(`🎉 НОВЫЙ УРОВЕНЬ: ${AppState.player.level}! (Пропуск обновился)`, 'success');
         }
     },
 
@@ -301,6 +327,40 @@ const GameLogic = {
         UI.renderAll();
     },
 
+    // 🖼️ СМЕНА ФОТО ИЗ ГАЛЕРЕИ
+    handleAvatarUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        if (file.size > 2 * 1024 * 1024) {
+            return UI.showToast('Файл слишком большой (макс. 2МБ)', 'error');
+        }
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            AppState.player.avatar = e.target.result;
+            await DB.syncPlayer();
+            UI.showToast('Аватар успешно изменен!', 'success');
+            UI.renderAll();
+        };
+        reader.readAsDataURL(file);
+    },
+
+    // 🎫 ЛОГИКА СЕЗОННОГО ПРОПУСКА
+    claimPassReward(tierLevel, coinReward) {
+        if (AppState.player.pass_level < tierLevel) {
+            return UI.showToast('Уровень пропуска еще не достигнут!', 'error');
+        }
+        if (AppState.player.pass_claimed.includes(tierLevel)) {
+            return UI.showToast('Награда уже получена!', 'info');
+        }
+
+        AppState.player.pass_claimed.push(tierLevel);
+        AppState.player.money += coinReward;
+        DB.syncPlayer();
+
+        UI.showToast(`Награда за пропуск получена: +${coinReward} 🪙!`, 'success');
+        UI.renderAll();
+    },
+
     async joinSyndicate(name) {
         if (AppState.player.syndicate === name) return UI.showToast('Вы уже в этом синдикате', 'info');
         AppState.player.syndicate = name;
@@ -319,7 +379,6 @@ const GameLogic = {
         if(part === 'engine') t.engineLvl++;
         if(part === 'tires') t.tiresLvl++;
         
-        // Обновляем в БД
         await supabaseClient.from('trucks').update({ engineLvl: t.engineLvl, tiresLvl: t.tiresLvl }).eq('id', id);
         await DB.syncPlayer();
         
@@ -369,6 +428,11 @@ const UI = {
         this.safeUpdate('user-money', `🪙 ${p.money.toLocaleString()}`);
         this.safeUpdate('user-fuel-stock', `⛽ ${p.fuel_stock}л`);
         this.safeUpdate('user-level-badge', `LVL ${p.level}`);
+        
+        // Рендер аватара везде, где есть элемент с id="user-avatar"
+        document.querySelectorAll('#user-avatar').forEach(img => {
+            if (p.avatar) img.src = p.avatar;
+        });
         
         // Статистика
         this.safeUpdate('stat-total-profit', `${p.total_profit.toLocaleString()} 🪙`);
@@ -436,6 +500,46 @@ const UI = {
                 </button>
             </div>`;
         }).join(''));
+
+        // 🏆 РЕНДЕР ТАБЛИЦЫ ЛИДЕРОВ (РЕЙТИНГ)
+        this.safeUpdateHTML('leaderboard-list', AppState.leaderboard.map((user, index) => `
+            <div class="card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; margin-bottom: 6px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-weight: bold; font-size: 16px; color: ${index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : 'var(--hint-color)'};">#${index + 1}</span>
+                    <img src="${user.avatar || 'https://via.placeholder.com/40'}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;" />
+                    <div>
+                        <div style="font-weight: 600; font-size: 14px;">${user.name}</div>
+                        <div style="font-size: 11px; color: var(--hint-color);">Уровень: ${user.level}</div>
+                    </div>
+                </div>
+                <div style="font-weight: bold; color: var(--accent-pink); font-size: 14px;">🪙 ${user.total_profit.toLocaleString()}</div>
+            </div>
+        `).join(''));
+
+        // 🎫 РЕНДЕР СЕЗОННОГО ПРОПУСКА
+        const passTiers = [
+            { level: 1, reward: 10000, title: 'Уровень 1: Старт Cyber Tokyo' },
+            { level: 3, reward: 25000, title: 'Уровень 3: Неоновый обвес' },
+            { level: 5, reward: 60000, title: 'Уровень 5: Элитный скин фуры' }
+        ];
+
+        this.safeUpdateHTML('pass-tiers-list', passTiers.map(tier => {
+            const isReached = p.pass_level >= tier.level;
+            const isClaimed = p.pass_claimed.includes(tier.level);
+            
+            return `<div class="card" style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <div class="card-title"><span>${tier.title}</span></div>
+                    <p style="font-size:12px; color:var(--hint-color);">Награда: +${tier.reward.toLocaleString()} 🪙</p>
+                </div>
+                <button class="btn ${isClaimed ? 'btn-outline' : 'btn-primary'}" 
+                    style="font-size:12px; padding:8px 12px;"
+                    ${!isReached || isClaimed ? 'disabled' : ''}
+                    onclick="GameLogic.claimPassReward(${tier.level}, ${tier.reward})">
+                    ${isClaimed ? 'Получено' : (isReached ? 'Забрать' : `Нужен ур. ${tier.level}`)}
+                </button>
+            </div>`;
+        }).join(''));
     }
 };
 
@@ -468,7 +572,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('app-content').style.opacity = '1';
                     setTimeout(() => loader.remove(), 500);
                     
-                    // Инициализируем БД только после загрузочного экрана
                     DB.init();
                     setTimeout(() => AIDispatcher.showPopup("Добро пожаловать в Logistic World, Босс!"), 1500);
                 });
@@ -478,11 +581,8 @@ document.addEventListener('DOMContentLoaded', () => {
         DB.init();
     }
 
-    // Игровой цикл (обновление таймеров активного рейса)
     setInterval(() => { if (AppState.activeTrip) UI.renderAll(); }, 1000);
-    // Цикл смены погоды и ИИ диспетчера (раз в минуту)
     setInterval(() => { WorldState.generateWeather(); AIDispatcher.randomAdvice(); }, 60000);
-    // Цикл биржи (раз в 2 минуты)
     setInterval(() => { GameLogic.updateMarket(); }, 120000);
 });
 
