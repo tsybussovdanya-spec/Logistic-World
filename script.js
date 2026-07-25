@@ -86,9 +86,20 @@ const AppState = {
     activeTrip: null,
     leaderboard: [],
     contracts: [
-        { id: 1, title: 'Обычный: Стройматериалы', reward: 5200, fuel: 70, duration: 15, reqLvl: 1, reqLic: 'basic' },
-        { id: 2, title: 'Срочный: Медикаменты', reward: 11500, fuel: 140, duration: 30, reqLvl: 3, reqLic: 'basic' },
-        { id: 3, title: 'Опасный: Химикаты', reward: 24000, fuel: 260, duration: 60, reqLvl: 5, reqLic: 'dangerous' }
+        // 🟢 Обычные (Базовая лицензия)
+        { id: 1, title: 'Обычный: Доски', reward: 5200, fuel: 70, duration: 15, reqLvl: 1, reqLic: 'basic' },
+        { id: 2, title: 'Обычный: Стройматериалы', reward: 11500, fuel: 140, duration: 30, reqLvl: 3, reqLic: 'basic' },
+        { id: 3, title: 'Обычный: Электроника', reward: 25000, fuel: 220, duration: 60, reqLvl: 5, reqLic: 'basic' },
+        
+        // 🟠 Опасные (Требуется лицензия)
+        { id: 4, title: 'Опасный: Химикаты', reward: 40000, fuel: 350, duration: 120, reqLvl: 6, reqLic: 'dangerous' },
+        { id: 5, title: 'Опасный: Топливо', reward: 65000, fuel: 500, duration: 240, reqLvl: 8, reqLic: 'dangerous' },
+        { id: 6, title: 'Опасный: Изотопы', reward: 90000, fuel: 700, duration: 360, reqLvl: 10, reqLic: 'dangerous' },
+
+        // 🟣 Негабаритные (Требуется лицензия)
+        { id: 7, title: 'Негабарит: Спецтехника', reward: 150000, fuel: 1000, duration: 600, reqLvl: 12, reqLic: 'oversized' },
+        { id: 8, title: 'Негабарит: Турбины', reward: 280000, fuel: 1500, duration: 1200, reqLvl: 15, reqLic: 'oversized' },
+        { id: 9, title: 'Негабарит: Ракета', reward: 500000, fuel: 2500, duration: 1800, reqLvl: 20, reqLic: 'oversized' }
     ]
 };
 
@@ -215,6 +226,10 @@ const DB = {
     async syncPlayer() {
         const p = AppState.player;
         
+        if (!p.id) {
+            return UI.showToast("Ошибка: ID профиля не найден", "error");
+        }
+
         // Явно указываем поля и конвертируем числа
         const updateData = {
             name: p.name,
@@ -240,7 +255,7 @@ const DB = {
 
         if (error) {
             console.error("Ошибка сохранения профиля:", error);
-            UI.showToast("Ошибка сохранения данных на сервере", "error");
+            UI.showToast("Ошибка БД: " + error.message, "error");
         } else {
             // Обновляем таблицу лидеров только после успешной записи
             this.loadLeaderboard();
@@ -348,6 +363,33 @@ const GameLogic = {
         AppState.player.fuel_stock = Number(AppState.player.fuel_stock) + CONFIG.DAILY_BONUS_FUEL;
         await DB.syncPlayer();
         UI.showToast(`Бонус получен: +${CONFIG.DAILY_BONUS_COINS} 🪙, +${CONFIG.DAILY_BONUS_FUEL}л`, 'success');
+        UI.renderAll();
+    },
+
+    async buyLicense(licId) {
+        if (AppState.player.licenses.includes(licId)) {
+            return UI.showToast('Лицензия уже куплена!', 'info');
+        }
+
+        // Цены на лицензии
+        const prices = {
+            'dangerous': 50000,
+            'oversized': 150000
+        };
+
+        const cost = prices[licId];
+        if (!cost) return;
+
+        if (AppState.player.money < cost) {
+            return UI.showToast(`Нужно ${cost.toLocaleString()} 🪙`, 'error');
+        }
+
+        // Списываем деньги и выдаем лицензию
+        AppState.player.money = Number(AppState.player.money) - cost;
+        AppState.player.licenses.push(licId);
+        
+        await DB.syncPlayer();
+        UI.showToast('Лицензия успешно приобретена!', 'success');
         UI.renderAll();
     },
 
@@ -483,10 +525,22 @@ const UI = {
         if (xpFill) xpFill.style.width = `${xpProg}%`;
 
         // Лицензии
-        const allLic = [{id:'basic', n:'Базовая'}, {id:'dangerous', n:'Опасные грузы'}, {id:'oversized', n:'Негабарит'}];
-        this.safeUpdateHTML('licenses-list', allLic.map(l => 
-            `<span class="license-badge ${p.licenses.includes(l.id) ? 'active' : ''}">${l.n}</span>`
-        ).join(''));
+        const allLic = [
+            {id:'basic', n:'Базовая', cost: 0}, 
+            {id:'dangerous', n:'Опасные грузы', cost: 50000}, 
+            {id:'oversized', n:'Негабарит', cost: 150000}
+        ];
+        
+        this.safeUpdateHTML('licenses-list', allLic.map(l => {
+            const hasLicense = p.licenses.includes(l.id);
+            if (hasLicense) {
+                return `<span class="license-badge active">${l.n}</span>`;
+            } else {
+                return `<span class="license-badge" onclick="GameLogic.buyLicense('${l.id}')" style="cursor:pointer; border-color: var(--accent-pink);">
+                    ${l.n} 🔒 (${(l.cost / 1000)}k 🪙)
+                </span>`;
+            }
+        }).join(''));
 
         // Автопарк
         this.safeUpdateHTML('fleet-list', AppState.trucks.map(t => `
