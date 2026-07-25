@@ -2,14 +2,14 @@ const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-// НАСТРОЙКИ ПОДКЛЮЧЕНИЯ К SUPABASE (ЗАМЕНИТЕ НА СВОИ)
 const SUPABASE_URL = 'https://aiqlcndsayerxjtcwqbj.supabase.co/rest/v1/';
 const SUPABASE_ANON_KEY = 'sb_publishable_zKJ28h0HfzaojbT9s1uwmw_eX7UQZz0';
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const tgUser = tg.initDataUnsafe?.user;
-const telegramId = tgUser ? tgUser.id : 123456789; // Тестовый ID для проверки в обычном браузере
+// Строго преобразуем Telegram ID в число (Number), чтобы bigint в Supabase принял его корректно
+const telegramId = tgUser?.id ? Number(tgUser.id) : 123456789;
 
 let player = {
     id: null,
@@ -24,27 +24,24 @@ let player = {
     last_bonus_time: 0
 };
 
-let trucks = [];
-let activeTrip = null;
-let p2pMarket = [];
-let leaderboard = [];
-
-let contracts = [
-    { id: 1, title: 'Обычный: Доставка микросхем', reward: 5200, fuel_cost_req: 70, duration: 15 },
-    { id: 2, title: 'Срочный: Квантовые батареи', reward: 11500, fuel_cost_req: 140, duration: 30 },
-    { id: 3, title: 'Нелегальный: Нейромодули', reward: 24000, fuel_cost_req: 260, duration: 60 }
-];
-
-// Инициализация игрока в базе данных при входе
+// Исправленная инициализация с детальным логированием ошибок
 async function initGameData() {
-    let { data: existingPlayer } = await supabaseClient
+    console.log("Инициализация для Telegram ID:", telegramId);
+
+    let { data: existingPlayer, error: searchError } = await supabaseClient
         .from('players')
         .select('*')
         .eq('telegram_id', telegramId)
         .maybeSingle();
 
+    if (searchError) {
+        console.error("Ошибка поиска игрока:", searchError.message);
+    }
+
     if (!existingPlayer) {
-        let { data: newP } = await supabaseClient
+        console.log("Игрок не найден в базе, создаем запись для:", telegramId);
+        
+        let { data: newP, error: insertError } = await supabaseClient
             .from('players')
             .insert([{
                 telegram_id: telegramId,
@@ -57,9 +54,18 @@ async function initGameData() {
             .select()
             .single();
 
+        if (insertError) {
+            console.error("ОШИБКА создания игрока в БД:", insertError.message, insertError.details);
+            alert("Ошибка сохранения игрока в базу: " + insertError.message);
+            return;
+        }
+
         if (newP) {
             player = newP;
-            await supabaseClient.from('trucks').insert([{
+            console.log("Игрок успешно создан:", player);
+            
+            // Выдаем стартовый грузовик
+            let { error: truckError } = await supabaseClient.from('trucks').insert([{
                 player_id: player.id,
                 name: 'LW-CyberTruck Alpha',
                 capacity: 5000,
@@ -67,274 +73,16 @@ async function initGameData() {
                 engine_wear: 100,
                 tires_wear: 100
             }]);
+            
+            if (truckError) {
+                console.error("Ошибка создания стартового грузовика:", truckError.message);
+            }
         }
     } else {
+        console.log("Игрок успешно загружен из базы:", existingPlayer);
         player = existingPlayer;
     }
 
     await loadUserDataFromDB();
     renderAll();
 }
-
-async function loadUserDataFromDB() {
-    try {
-        let { data: tData } = await supabaseClient.from('trucks').select('*').eq('player_id', player.id);
-        trucks = tData || [];
-
-        let { data: tripData } = await supabaseClient.from('active_trips').select('*').eq('player_id', player.id).maybeSingle();
-        activeTrip = tripData || null;
-
-        let { data: marketData } = await supabaseClient.from('p2p_market').select('*').order('id', { ascending: false });
-        p2pMarket = marketData || [];
-
-        let { data: leadData } = await supabaseClient.from('players').select('name, total_profit').order('total_profit', { ascending: false }).limit(10);
-        leaderboard = leadData || [];
-    } catch (e) {
-        console.error('Ошибка загрузки данных:', e);
-    }
-}
-
-async function syncPlayerToDB() {
-    await supabaseClient.from('players').update({
-        name: player.name,
-        avatar: player.avatar,
-        money: player.money,
-        fuel_stock: player.fuel_stock,
-        fuel_price: player.fuel_price,
-        syndicate: player.syndicate,
-        garage_level: player.garage_level,
-        total_profit: player.total_profit,
-        last_bonus_time: player.last_bonus_time
-    }).eq('id', player.id);
-}
-
-function switchTab(tabId) {
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-    
-    document.getElementById(`tab-${tabId}`).classList.add('active');
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        if(btn.getAttribute('onclick')?.includes(tabId)) btn.classList.add('active');
-    });
-    renderAll();
-}
-
-function renderAll() {
-    document.getElementById('username').innerText = player.name;
-    document.getElementById('header-avatar').src = player.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100';
-    document.getElementById('user-money').innerText = `🪙 ${Number(player.money).toLocaleString()}`;
-    document.getElementById('user-fuel-stock').innerText = `⛽ ${player.fuel_stock}л`;
-    document.getElementById('fuel-price').innerText = `🪙 ${player.fuel_price}`;
-    document.getElementById('syndicate-info').innerText = player.syndicate || 'Одиночка';
-
-    document.getElementById('garage-lvl').innerText = player.garage_level;
-    document.getElementById('garage-cost').innerText = (player.garage_level * 10000).toLocaleString();
-
-    document.getElementById('input-username').value = player.name;
-    document.getElementById('input-avatar').value = player.avatar || '';
-    document.getElementById('syndicate-desc').innerText = player.syndicate ? `Вы в синдикате: ${player.syndicate}` : 'Вы свободный логист.';
-
-    // Гараж
-    document.getElementById('fleet-list').innerHTML = trucks.map(t => `
-        <div class="card">
-            <div class="card-title"><span>${t.name}</span></div>
-            <div class="specs-grid">
-                <div>Грузоподъемность: ${t.capacity}кг</div>
-                <div>Расход: ${t.fuel_use}л</div>
-                <div>Двигатель: ${t.engine_wear}%</div>
-                <div>Шины: ${t.tires_wear}%</div>
-            </div>
-            <button class="btn" onclick="repairTruck(${t.id})">Ремонт узлов (🪙 2,000)</button>
-        </div>
-    `).join('');
-
-    // Активный рейс
-    let tripPanel = document.getElementById('active-trip-panel');
-    if (activeTrip) {
-        let timeLeft = Math.floor((activeTrip.end_time - Date.now()) / 1000);
-        if (timeLeft > 0) {
-            tripPanel.innerHTML = `
-                <div class="card" style="border-color:var(--accent-pink);">
-                    <div class="card-title"><span>🚚 Транспорт в рейсе...</span><span>⏳ ${timeLeft} сек</span></div>
-                    <p style="font-size:12px; color:var(--hint-color);">${activeTrip.title}</p>
-                </div>
-            `;
-        } else {
-            finishTrip();
-        }
-    } else {
-        tripPanel.innerHTML = '';
-    }
-
-    // Контракты
-    document.getElementById('contracts-list').innerHTML = contracts.map(c => `
-        <div class="card">
-            <div class="card-title"><span>${c.title}</span><span style="color:var(--accent-pink);">+${c.reward} 🪙</span></div>
-            <div class="specs-grid">
-                <div>Время: ${c.duration} сек</div>
-                <div>Топливо: ${c.fuel_cost_req}л</div>
-            </div>
-            <button class="btn" ${activeTrip ? 'disabled style="opacity:0.4;"' : ''} onclick="startTrip(${c.reward}, ${c.fuel_cost_req}, ${c.duration}, '${c.title}')">Начать рейс</button>
-        </div>
-    `).join('');
-
-    // Биржа
-    document.getElementById('p2p-list').innerHTML = p2pMarket.map(m => `
-        <div class="card">
-            <div class="card-title"><span>${m.item_name}</span><span>🪙 ${Number(m.price).toLocaleString()}</span></div>
-            <div style="font-size:11px; color:var(--hint-color);">Продавец: ${m.seller_name}</div>
-            <button class="btn" onclick="buyP2PLot(${m.id}, ${m.price})">Купить лот</button>
-        </div>
-    `).join('');
-
-    // Лидерборд
-    document.getElementById('leaderboard-list').innerHTML = leaderboard.map((l, index) => `
-        <div class="leaderboard-row">
-            <span><b>#${index + 1}</b> ${l.name}</span>
-            <span style="color:var(--accent-pink);">🪙 ${Number(l.total_profit).toLocaleString()}</span>
-        </div>
-    `).join('');
-}
-
-async function startTrip(reward, fuelReq, duration, title) {
-    if (player.fuel_stock < fuelReq) {
-        alert('Недостаточно топлива на складе!');
-        return;
-    }
-
-    let endTime = Date.now() + (duration * 1000);
-    player.fuel_stock -= fuelReq;
-    
-    let { data } = await supabaseClient.from('active_trips').insert([{
-        player_id: player.id,
-        title: title,
-        reward: reward,
-        fuel_req: fuelReq,
-        end_time: endTime
-    }]).select().single();
-
-    if (data) {
-        activeTrip = data;
-    }
-    await syncPlayerToDB();
-    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-    renderAll();
-}
-
-async function finishTrip() {
-    if (!activeTrip) return;
-    
-    let syndicateTax = player.syndicate ? activeTrip.reward * 0.05 : 0;
-    let netProfit = Math.round(activeTrip.reward - syndicateTax);
-
-    player.money += netProfit;
-    player.total_profit += netProfit;
-
-    await supabaseClient.from('active_trips').delete().eq('player_id', player.id);
-    activeTrip = null;
-
-    await syncPlayerToDB();
-    alert(`Рейс успешно завершен!\nЧистая прибыль: +${netProfit.toLocaleString()} 🪙`);
-    await loadUserDataFromDB();
-    renderAll();
-}
-
-async function buyFuel(amount) {
-    let cost = amount * player.fuel_price;
-    if (player.money < cost) { alert('Недостаточно монет!'); return; }
-    player.money -= cost;
-    player.fuel_stock += amount;
-    await syncPlayerToDB();
-    renderAll();
-}
-
-async function repairTruck(id) {
-    let cost = 2000;
-    if (player.money < cost) { alert('Недостаточно средств для ремонта!'); return; }
-    player.money -= cost;
-    
-    await supabaseClient.from('trucks').update({ engine_wear: 100, tires_wear: 100 }).eq('id', id);
-    await syncPlayerToDB();
-    await loadUserDataFromDB();
-    alert('Узлы транспорта полностью восстановлены!');
-    renderAll();
-}
-
-async function upgradeGarage() {
-    let cost = player.garage_level * 10000;
-    if (player.money < cost) { alert('Недостаточно средств!'); return; }
-    player.money -= cost;
-    player.garage_level++;
-    await syncPlayerToDB();
-    alert('Гараж успешно модернизирован!');
-    renderAll();
-}
-
-async function createP2PLot() {
-    let name = document.getElementById('p2p-item-name').value.trim();
-    let price = parseInt(document.getElementById('p2p-item-price').value);
-    if (!name || !price || price <= 0) { alert('Заполните корректные данные лота!'); return; }
-
-    await supabaseClient.from('p2p_market').insert([{
-        seller_name: player.name,
-        item_name: name,
-        price: price
-    }]);
-
-    document.getElementById('p2p-item-name').value = '';
-    document.getElementById('p2p-item-price').value = '';
-    alert('Лот успешно выставлен на черный рынок!');
-    await loadUserDataFromDB();
-    renderAll();
-}
-
-async function buyP2PLot(lotId, price) {
-    if (player.money < price) { alert('Недостаточно средств!'); return; }
-    player.money -= price;
-
-    await supabaseClient.from('p2p_market').delete().eq('id', lotId);
-    await syncPlayerToDB();
-    await loadUserDataFromDB();
-    alert('Вы успешно приобрели лот!');
-    renderAll();
-}
-
-async function claimDailyBonus() {
-    let now = Date.now();
-    if (now - player.last_bonus_time < 86400000) {
-        let hours = Math.ceil((86400000 - (now - player.last_bonus_time)) / 3600000);
-        alert(`Бонус уже получен. Следующий доступен через ${hours} ч.`);
-        return;
-    }
-    player.last_bonus_time = now;
-    player.money += 15000;
-    player.fuel_stock += 200;
-    await syncPlayerToDB();
-    alert('🎁 Вы забрали ежедневный бонус: +15,000 🪙 и +200л топлива!');
-    renderAll();
-}
-
-async function saveProfile() {
-    let name = document.getElementById('input-username').value.trim();
-    let avatar = document.getElementById('input-avatar').value.trim();
-    if (name) player.name = name;
-    if (avatar) player.avatar = avatar;
-    await syncPlayerToDB();
-    alert('Профиль успешно обновлен в облаке!');
-    renderAll();
-}
-
-async function joinSyndicate(name) {
-    player.syndicate = name;
-    await syncPlayerToDB();
-    alert(`Вы вступили в синдикат ${name}! Налог снижен до 5%.`);
-    renderAll();
-}
-
-// Проверка таймеров рейсов каждую секунду
-setInterval(() => {
-    if (activeTrip) renderAll();
-}, 1000);
-
-// Запуск игры
-initGameData();
