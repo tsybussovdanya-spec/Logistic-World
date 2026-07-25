@@ -133,7 +133,6 @@ const DB = {
                 await this.createNewPlayer();
             } else {
                 AppState.player = { ...AppState.player, ...existingPlayer };
-                // Гарантируем массивы/поля для пасса
                 if (!AppState.player.pass_level) AppState.player.pass_level = 1;
                 if (!AppState.player.pass_claimed) AppState.player.pass_claimed = [];
             }
@@ -215,7 +214,6 @@ const DB = {
     async syncPlayer() {
         const { id, ...updateData } = AppState.player;
         await supabaseClient.from('players').update(updateData).eq('id', id);
-        // Фоновое обновление таблицы лидеров после синхронизации
         this.loadLeaderboard();
     }
 };
@@ -234,7 +232,6 @@ const GameLogic = {
         while (AppState.player.xp >= req) {
             AppState.player.xp -= req;
             AppState.player.level++;
-            // Прогресс сезонного пропуска увеличивается вместе с уровнем
             AppState.player.pass_level++;
             req = this.getReqXP(AppState.player.level);
             leveledUp = true;
@@ -327,7 +324,6 @@ const GameLogic = {
         UI.renderAll();
     },
 
-    // 🖼️ СМЕНА ФОТО ИЗ ГАЛЕРЕИ
     handleAvatarUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -344,7 +340,6 @@ const GameLogic = {
         reader.readAsDataURL(file);
     },
 
-    // 🎫 ЛОГИКА СЕЗОННОГО ПРОПУСКА
     claimPassReward(tierLevel, coinReward) {
         if (AppState.player.pass_level < tierLevel) {
             return UI.showToast('Уровень пропуска еще не достигнут!', 'error');
@@ -423,40 +418,33 @@ const UI = {
     renderAll() {
         const p = AppState.player;
         
-        // Шапка и профиль
         this.safeUpdate('username', p.name);
         this.safeUpdate('user-money', `🪙 ${p.money.toLocaleString()}`);
         this.safeUpdate('user-fuel-stock', `⛽ ${p.fuel_stock}л`);
         this.safeUpdate('user-level-badge', `LVL ${p.level}`);
         
-        // Рендер аватара везде, где есть элемент с id="user-avatar"
         document.querySelectorAll('#user-avatar').forEach(img => {
             if (p.avatar) img.src = p.avatar;
         });
         
-        // Статистика
         this.safeUpdate('stat-total-profit', `${p.total_profit.toLocaleString()} 🪙`);
         this.safeUpdate('stat-total-trips', p.total_trips);
         this.safeUpdate('fuel-price', `🪙 ${p.fuel_price}`);
         
-        // Синдикат
         if(p.syndicate) {
             this.safeUpdate('corp-name', p.syndicate);
             this.safeUpdate('corp-role', 'Ваша должность: Логист');
         }
 
-        // Полоса опыта
         const xpProg = Math.min((p.xp / GameLogic.getReqXP(p.level)) * 100, 100);
         const xpFill = document.getElementById('xp-bar-fill');
         if (xpFill) xpFill.style.width = `${xpProg}%`;
 
-        // Лицензии
         const allLic = [{id:'basic', n:'Базовая'}, {id:'dangerous', n:'Опасные грузы'}, {id:'oversized', n:'Негабарит'}];
         this.safeUpdateHTML('licenses-list', allLic.map(l => 
             `<span class="license-badge ${p.licenses.includes(l.id) ? 'active' : ''}">${l.n}</span>`
         ).join(''));
 
-        // Автопарк
         this.safeUpdateHTML('fleet-list', AppState.trucks.map(t => `
             <div class="card rarity-${t.rarity || 'common'}">
                 <div class="card-title"><span>${t.name}</span><span style="font-size:10px;text-transform:uppercase;">${t.rarity || 'common'}</span></div>
@@ -472,7 +460,6 @@ const UI = {
             </div>
         `).join(''));
 
-        // Активный рейс
         let tripHtml = '';
         if (AppState.activeTrip) {
             let left = Math.floor((AppState.activeTrip.end_time - Date.now()) / 1000);
@@ -485,7 +472,6 @@ const UI = {
         }
         this.safeUpdateHTML('active-trip-panel', tripHtml);
 
-        // Контракты
         this.safeUpdateHTML('contracts-list', AppState.contracts.map(c => {
             const lockedLvl = p.level < c.reqLvl;
             const lockedLic = !p.licenses.includes(c.reqLic);
@@ -501,7 +487,6 @@ const UI = {
             </div>`;
         }).join(''));
 
-        // 🏆 РЕНДЕР ТАБЛИЦЫ ЛИДЕРОВ (РЕЙТИНГ)
         this.safeUpdateHTML('leaderboard-list', AppState.leaderboard.map((user, index) => `
             <div class="card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; margin-bottom: 6px;">
                 <div style="display: flex; align-items: center; gap: 12px;">
@@ -516,7 +501,6 @@ const UI = {
             </div>
         `).join(''));
 
-        // 🎫 РЕНДЕР СЕЗОННОГО ПРОПУСКА
         const passTiers = [
             { level: 1, reward: 10000, title: 'Уровень 1: Старт Cyber Tokyo' },
             { level: 3, reward: 25000, title: 'Уровень 3: Неоновый обвес' },
