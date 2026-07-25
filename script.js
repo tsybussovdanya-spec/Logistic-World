@@ -221,6 +221,7 @@ const DB = {
 // ============================================================================
 // 🎮 ИГРОВАЯ ЛОГИКА
 // ============================================================================
+
 const GameLogic = {
     getReqXP(lvl) { return Math.floor(1000 * Math.pow(1.5, lvl - 1)); },
     
@@ -356,6 +357,26 @@ const GameLogic = {
         UI.renderAll();
     },
 
+    // 📜 Покупка лицензий
+    async buyLicense(licId, cost, reqLvl) {
+        if (AppState.player.level < reqLvl) {
+            return UI.showToast(`Нужен уровень ${reqLvl} для получения этой лицензии!`, 'error');
+        }
+        if (AppState.player.licenses.includes(licId)) {
+            return UI.showToast('Эта лицензия уже приобретена!', 'info');
+        }
+        if (AppState.player.money < cost) {
+            return UI.showToast('Недостаточно монет для покупки лицензии!', 'error');
+        }
+
+        AppState.player.money -= cost;
+        AppState.player.licenses.push(licId);
+        
+        await DB.syncPlayer();
+        UI.showToast('Лицензия успешно приобретена!', 'success');
+        UI.renderAll();
+    },
+
     async joinSyndicate(name) {
         if (AppState.player.syndicate === name) return UI.showToast('Вы уже в этом синдикате', 'info');
         AppState.player.syndicate = name;
@@ -388,6 +409,7 @@ const GameLogic = {
         UI.renderAll();
     }
 };
+
 
 // ============================================================================
 // 🎨 УПРАВЛЕНИЕ ИНТЕРФЕЙСОМ
