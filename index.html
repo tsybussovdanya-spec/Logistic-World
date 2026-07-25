@@ -2,113 +2,188 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Идеальный viewport для мобильных игр (без зума) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <!-- Настройки для нативного вида на iOS/Android -->
+    <meta name="theme-color" content="#05050A">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
     <title>Logistic World — Cyber-Luxury Simulator</title>
+    
     <link rel="stylesheet" href="style.css">
+    
+    <!-- Библиотеки -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+    <!-- Фоновый декоративный элемент для Cyber-Luxury стиля -->
+    <div class="cyber-glow-bg"></div>
+
     <div class="app-container">
         <!-- Шапка профиля -->
         <header class="app-header" onclick="switchTab('profile')">
             <div class="user-profile-preview">
-                <img id="header-avatar" src="" class="avatar-small" alt="Avatar">
+                <div class="avatar-wrapper">
+                    <img id="header-avatar" src="" class="avatar-small" alt="Аватар пользователя">
+                </div>
                 <div class="user-info">
-                    <span id="username">Логист</span>
+                    <h1 id="username" class="user-name-title">Логист</h1>
                     <div class="balance-container">
-                        <span id="user-money">🪙 0</span>
-                        <span id="user-fuel-stock">⛽ 0л</span>
+                        <span id="user-money" class="badge-money">🪙 0</span>
+                        <span id="user-fuel-stock" class="badge-fuel">⛽ 0л</span>
                     </div>
                 </div>
             </div>
             <div class="syndicate-badge" id="syndicate-info">Одиночка</div>
         </header>
 
-        <!-- Навигация -->
-        <nav class="nav-tabs">
-            <button class="tab-btn active" onclick="switchTab('fleet')">Гараж</button>
-            <button class="tab-btn" onclick="switchTab('logistics')">Рейсы</button>
-            <button class="tab-btn" onclick="switchTab('market')">Биржа</button>
-            <button class="tab-btn" onclick="switchTab('rating')">Рейтинг</button>
-            <button class="tab-btn" onclick="switchTab('profile')">Профиль</button>
-        </nav>
-
-        <!-- Контент -->
+        <!-- Основной контент -->
         <main class="content-area">
             
             <!-- Вкладка 1: Гараж -->
             <section id="tab-fleet" class="tab-content active">
-                <h2>Ваш Автопарк</h2>
-                <div id="fleet-list" class="card-grid"></div>
+                <div class="section-header">
+                    <h2>Ваш Автопарк</h2>
+                    <p class="subtitle">Управляйте своими грузовиками</p>
+                </div>
+                
+                <div id="fleet-list" class="card-grid">
+                    <!-- Рендер из JS -->
+                </div>
                 
                 <div class="card bonus-card">
-                    <h3>Ежедневный Бонус</h3>
-                    <p>Ресурсы для развития корпорации каждые 24 часа.</p>
-                    <button class="btn" onclick="claimDailyBonus()">Забрать бонус 🎁</button>
+                    <div class="card-content">
+                        <h3>Ежедневный Бонус</h3>
+                        <p>Ресурсы для развития корпорации каждые 24 часа.</p>
+                        <button type="button" class="btn btn-primary" onclick="claimDailyBonus()">Забрать бонус 🎁</button>
+                    </div>
                 </div>
 
-                <div class="card">
-                    <h3>Модернизация Гаража (Ур. <span id="garage-lvl">1</span>)</h3>
-                    <p>Постройка АЗС и боксов снижает издержки на рейсы.</p>
-                    <button class="btn" onclick="upgradeGarage()">Улучшить (🪙 <span id="garage-cost">10000</span>)</button>
+                <div class="card upgrade-card">
+                    <div class="card-content">
+                        <h3>Модернизация Гаража (Ур. <span id="garage-lvl">1</span>)</h3>
+                        <p>Постройка АЗС и боксов снижает издержки на рейсы.</p>
+                        <button type="button" class="btn btn-upgrade" onclick="upgradeGarage()">Улучшить (🪙 <span id="garage-cost">10000</span>)</button>
+                    </div>
                 </div>
             </section>
 
             <!-- Вкладка 2: Логистика -->
             <section id="tab-logistics" class="tab-content">
-                <h2>Логистический центр</h2>
-                <div id="active-trip-panel"></div>
-                <h3>Доступные контракты</h3>
-                <div id="contracts-list" class="card-grid"></div>
+                <div class="section-header">
+                    <h2>Логистический центр</h2>
+                    <p class="subtitle">Управление поставками</p>
+                </div>
+                
+                <div id="active-trip-panel">
+                    <!-- Рендер активного рейса из JS -->
+                </div>
+                
+                <h3 class="subsection-title">Доступные контракты</h3>
+                <div id="contracts-list" class="card-grid">
+                    <!-- Рендер контрактов из JS -->
+                </div>
             </section>
 
             <!-- Вкладка 3: Биржа -->
             <section id="tab-market" class="tab-content">
-                <h2>Топливная биржа</h2>
-                <div class="card">
-                    <p>Текущая стоимость сырья: <b id="fuel-price">🪙 12</b> / л</p>
-                    <div style="display: flex; gap: 8px; margin-top: 8px;">
-                        <button class="btn" onclick="buyFuel(50)">Купить 50л</button>
-                        <button class="btn" onclick="buyFuel(200)">Купить 200л</button>
+                <div class="section-header">
+                    <h2>Топливная биржа</h2>
+                    <p class="subtitle">Покупка сырья и запчастей</p>
+                </div>
+                
+                <div class="card market-card">
+                    <p class="price-ticker">Текущая стоимость сырья: <b id="fuel-price" class="highlight">🪙 12</b> / л</p>
+                    <div class="action-row">
+                        <button type="button" class="btn btn-outline" onclick="buyFuel(50)">Купить 50л</button>
+                        <button type="button" class="btn btn-outline" onclick="buyFuel(200)">Купить 200л</button>
                     </div>
                 </div>
-                <h3>Черный рынок деталей (P2P)</h3>
-                <div class="card">
+                
+                <h3 class="subsection-title">Черный рынок деталей (P2P)</h3>
+                <div class="card p2p-create-card">
                     <h4>Создать свой лот</h4>
-                    <input type="text" id="p2p-item-name" class="input-text" placeholder="Название детали..." style="margin-top:6px;">
-                    <input type="number" id="p2p-item-price" class="input-text" placeholder="Цена в монетах..." style="margin-top:6px;">
-                    <button class="btn" style="margin-top:8px;" onclick="createP2PLot()">Выставить на биржу</button>
+                    <div class="input-group">
+                        <input type="text" id="p2p-item-name" class="input-text" placeholder="Название детали..." autocomplete="off">
+                    </div>
+                    <div class="input-group">
+                        <input type="number" id="p2p-item-price" class="input-text" placeholder="Цена в монетах..." autocomplete="off" inputmode="numeric">
+                    </div>
+                    <button type="button" class="btn btn-action" onclick="createP2PLot()">Выставить на биржу</button>
                 </div>
-                <div id="p2p-list" class="card-grid" style="margin-top: 10px;"></div>
+                
+                <div id="p2p-list" class="card-grid p2p-grid">
+                    <!-- Рендер лотов из JS -->
+                </div>
             </section>
 
             <!-- Вкладка 4: Рейтинг -->
             <section id="tab-rating" class="tab-content">
-                <h2>Глобальный лидерборд</h2>
-                <div class="card">
-                    <div id="leaderboard-list">Загрузка рейтинга...</div>
+                <div class="section-header">
+                    <h2>Глобальный лидерборд</h2>
+                    <p class="subtitle">Топ логистов мира</p>
+                </div>
+                <div class="card leaderboard-card">
+                    <div id="leaderboard-list">
+                        <div class="loading-text">Загрузка рейтинга...</div>
+                    </div>
                 </div>
             </section>
 
             <!-- Вкладка 5: Профиль -->
             <section id="tab-profile" class="tab-content">
-                <h2>Управление профилем</h2>
-                <div class="card">
-                    <label>Никнейм:</label>
-                    <input type="text" id="input-username" class="input-text" style="margin-top: 4px;">
-                    <label style="margin-top: 8px;">Ссылка на аватар:</label>
-                    <input type="text" id="input-avatar" class="input-text" style="margin-top: 4px;">
-                    <button class="btn" style="margin-top: 12px;" onclick="saveProfile()">Сохранить данные</button>
+                <div class="section-header">
+                    <h2>Управление профилем</h2>
+                    <p class="subtitle">Настройки и синдикат</p>
                 </div>
-                <div class="card">
-                    <h3>Синдикаты</h3>
-                    <p id="syndicate-desc">Вы свободный логист без синдиката.</p>
-                    <button class="btn" style="margin-top: 8px;" onclick="joinSyndicate('CyberTransport')">Вступить в CyberTransport</button>
+                
+                <div class="card profile-card">
+                    <div class="input-group">
+                        <label for="input-username">Никнейм:</label>
+                        <input type="text" id="input-username" class="input-text" autocomplete="off">
+                    </div>
+                    <div class="input-group">
+                        <label for="input-avatar">Ссылка на аватар (URL):</label>
+                        <input type="url" id="input-avatar" class="input-text" autocomplete="off">
+                    </div>
+                    <button type="button" class="btn btn-save" onclick="saveProfile()">Сохранить данные</button>
+                </div>
+                
+                <div class="card syndicate-card">
+                    <h3>Ваш Синдикат</h3>
+                    <p id="syndicate-desc" class="syndicate-status">Вы свободный логист без синдиката.</p>
+                    <button type="button" class="btn btn-syndicate" onclick="joinSyndicate('CyberTransport')">Вступить в CyberTransport</button>
                 </div>
             </section>
 
         </main>
+
+        <!-- Навигация -->
+        <nav class="nav-tabs bottom-nav">
+            <button type="button" class="tab-btn active" onclick="switchTab('fleet')">
+                <span class="icon">🚛</span>
+                <span>Гараж</span>
+            </button>
+            <button type="button" class="tab-btn" onclick="switchTab('logistics')">
+                <span class="icon">🗺️</span>
+                <span>Рейсы</span>
+            </button>
+            <button type="button" class="tab-btn" onclick="switchTab('market')">
+                <span class="icon">📈</span>
+                <span>Биржа</span>
+            </button>
+            <button type="button" class="tab-btn" onclick="switchTab('rating')">
+                <span class="icon">🏆</span>
+                <span>Рейтинг</span>
+            </button>
+            <button type="button" class="tab-btn" onclick="switchTab('profile')">
+                <span class="icon">👤</span>
+                <span>Профиль</span>
+            </button>
+        </nav>
     </div>
 
     <script src="script.js"></script>
