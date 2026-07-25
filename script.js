@@ -2,26 +2,26 @@ const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-// НАСТРОЙКИ ПОДКЛЮЧЕНИЯ К SUPABASE (ЗАМЕНИТЕ НА СВОИ КЛЮЧИ)
-const SUPABASE_URL = https://iqnwxtfievadrqaglqqs.supabase.co/rest/v1/;
-const SUPABASE_ANON_KEY = sb_publishable_tk5ZZxQvR68QF0sWI8_y-Q_M3jy4A_-;
+// НАСТРОЙКИ ПОДКЛЮЧЕНИЯ К SUPABASE (ЗАМЕНИТЕ НА СВОИ)
+const SUPABASE_URL = 'https://iqnwxtfievadrqaglqqs.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_tk5ZZxQvR68QF0sWI8_y-Q_M3jy4A_-';
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const tgUser = tg.initDataUnsafe?.user;
-const telegramId = tgUser ? tgUser.id : 123456789; // Тестовый ID, если запуск не из Telegram
+const telegramId = tgUser ? tgUser.id : 123456789; // Тестовый ID для проверки в обычном браузере
 
 let player = {
     id: null,
     name: tgUser ? `${tgUser.first_name}` : 'Логист #777',
     avatar: tgUser?.photo_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100',
     money: 35000,
-    fuelStock: 400,
-    fuelPrice: 12,
+    fuel_stock: 400,
+    fuel_price: 12,
     syndicate: null,
-    garageLevel: 1,
-    totalProfit: 0,
-    lastBonusTime: 0
+    garage_level: 1,
+    total_profit: 0,
+    last_bonus_time: 0
 };
 
 let trucks = [];
@@ -30,37 +30,35 @@ let p2pMarket = [];
 let leaderboard = [];
 
 let contracts = [
-    { id: 1, title: 'Обычный: Доставка микросхем', reward: 5200, fuelCostReq: 70, duration: 15 },
-    { id: 2, title: 'Срочный: Квантовые батареи', reward: 11500, fuelCostReq: 140, duration: 30 },
-    { id: 3, title: 'Нелегальный: Нейромодули', reward: 24000, fuelCostReq: 260, duration: 60 }
+    { id: 1, title: 'Обычный: Доставка микросхем', reward: 5200, fuel_cost_req: 70, duration: 15 },
+    { id: 2, title: 'Срочный: Квантовые батареи', reward: 11500, fuel_cost_req: 140, duration: 30 },
+    { id: 3, title: 'Нелегальный: Нейромодули', reward: 24000, fuel_cost_req: 260, duration: 60 }
 ];
 
 // Инициализация игрока в базе данных при входе
 async function initGameData() {
-    let { data: existingPlayer, error } = await supabaseClient
+    let { data: existingPlayer } = await supabaseClient
         .from('players')
         .select('*')
         .eq('telegram_id', telegramId)
-        .single();
+        .maybeSingle();
 
     if (!existingPlayer) {
-        // Создаем нового игрока в базе, если его еще нет
-        let { data: newP, error: errNew } = await supabaseClient
+        let { data: newP } = await supabaseClient
             .from('players')
             .insert([{
                 telegram_id: telegramId,
                 name: player.name,
                 avatar: player.avatar,
                 money: player.money,
-                fuel_stock: player.fuelStock,
-                garage_level: player.garageLevel
+                fuel_stock: player.fuel_stock,
+                garage_level: player.garage_level
             }])
             .select()
             .single();
 
         if (newP) {
             player = newP;
-            // Выдаем стартовый грузовик
             await supabaseClient.from('trucks').insert([{
                 player_id: player.id,
                 name: 'LW-CyberTruck Alpha',
@@ -79,21 +77,21 @@ async function initGameData() {
 }
 
 async function loadUserDataFromDB() {
-    // Загружаем грузовики
-    let { data: tData } = await supabaseClient.from('trucks').select('*').eq('player_id', player.id);
-    trucks = tData || [];
+    try {
+        let { data: tData } = await supabaseClient.from('trucks').select('*').eq('player_id', player.id);
+        trucks = tData || [];
 
-    // Загружаем активный рейс
-    let { data: tripData } = await supabaseClient.from('active_trips').select('*').eq('player_id', player.id).single();
-    activeTrip = tripData || null;
+        let { data: tripData } = await supabaseClient.from('active_trips').select('*').eq('player_id', player.id).maybeSingle();
+        activeTrip = tripData || null;
 
-    // Загружаем P2P биржу
-    let { data: marketData } = await supabaseClient.from('p2p_market').select('*').order('id', { ascending: false });
-    p2pMarket = marketData || [];
+        let { data: marketData } = await supabaseClient.from('p2p_market').select('*').order('id', { ascending: false });
+        p2pMarket = marketData || [];
 
-    // Загружаем рейтинг
-    let { data: leadData } = await supabaseClient.from('players').select('name, total_profit').order('total_profit', { ascending: false }).limit(10);
-    leaderboard = leadData || [];
+        let { data: leadData } = await supabaseClient.from('players').select('name, total_profit').order('total_profit', { ascending: false }).limit(10);
+        leaderboard = leadData || [];
+    } catch (e) {
+        console.error('Ошибка загрузки данных:', e);
+    }
 }
 
 async function syncPlayerToDB() {
@@ -124,7 +122,7 @@ function switchTab(tabId) {
 function renderAll() {
     document.getElementById('username').innerText = player.name;
     document.getElementById('header-avatar').src = player.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100';
-    document.getElementById('user-money').innerText = `🪙 ${player.money.toLocaleString()}`;
+    document.getElementById('user-money').innerText = `🪙 ${Number(player.money).toLocaleString()}`;
     document.getElementById('user-fuel-stock').innerText = `⛽ ${player.fuel_stock}л`;
     document.getElementById('fuel-price').innerText = `🪙 ${player.fuel_price}`;
     document.getElementById('syndicate-info').innerText = player.syndicate || 'Одиночка';
@@ -150,7 +148,7 @@ function renderAll() {
         </div>
     `).join('');
 
-    // Рейсы с таймером из БД
+    // Активный рейс
     let tripPanel = document.getElementById('active-trip-panel');
     if (activeTrip) {
         let timeLeft = Math.floor((activeTrip.end_time - Date.now()) / 1000);
@@ -174,16 +172,16 @@ function renderAll() {
             <div class="card-title"><span>${c.title}</span><span style="color:var(--accent-pink);">+${c.reward} 🪙</span></div>
             <div class="specs-grid">
                 <div>Время: ${c.duration} сек</div>
-                <div>Топливо: ${c.fuel_cost_req || c.fuelCostReq}л</div>
+                <div>Топливо: ${c.fuel_cost_req}л</div>
             </div>
-            <button class="btn" ${activeTrip ? 'disabled style="opacity:0.4;"' : ''} onclick="startTrip(${c.reward}, ${c.fuelCostReq || c.fuelCostReq}, ${c.duration}, '${c.title}')">Начать рейс</button>
+            <button class="btn" ${activeTrip ? 'disabled style="opacity:0.4;"' : ''} onclick="startTrip(${c.reward}, ${c.fuel_cost_req}, ${c.duration}, '${c.title}')">Начать рейс</button>
         </div>
     `).join('');
 
     // Биржа
-    document.getElementById('p2p-list').innerHTML = p2pMarket.map((m, index) => `
+    document.getElementById('p2p-list').innerHTML = p2pMarket.map(m => `
         <div class="card">
-            <div class="card-title"><span>${m.item_name}</span><span>🪙 ${m.price.toLocaleString()}</span></div>
+            <div class="card-title"><span>${m.item_name}</span><span>🪙 ${Number(m.price).toLocaleString()}</span></div>
             <div style="font-size:11px; color:var(--hint-color);">Продавец: ${m.seller_name}</div>
             <button class="btn" onclick="buyP2PLot(${m.id}, ${m.price})">Купить лот</button>
         </div>
@@ -193,7 +191,7 @@ function renderAll() {
     document.getElementById('leaderboard-list').innerHTML = leaderboard.map((l, index) => `
         <div class="leaderboard-row">
             <span><b>#${index + 1}</b> ${l.name}</span>
-            <span style="color:var(--accent-pink);">🪙 ${l.total_profit.toLocaleString()}</span>
+            <span style="color:var(--accent-pink);">🪙 ${Number(l.total_profit).toLocaleString()}</span>
         </div>
     `).join('');
 }
@@ -205,11 +203,9 @@ async function startTrip(reward, fuelReq, duration, title) {
     }
 
     let endTime = Date.now() + (duration * 1000);
-
     player.fuel_stock -= fuelReq;
     
-    // Записываем активный рейс в базу данных
-    let { data, error } = await supabaseClient.from('active_trips').insert([{
+    let { data } = await supabaseClient.from('active_trips').insert([{
         player_id: player.id,
         title: title,
         reward: reward,
@@ -234,7 +230,6 @@ async function finishTrip() {
     player.money += netProfit;
     player.total_profit += netProfit;
 
-    // Удаляем рейс из базы
     await supabaseClient.from('active_trips').delete().eq('player_id', player.id);
     activeTrip = null;
 
@@ -336,10 +331,10 @@ async function joinSyndicate(name) {
     renderAll();
 }
 
-// Проверка таймеров каждую секунду
+// Проверка таймеров рейсов каждую секунду
 setInterval(() => {
     if (activeTrip) renderAll();
 }, 1000);
 
-// Запуск приложения
+// Запуск игры
 initGameData();
