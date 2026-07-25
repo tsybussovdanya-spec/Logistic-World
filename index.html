@@ -3,69 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logistic World — Cyber-Luxury</title>
+    <title>Logistic World — Cyber-Luxury Simulator</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
     <div class="app-container">
         <!-- Шапка профиля -->
-        <header class="app-header">
-            <div class="user-info">
-                <span id="username">Логист #777</span>
-                <div class="balance-container">
-                    <span id="user-money">🪙 15,000</span>
-                    <span id="user-fuel-stock">⛽ 500л</span>
+        <header class="app-header" onclick="switchTab('profile')">
+            <div class="user-profile-preview">
+                <img id="header-avatar" src="" class="avatar-small" alt="Avatar">
+                <div class="user-info">
+                    <span id="username">Логист</span>
+                    <div class="balance-container">
+                        <span id="user-money">🪙 0</span>
+                        <span id="user-fuel-stock">⛽ 0л</span>
+                    </div>
                 </div>
             </div>
-            <div class="syndicate-badge" id="syndicate-info">Синдикат: Одиночка</div>
+            <div class="syndicate-badge" id="syndicate-info">Одиночка</div>
         </header>
 
-        <!-- Навигация по вкладкам -->
+        <!-- Навигация -->
         <nav class="nav-tabs">
             <button class="tab-btn active" onclick="switchTab('fleet')">Гараж</button>
-            <button class="tab-btn" onclick="switchTab('logistics')">Логистика</button>
+            <button class="tab-btn" onclick="switchTab('logistics')">Рейсы</button>
             <button class="tab-btn" onclick="switchTab('market')">Биржа</button>
-            <button class="tab-btn" onclick="switchTab('syndicate')">Синдикат</button>
+            <button class="tab-btn" onclick="switchTab('rating')">Рейтинг</button>
+            <button class="tab-btn" onclick="switchTab('profile')">Профиль</button>
         </nav>
 
-        <!-- Основной контент -->
+        <!-- Контент -->
         <main class="content-area">
             
-            <!-- Вкладка 1: Гараж и Автопарк -->
+            <!-- Вкладка 1: Гараж -->
             <section id="tab-fleet" class="tab-content active">
                 <h2>Ваш Автопарк</h2>
                 <div id="fleet-list" class="card-grid"></div>
-                <div class="upgrade-section">
-                    <h3>Модернизация Гаража</h3>
-                    <p>Ремонтные боксы и АЗС снижают издержки.</p>
-                    <button class="btn" onclick="upgradeGarage()">Улучшить гараж (🪙 10,000)</button>
+                
+                <div class="card bonus-card">
+                    <h3>Ежедневный Бонус</h3>
+                    <p>Ресурсы для развития корпорации каждые 24 часа.</p>
+                    <button class="btn" onclick="claimDailyBonus()">Забрать бонус 🎁</button>
+                </div>
+
+                <div class="card">
+                    <h3>Модернизация Гаража (Ур. <span id="garage-lvl">1</span>)</h3>
+                    <p>Постройка АЗС и боксов снижает издержки на рейсы.</p>
+                    <button class="btn" onclick="upgradeGarage()">Улучшить (🪙 <span id="garage-cost">10000</span>)</button>
                 </div>
             </section>
 
-            <!-- Вкладка 2: Логистика и Контракты -->
+            <!-- Вкладка 2: Логистика -->
             <section id="tab-logistics" class="tab-content">
-                <h2>Доступные Контракты</h2>
+                <h2>Логистический центр</h2>
+                <div id="active-trip-panel"></div>
+                <h3>Доступные контракты</h3>
                 <div id="contracts-list" class="card-grid"></div>
             </section>
 
-            <!-- Вкладка 3: Живая Биржа и Маркет -->
+            <!-- Вкладка 3: Биржа -->
             <section id="tab-market" class="tab-content">
-                <h2>P2P Биржа и Топливо</h2>
-                <div class="market-panel">
-                    <p>Текущая цена топлива на бирже: <b id="fuel-price">🪙 12</b> / литр</p>
-                    <button class="btn" onclick="buyFuel(100)">Купить 100л топлива</button>
+                <h2>Топливная биржа</h2>
+                <div class="card">
+                    <p>Текущая стоимость сырья: <b id="fuel-price">🪙 12</b> / л</p>
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <button class="btn" onclick="buyFuel(50)">Купить 50л</button>
+                        <button class="btn" onclick="buyFuel(200)">Купить 200л</button>
+                    </div>
                 </div>
-                <h3>Черный Рынок Деталей</h3>
-                <div id="p2p-list" class="card-grid"></div>
+                <h3>Черный рынок деталей (P2P)</h3>
+                <div class="card">
+                    <h4>Создать свой лот</h4>
+                    <input type="text" id="p2p-item-name" class="input-text" placeholder="Название детали..." style="margin-top:6px;">
+                    <input type="number" id="p2p-item-price" class="input-text" placeholder="Цена в монетах..." style="margin-top:6px;">
+                    <button class="btn" style="margin-top:8px;" onclick="createP2PLot()">Выставить на биржу</button>
+                </div>
+                <div id="p2p-list" class="card-grid" style="margin-top: 10px;"></div>
             </section>
 
-            <!-- Вкладка 4: Синдикаты -->
-            <section id="tab-syndicate" class="tab-content">
-                <h2>Логистические Синдикаты</h2>
-                <div id="syndicate-container">
-                    <p>Вступите в синдикат, чтобы снизить налоги и участвовать в битвах за города.</p>
-                    <button class="btn" onclick="joinSyndicate('CyberTransport')">Вступить в CyberTransport</button>
+            <!-- Вкладка 4: Рейтинг -->
+            <section id="tab-rating" class="tab-content">
+                <h2>Глобальный лидерборд</h2>
+                <div class="card">
+                    <div id="leaderboard-list"></div>
+                </div>
+            </section>
+
+            <!-- Вкладка 5: Профиль -->
+            <section id="tab-profile" class="tab-content">
+                <h2>Управление профилем</h2>
+                <div class="card">
+                    <label>Никнейм:</label>
+                    <input type="text" id="input-username" class="input-text" style="margin-top: 4px;">
+                    <label style="margin-top: 8px;">Ссылка на аватар:</label>
+                    <input type="text" id="input-avatar" class="input-text" style="margin-top: 4px;">
+                    <button class="btn" style="margin-top: 12px;" onclick="saveProfile()">Сохранить данные</button>
+                </div>
+                <div class="card">
+                    <h3>Синдикаты</h3>
+                    <p id="syndicate-desc">Вы свободный логист без синдиката.</p>
+                    <button class="btn" style="margin-top: 8px;" onclick="joinSyndicate('CyberTransport')">Вступить в CyberTransport</button>
                 </div>
             </section>
 
