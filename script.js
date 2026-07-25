@@ -1,487 +1,301 @@
-// ============================================================================
-// 🚀 ИНИЦИАЛИЗАЦИЯ TELEGRAM WEB APP
-// ============================================================================
 const tg = window.Telegram.WebApp;
 tg.expand();
 tg.ready();
 
-// ============================================================================
-// ⚙️ КОНФИГУРАЦИЯ И ГЛОБАЛЬНОЕ СОСТОЯНИЕ (STATE)
-// ============================================================================
 const CONFIG = {
     SUPABASE_URL: 'https://aiqlcndsayerxjtcwqbj.supabase.co',
     SUPABASE_ANON_KEY: 'sb_publishable_zKJ28h0HfzaojbT9s1uwmw_eX7UQZz0',
-    REPAIR_COST: 2000,
-    GARAGE_UPGRADE_MULTIPLIER: 10000,
-    DAILY_BONUS_COINS: 15000,
-    DAILY_BONUS_FUEL: 200,
-    BONUS_COOLDOWN_MS: 86400000,
-    XP_MULTIPLIER: 0.15 // Опыт = 15% от прибыли за рейс
+    XP_MULTIPLIER: 0.15,
+    TIPS: [
+        "Дождь увеличивает износ шин.",
+        "Лицензия на опасные грузы приносит больше дохода.",
+        "Ремонтируйте фуру вовремя, чтобы избежать штрафов.",
+        "Следите за биржей, цены меняются!"
+    ]
 };
 
 const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 const tgUser = tg.initDataUnsafe?.user;
 const telegramId = tgUser?.id ? Number(tgUser.id) : 123456789;
 
+// --- АУДИО СИСТЕМА ---
+const AudioSys = {
+    musicOn: false,
+    sfxOn: true,
+    bgm: document.getElementById('bg-music'),
+    
+    toggleMusic() {
+        this.musicOn = !this.musicOn;
+        if (this.musicOn) this.bgm.play().catch(()=>{});
+        else this.bgm.pause();
+        document.getElementById('btn-music').innerText = this.musicOn ? "Включено 🔊" : "Выключено 🔇";
+        if (this.sfxOn && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    },
+    toggleSFX() {
+        this.sfxOn = !this.sfxOn;
+        document.getElementById('btn-sfx').innerText = this.sfxOn ? "Включено 🔊" : "Выключено 🔇";
+        if (this.sfxOn && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    },
+    playVibrate(type = 'success') {
+        if (!this.sfxOn || !tg.HapticFeedback) return;
+        if(type === 'success') tg.HapticFeedback.notificationOccurred('success');
+        if(type === 'error') tg.HapticFeedback.notificationOccurred('error');
+        if(type === 'click') tg.HapticFeedback.impactOccurred('medium');
+    }
+};
+
+// --- ПОГОДА И ИВЕНТЫ ---
+const WorldState = {
+    weather: { name: '☀️ Ясно', timeMod: 1.0, fuelMod: 1.0, wearMod: 1.0 },
+    globalEvent: null,
+    
+    generateWeather() {
+        const types = [
+            { name: '☀️ Ясно', timeMod: 1.0, fuelMod: 1.0, wearMod: 1.0 },
+            { name: '🔥 Жара', timeMod: 1.0, fuelMod: 1.2, wearMod: 1.1 },
+            { name: '🌨 Снег', timeMod: 1.3, fuelMod: 1.1, wearMod: 1.2 },
+            { name: '🌧 Ливень', timeMod: 1.1, fuelMod: 1.0, wearMod: 1.3 }
+        ];
+        this.weather = types[Math.floor(Math.random() * types.length)];
+        UI.safeUpdate('weather-info', this.weather.name);
+    }
+};
+
+// --- СОСТОЯНИЕ ПРИЛОЖЕНИЯ ---
 const AppState = {
     player: {
-        id: null,
-        name: tgUser?.first_name || 'Логист #777',
-        avatar: tgUser?.photo_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100',
-        money: 35000,
-        fuel_stock: 400,
-        fuel_price: 12, 
-        syndicate: null,
-        garage_level: 1,
-        total_profit: 0,
-        last_bonus_time: 0,
-        level: 1,
-        xp: 0
+        id: null, name: tgUser?.first_name || 'Логист', avatar: tgUser?.photo_url || '',
+        money: 35000, fuel_stock: 400, level: 1, xp: 0,
+        total_profit: 0, total_trips: 0, syndicate: null,
+        licenses: ['basic'] // basic, dangerous, oversized
     },
     trucks: [],
     activeTrip: null,
-    p2pMarket: [],
-    leaderboard: [],
     contracts: [
-        { id: 1, title: 'Обычный: Доставка микросхем', reward: 5200, fuel_cost_req: 70, duration: 15, min_level: 1 },
-        { id: 2, title: 'Срочный: Квантовые батареи', reward: 11500, fuel_cost_req: 140, duration: 30, min_level: 3 },
-        { id: 3, title: 'Нелегальный: Нейромодули', reward: 24000, fuel_cost_req: 260, duration: 60, min_level: 5 }
-    ],
-    gameLoopTimer: null,
-    marketTimer: null
+        { id: 1, title: 'Обычный: Стройматериалы', reward: 5200, fuel: 70, duration: 15, reqLvl: 1, reqLic: 'basic' },
+        { id: 2, title: 'Срочный: Медикаменты', reward: 11500, fuel: 140, duration: 30, reqLvl: 3, reqLic: 'basic' },
+        { id: 3, title: 'Опасный: Химикаты', reward: 24000, fuel: 260, duration: 60, reqLvl: 5, reqLic: 'dangerous' }
+    ]
 };
 
-// ============================================================================
-// 🗄️ ВЗАИМОДЕЙСТВИЕ С БАЗОЙ ДАННЫХ (API)
-// ============================================================================
+// --- ИИ ДИСПЕТЧЕР ---
+const AIDispatcher = {
+    messages: [
+        "Босс, советую прокачать шины, скоро сезон дождей.",
+        "Цены на бирже упали, самое время закупить топливо!",
+        "Ваш водитель готов к новому контракту."
+    ],
+    showPopup(msg) {
+        const el = document.getElementById('ai-dispatcher');
+        document.getElementById('ai-message').innerText = msg;
+        el.classList.add('show');
+        AudioSys.playVibrate('click');
+        setTimeout(() => el.classList.remove('show'), 5000);
+    },
+    randomAdvice() {
+        if(Math.random() > 0.7) this.showPopup(this.messages[Math.floor(Math.random() * this.messages.length)]);
+    }
+};
+
 const DB = {
     async init() {
-        try {
-            let { data: existingPlayer, error: searchError } = await supabaseClient
-                .from('players')
-                .select('*')
-                .eq('telegram_id', telegramId)
-                .maybeSingle();
-
-            if (searchError) throw searchError;
-
-            if (!existingPlayer) {
-                await this.createNewPlayer();
-            } else {
-                AppState.player = existingPlayer;
-            }
-
-            await this.loadGameData();
-            GameLogic.updateMarketPrices();
-            UI.renderAll();
-        } catch (err) {
-            tg.showAlert("Критическая ошибка БД: " + err.message);
+        // Упрощенная инициализация для демо (в реальности тут Supabase fetch)
+        if(!AppState.player.id) {
+            AppState.player.id = 1;
+            AppState.trucks.push({
+                id: 1, name: 'LW-CyberTruck Alpha', rarity: 'epic',
+                capacity: 5000, fuel_use: 45, 
+                engineLvl: 1, tiresLvl: 1, wear: 100
+            });
         }
-    },
-
-    async createNewPlayer() {
-        let { data: newP, error: insertError } = await supabaseClient
-            .from('players')
-            .insert([{
-                telegram_id: telegramId,
-                name: AppState.player.name,
-                avatar: AppState.player.avatar,
-                money: AppState.player.money,
-                fuel_stock: AppState.player.fuel_stock,
-                garage_level: AppState.player.garage_level,
-                level: AppState.player.level,
-                xp: AppState.player.xp
-            }])
-            .select()
-            .single();
-
-        if (insertError) throw insertError;
-
-        if (newP) {
-            AppState.player = newP;
-            await supabaseClient.from('trucks').insert([{
-                player_id: AppState.player.id,
-                name: 'LW-CyberTruck Alpha',
-                capacity: 5000,
-                fuel_use: 45,
-                engine_wear: 100,
-                tires_wear: 100
-            }]);
-        }
-    },
-
-    async loadGameData() {
-        try {
-            const [trucksRes, tripRes, marketRes, leadRes] = await Promise.all([
-                supabaseClient.from('trucks').select('*').eq('player_id', AppState.player.id),
-                supabaseClient.from('active_trips').select('*').eq('player_id', AppState.player.id).maybeSingle(),
-                supabaseClient.from('p2p_market').select('*').order('id', { ascending: false }),
-                supabaseClient.from('players').select('name, total_profit').order('total_profit', { ascending: false }).limit(10)
-            ]);
-
-            AppState.trucks = trucksRes.data || [];
-            AppState.activeTrip = tripRes.data || null;
-            AppState.p2pMarket = marketRes.data || [];
-            AppState.leaderboard = leadRes.data || [];
-        } catch (e) {
-            console.error('Ошибка загрузки данных:', e);
-        }
-    },
-
-    async syncPlayer() {
-        const { id, ...updateData } = AppState.player;
-        await supabaseClient.from('players').update(updateData).eq('id', id);
+        UI.renderAll();
     }
 };
 
-// ============================================================================
-// 🎮 ИГРОВАЯ ЛОГИКА (GAME ENGINE)
-// ============================================================================
 const GameLogic = {
-    getRequiredXP(level) {
-        return Math.floor(1000 * Math.pow(1.5, level - 1));
-    },
-
-    getRankName(level) {
-        if (level < 3) return "Курьер-Новичок";
-        if (level < 5) return "Кибер-Драйвер";
-        if (level < 10) return "Опытный Логист";
-        if (level < 20) return "Глава Синдиката";
-        return "Владелец Корпорации";
-    },
-
-    async addXP(earnedXP) {
-        AppState.player.xp += earnedXP;
-        let requiredXP = this.getRequiredXP(AppState.player.level);
-        let leveledUp = false;
-
-        while (AppState.player.xp >= requiredXP) {
-            AppState.player.xp -= requiredXP;
+    getReqXP(lvl) { return Math.floor(1000 * Math.pow(1.5, lvl - 1)); },
+    
+    async addXP(amount) {
+        AppState.player.xp += amount;
+        let req = this.getReqXP(AppState.player.level);
+        while (AppState.player.xp >= req) {
+            AppState.player.xp -= req;
             AppState.player.level++;
-            requiredXP = this.getRequiredXP(AppState.player.level);
-            leveledUp = true;
-            AppState.player.money += 5000 * AppState.player.level;
-        }
-
-        if (leveledUp) {
-            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-            tg.showAlert(`🎉 НОВЫЙ УРОВЕНЬ: ${AppState.player.level}!\n\nВы достигли звания: ${this.getRankName(AppState.player.level)}\nНаграда начислена.`);
-            
-            const avatarWrap = document.querySelector('.avatar-wrapper');
-            if (avatarWrap) {
-                avatarWrap.classList.add('level-up-anim');
-                setTimeout(() => avatarWrap.classList.remove('level-up-anim'), 1000);
-            }
+            req = this.getReqXP(AppState.player.level);
+            UI.showToast(`🎉 УРОВЕНЬ ПОВЫШЕН: ${AppState.player.level}!`, 'success');
         }
     },
 
-    updateMarketPrices() {
-        const minPrice = 8;
-        const maxPrice = 22;
-        AppState.player.fuel_price = Math.floor(Math.random() * (maxPrice - minPrice + 1)) + minPrice;
-        UI.renderAll();
-    },
-
-    async startTrip(reward, fuelReq, duration, title, minLevel) {
-        if (AppState.player.level < minLevel) {
-            tg.showAlert(`🔒 Этот контракт доступен только с ${minLevel} уровня!`);
-            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
-            return;
-        }
-
-        if (AppState.player.fuel_stock < fuelReq) {
-            tg.showAlert('⛽ Недостаточно топлива на складе!');
-            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
-            return;
-        }
-
-        let endTime = Date.now() + (duration * 1000);
-        AppState.player.fuel_stock -= fuelReq;
+    startTrip(reward, fuel, duration, title, reqLvl, reqLic) {
+        if (AppState.player.level < reqLvl) return UI.showToast('Уровень слишком мал!', 'error');
+        if (!AppState.player.licenses.includes(reqLic)) return UI.showToast('Нужна лицензия!', 'error');
         
-        let { data, error } = await supabaseClient.from('active_trips').insert([{
-            player_id: AppState.player.id,
-            title: title,
-            reward: reward,
-            fuel_req: fuelReq,
-            end_time: endTime
-        }]).select().single();
+        // Влияние погоды
+        let finalFuel = Math.floor(fuel * WorldState.weather.fuelMod);
+        let finalDur = Math.floor(duration * WorldState.weather.timeMod);
 
-        if (error) {
-            tg.showAlert("Ошибка запуска рейса!");
-            return;
-        }
+        if (AppState.player.fuel_stock < finalFuel) return UI.showToast(`Нужно ${finalFuel}л топлива (из-за погоды)!`, 'error');
 
-        AppState.activeTrip = data;
-        await DB.syncPlayer();
-        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        AppState.player.fuel_stock -= finalFuel;
+        AppState.activeTrip = { title, reward, end_time: Date.now() + (finalDur * 1000) };
+        AudioSys.playVibrate('success');
         UI.renderAll();
     },
 
-    async finishTrip() {
+    finishTrip() {
         if (!AppState.activeTrip) return;
+        let p = AppState.activeTrip.reward;
+        AppState.player.money += p;
+        AppState.player.total_profit += p;
+        AppState.player.total_trips += 1;
         
-        let syndicateTax = AppState.player.syndicate ? AppState.activeTrip.reward * 0.05 : 0;
-        let netProfit = Math.round(AppState.activeTrip.reward - syndicateTax);
-        let earnedXP = Math.floor(netProfit * CONFIG.XP_MULTIPLIER);
-
-        AppState.player.money += netProfit;
-        AppState.player.total_profit += netProfit;
-
-        await this.addXP(earnedXP);
-
-        await supabaseClient.from('active_trips').delete().eq('player_id', AppState.player.id);
+        this.addXP(Math.floor(p * CONFIG.XP_MULTIPLIER));
         AppState.activeTrip = null;
-
-        await DB.syncPlayer();
-        tg.showAlert(`✅ Рейс завершен!\n\nПрибыль: +${netProfit.toLocaleString()} 🪙\nОпыт: +${earnedXP} XP`);
-        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        await DB.loadGameData();
+        
+        UI.showToast(`Рейс завершен! +${p} 🪙`, 'success');
+        AudioSys.playVibrate('success');
+        AIDispatcher.randomAdvice();
         UI.renderAll();
     },
 
-    async buyFuel(amount) {
-        let cost = amount * AppState.player.fuel_price;
-        if (AppState.player.money < cost) { 
-            tg.showAlert('🪙 Недостаточно монет!'); 
-            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
-            return; 
-        }
+    upgradeTruck(id, part) {
+        const t = AppState.trucks.find(x => x.id === id);
+        const cost = 5000;
+        if(AppState.player.money < cost) return UI.showToast('Недостаточно средств!', 'error');
         AppState.player.money -= cost;
-        AppState.player.fuel_stock += amount;
-        await DB.syncPlayer();
-        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-        UI.renderAll();
-    },
-
-    async repairTruck(id) {
-        if (AppState.player.money < CONFIG.REPAIR_COST) { 
-            tg.showAlert('🪙 Недостаточно средств для ремонта!'); 
-            return; 
-        }
-        AppState.player.money -= CONFIG.REPAIR_COST;
-        await supabaseClient.from('trucks').update({ engine_wear: 100, tires_wear: 100 }).eq('id', id);
-        await DB.syncPlayer();
-        await DB.loadGameData();
-        tg.showAlert('🔧 Узлы транспорта восстановлены!');
-        UI.renderAll();
-    },
-
-    async upgradeGarage() {
-        let cost = AppState.player.garage_level * CONFIG.GARAGE_UPGRADE_MULTIPLIER;
-        if (AppState.player.money < cost) { 
-            tg.showAlert('🪙 Недостаточно средств!'); 
-            return; 
-        }
-        AppState.player.money -= cost;
-        AppState.player.garage_level++;
-        await DB.syncPlayer();
-        tg.showAlert('🏗 Гараж успешно модернизирован!');
-        UI.renderAll();
-    },
-
-    async createP2PLot() {
-        let name = document.getElementById('p2p-item-name').value.trim();
-        let price = parseInt(document.getElementById('p2p-item-price').value);
-        if (!name || isNaN(price) || price <= 0) { 
-            tg.showAlert('⚠️ Заполните корректные данные лота!'); 
-            return; 
-        }
-        await supabaseClient.from('p2p_market').insert([{
-            seller_name: AppState.player.name,
-            item_name: name,
-            price: price
-        }]);
-        document.getElementById('p2p-item-name').value = '';
-        document.getElementById('p2p-item-price').value = '';
-        tg.showAlert('📦 Лот успешно выставлен на рынок!');
-        await DB.loadGameData();
-        UI.renderAll();
-    },
-
-    async buyP2PLot(lotId, price) {
-        if (AppState.player.money < price) { 
-            tg.showAlert('🪙 Недостаточно средств!'); 
-            return; 
-        }
-        AppState.player.money -= price;
-        await supabaseClient.from('p2p_market').delete().eq('id', lotId);
-        await DB.syncPlayer();
-        await DB.loadGameData();
-        tg.showAlert('🤝 Вы успешно приобрели лот!');
-        UI.renderAll();
-    },
-
-    async claimDailyBonus() {
-        let now = Date.now();
-        let timePassed = now - AppState.player.last_bonus_time;
-        if (timePassed < CONFIG.BONUS_COOLDOWN_MS) {
-            let hours = Math.ceil((CONFIG.BONUS_COOLDOWN_MS - timePassed) / 3600000);
-            tg.showAlert(`⏳ Бонус уже получен. Следующий доступен через ${hours} ч.`);
-            return;
-        }
-        AppState.player.last_bonus_time = now;
-        AppState.player.money += CONFIG.DAILY_BONUS_COINS;
-        AppState.player.fuel_stock += CONFIG.DAILY_BONUS_FUEL;
-        await DB.syncPlayer();
-        tg.showAlert(`🎁 Вы забрали бонус:\n+${CONFIG.DAILY_BONUS_COINS.toLocaleString()} 🪙\n+${CONFIG.DAILY_BONUS_FUEL}л ⛽`);
-        UI.renderAll();
-    },
-
-    async saveProfile() {
-        let name = document.getElementById('input-username').value.trim();
-        let avatar = document.getElementById('input-avatar').value.trim();
-        if (name) AppState.player.name = name;
-        if (avatar) AppState.player.avatar = avatar;
-        await DB.syncPlayer();
-        tg.showAlert('👤 Профиль успешно обновлен!');
-        UI.renderAll();
-    },
-
-    async joinSyndicate(name) {
-        AppState.player.syndicate = name;
-        await DB.syncPlayer();
-        tg.showAlert(`🦅 Вы вступили в синдикат "${name}"!\nНалог на прибыль снижен до 5%.`);
+        if(part === 'engine') t.engineLvl++;
+        if(part === 'tires') t.tiresLvl++;
+        AudioSys.playVibrate('success');
+        UI.showToast(`Деталь обновлена!`, 'success');
         UI.renderAll();
     }
 };
 
-// ============================================================================
-// 🎨 УПРАВЛЕНИЕ ИНТЕРФЕЙСОМ (UI)
-// ============================================================================
 const UI = {
     switchTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-        const targetTab = document.getElementById(`tab-${tabId}`);
-        if(targetTab) targetTab.classList.add('active');
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            if(btn.getAttribute('onclick')?.includes(tabId)) btn.classList.add('active');
-        });
-        if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+        document.getElementById(`tab-${tabId}`).classList.add('active');
+        document.querySelectorAll('.tab-btn').forEach(b => { if(b.getAttribute('onclick')?.includes(tabId)) b.classList.add('active'); });
+        AudioSys.playVibrate('click');
         this.renderAll();
     },
 
-    renderAll() {
-        const { player, trucks, activeTrip, contracts, p2pMarket, leaderboard } = AppState;
-
-        this.safeUpdate('username', player.name);
-        this.safeUpdateImg('header-avatar', player.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100');
-        this.safeUpdate('user-money', `🪙 ${Number(player.money).toLocaleString()}`);
-        this.safeUpdate('user-fuel-stock', `⛽ ${player.fuel_stock}л`);
-        
-        this.safeUpdate('user-level-badge', `LVL ${player.level}`);
-        const requiredXP = GameLogic.getRequiredXP(player.level);
-        const xpProgress = Math.min((player.xp / requiredXP) * 100, 100);
-        const xpBarFill = document.getElementById('xp-bar-fill');
-        if (xpBarFill) xpBarFill.style.width = `${xpProgress}%`;
-
-        this.safeUpdate('fuel-price', `🪙 ${player.fuel_price}`);
-        this.safeUpdate('syndicate-info', player.syndicate || 'Одиночка');
-
-        this.safeUpdate('garage-lvl', player.garage_level);
-        this.safeUpdate('garage-cost', (player.garage_level * CONFIG.GARAGE_UPGRADE_MULTIPLIER).toLocaleString());
-
-        this.safeUpdateInput('input-username', player.name);
-        this.safeUpdateInput('input-avatar', player.avatar || '');
-        this.safeUpdate('syndicate-desc', player.syndicate ? `Синдикат: ${player.syndicate}\nЗвание: ${GameLogic.getRankName(player.level)}` : `Статус: Одиночка\nЗвание: ${GameLogic.getRankName(player.level)}`);
-
-        const fleetHtml = trucks.map(t => `
-            <div class="card">
-                <div class="card-title"><span>${t.name}</span></div>
-                <div class="specs-grid">
-                    <div>Груз: ${t.capacity}кг</div>
-                    <div>Расход: ${t.fuel_use}л</div>
-                    <div>Двигатель: <span style="color:${t.engine_wear < 50 ? 'var(--accent-pink)' : 'inherit'}">${t.engine_wear}%</span></div>
-                    <div>Шины: <span style="color:${t.tires_wear < 50 ? 'var(--accent-pink)' : 'inherit'}">${t.tires_wear}%</span></div>
-                </div>
-                <button type="button" class="btn btn-primary" onclick="GameLogic.repairTruck(${t.id})">Ремонт (🪙 ${CONFIG.REPAIR_COST.toLocaleString()})</button>
-            </div>
-        `).join('');
-        this.safeUpdateHTML('fleet-list', fleetHtml);
-
-        let tripPanelHtml = '';
-        if (activeTrip) {
-            let timeLeft = Math.floor((activeTrip.end_time - Date.now()) / 1000);
-            if (timeLeft > 0) {
-                tripPanelHtml = `
-                    <div class="card" style="border-color:var(--accent-pink); background: rgba(236, 72, 153, 0.05);">
-                        <div class="card-title"><span>🚚 Транспорт в рейсе...</span><span style="color:var(--accent-pink);">⏳ ${timeLeft} сек</span></div>
-                        <p style="font-size:12px; color:var(--hint-color); margin-top:8px;">${activeTrip.title}</p>
-                    </div>
-                `;
-            } else {
-                GameLogic.finishTrip();
-            }
-        }
-        this.safeUpdateHTML('active-trip-panel', tripPanelHtml);
-
-        const contractsHtml = contracts.map(c => {
-            const isLocked = player.level < c.min_level;
-            return `
-            <div class="card" style="${isLocked ? 'opacity: 0.6;' : ''}">
-                <div class="card-title">
-                    <span>${c.title}</span>
-                    <span style="color:var(--accent-pink);">+${c.reward.toLocaleString()} 🪙</span>
-                </div>
-                <div class="specs-grid">
-                    <div>Время: ${c.duration} сек</div>
-                    <div>Топливо: ${c.fuel_cost_req}л</div>
-                </div>
-                <button type="button" class="btn btn-primary" 
-                        ${activeTrip || isLocked ? 'disabled style="cursor:not-allowed;"' : ''} 
-                        onclick="GameLogic.startTrip(${c.reward}, ${c.fuel_cost_req}, ${c.duration}, '${c.title}', ${c.min_level})">
-                    ${isLocked ? `Требуется Ур. ${c.min_level}` : (activeTrip ? 'Грузовик занят' : 'Начать рейс')}
-                </button>
-            </div>
-            `;
-        }).join('');
-        this.safeUpdateHTML('contracts-list', contractsHtml);
-
-        const p2pHtml = p2pMarket.length > 0 ? p2pMarket.map(m => `
-            <div class="card">
-                <div class="card-title"><span>${m.item_name}</span><span>🪙 ${Number(m.price).toLocaleString()}</span></div>
-                <div style="font-size:11px; color:var(--hint-color); margin-bottom: 12px;">Продавец: ${m.seller_name}</div>
-                <button type="button" class="btn btn-outline" onclick="GameLogic.buyP2PLot(${m.id}, ${m.price})">Купить лот</button>
-            </div>
-        `).join('') : '<div style="text-align:center; color:var(--hint-color); padding: 20px;">Лотов пока нет. Будьте первыми!</div>';
-        this.safeUpdateHTML('p2p-list', p2pHtml);
-
-        const leaderboardHtml = leaderboard.map((l, index) => `
-            <div class="leaderboard-row">
-                <span><b style="color:var(--accent-pink); margin-right:8px;">#${index + 1}</b> ${l.name}</span>
-                <span style="color:var(--accent-pink); font-weight:600;">🪙 ${Number(l.total_profit).toLocaleString()}</span>
-            </div>
-        `).join('');
-        this.safeUpdateHTML('leaderboard-list', leaderboardHtml);
+    showToast(msg, type = 'success') {
+        const c = document.getElementById('toast-container');
+        const t = document.createElement('div');
+        t.className = `toast ${type}`; t.innerText = msg;
+        c.appendChild(t);
+        AudioSys.playVibrate(type);
+        setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
     },
 
     safeUpdate(id, text) { const el = document.getElementById(id); if (el) el.innerText = text; },
     safeUpdateHTML(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html; },
-    safeUpdateInput(id, val) { const el = document.getElementById(id); if (el) el.value = val; },
-    safeUpdateImg(id, src) { const el = document.getElementById(id); if (el) el.src = src; }
+
+    renderAll() {
+        const p = AppState.player;
+        this.safeUpdate('user-money', `🪙 ${p.money.toLocaleString()}`);
+        this.safeUpdate('user-fuel-stock', `⛽ ${p.fuel_stock}л`);
+        this.safeUpdate('user-level-badge', `LVL ${p.level}`);
+        this.safeUpdate('stat-total-profit', `${p.total_profit.toLocaleString()} 🪙`);
+        this.safeUpdate('stat-total-trips', p.total_trips);
+        
+        if(p.syndicate) {
+            this.safeUpdate('corp-name', p.syndicate);
+            this.safeUpdate('corp-role', 'Ваша должность: Водитель');
+        }
+
+        const xpProg = Math.min((p.xp / GameLogic.getReqXP(p.level)) * 100, 100);
+        document.getElementById('xp-bar-fill').style.width = `${xpProg}%`;
+
+        // Рендер лицензий
+        const allLic = [{id:'basic', n:'Базовая'}, {id:'dangerous', n:'Опасные грузы'}, {id:'oversized', n:'Негабарит'}];
+        this.safeUpdateHTML('licenses-list', allLic.map(l => 
+            `<span class="license-badge ${p.licenses.includes(l.id) ? 'active' : ''}">${l.n}</span>`
+        ).join(''));
+
+        // Рендер Флота (с прокачкой)
+        this.safeUpdateHTML('fleet-list', AppState.trucks.map(t => `
+            <div class="card rarity-${t.rarity}">
+                <div class="card-title"><span>${t.name}</span><span style="font-size:10px;text-transform:uppercase;">${t.rarity}</span></div>
+                <div class="specs-grid">
+                    <div>Двигатель: Ур.${t.engineLvl}</div>
+                    <div>Шины: Ур.${t.tiresLvl}</div>
+                    <div>Состояние: ${t.wear}%</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn btn-outline" style="font-size:11px;padding:8px;" onclick="GameLogic.upgradeTruck(${t.id}, 'engine')">Двигатель (5k)</button>
+                    <button class="btn btn-outline" style="font-size:11px;padding:8px;" onclick="GameLogic.upgradeTruck(${t.id}, 'tires')">Шины (5k)</button>
+                </div>
+            </div>
+        `).join(''));
+
+        // Рендер Активного рейса
+        let tripHtml = '';
+        if (AppState.activeTrip) {
+            let left = Math.floor((AppState.activeTrip.end_time - Date.now()) / 1000);
+            if (left > 0) {
+                tripHtml = `<div class="card rarity-epic">
+                    <div class="card-title"><span>🚚 В рейсе...</span><span style="color:var(--accent-pink);">⏳ ${left} сек</span></div>
+                    <p style="font-size:12px; color:var(--hint-color);">${AppState.activeTrip.title}</p>
+                </div>`;
+            } else GameLogic.finishTrip();
+        }
+        this.safeUpdateHTML('active-trip-panel', tripHtml);
+
+        // Рендер Контрактов
+        this.safeUpdateHTML('contracts-list', AppState.contracts.map(c => {
+            const locked = p.level < c.reqLvl;
+            return `<div class="card" style="${locked ? 'opacity:0.6' : ''}">
+                <div class="card-title"><span>${c.title}</span><span style="color:var(--accent-pink);">+${c.reward} 🪙</span></div>
+                <div class="specs-grid"><div>Время: ${c.duration}с</div><div>Топливо: ${c.fuel}л</div></div>
+                <button class="btn btn-primary" ${AppState.activeTrip || locked ? 'disabled' : ''} 
+                    onclick="GameLogic.startTrip(${c.reward}, ${c.fuel}, ${c.duration}, '${c.title}', ${c.reqLvl}, '${c.reqLic}')">
+                    ${locked ? `Нужен Ур. ${c.reqLvl}` : 'Начать рейс'}
+                </button>
+            </div>`;
+        }).join(''));
+    }
 };
 
-// ============================================================================
-// 🔄 ЗАПУСК ПРИЛОЖЕНИЯ
-// ============================================================================
-document.addEventListener('DOMContentLoaded', () => {
-    DB.init();
-    
-    AppState.gameLoopTimer = setInterval(() => {
-        if (AppState.activeTrip) UI.renderAll(); 
-    }, 1000);
-
-    AppState.marketTimer = setInterval(() => {
-        GameLogic.updateMarketPrices();
-    }, 120000);
+// Параллакс эффект для фона
+document.addEventListener('mousemove', (e) => {
+    const bg = document.getElementById('parallax-bg');
+    const x = (window.innerWidth - e.pageX * 2) / 90;
+    const y = (window.innerHeight - e.pageY * 2) / 90;
+    bg.style.transform = `translate(${x}px, ${y}px)`;
 });
 
-window.switchTab = (tabId) => UI.switchTab(tabId);
-window.buyFuel = (amount) => GameLogic.buyFuel(amount);
-window.repairTruck = (id) => GameLogic.repairTruck(id);
-window.upgradeGarage = () => GameLogic.upgradeGarage();
-window.createP2PLot = () => GameLogic.createP2PLot();
-window.buyP2PLot = (lotId, price) => GameLogic.buyP2PLot(lotId, price);
-window.claimDailyBonus = () => GameLogic.claimDailyBonus();
-window.saveProfile = () => GameLogic.saveProfile();
-window.joinSyndicate = (name) => GameLogic.joinSyndicate(name);
+document.addEventListener('DOMContentLoaded', () => {
+    WorldState.generateWeather();
+    
+    // Имитация загрузки
+    let p = 0;
+    const loader = document.getElementById('loading-screen');
+    const int = setInterval(() => {
+        p += 20;
+        document.getElementById('loader-progress').style.width = `${p}%`;
+        document.getElementById('loader-percent').innerText = `${p}%`;
+        if(p >= 100) {
+            clearInterval(int);
+            document.getElementById('loader-tap').style.display = 'block';
+            loader.addEventListener('click', () => {
+                loader.style.opacity = '0';
+                document.getElementById('app-content').style.opacity = '1';
+                setTimeout(() => loader.remove(), 500);
+                DB.init();
+                setTimeout(() => AIDispatcher.showPopup("Добро пожаловать в Logistic World, Босс!"), 1500);
+            });
+        }
+    }, 300);
+
+    setInterval(() => { if (AppState.activeTrip) UI.renderAll(); }, 1000);
+    setInterval(() => { WorldState.generateWeather(); AIDispatcher.randomAdvice(); }, 60000);
+});
+
+// Глобальные прокси
+window.switchTab = (id) => UI.switchTab(id);
+window.AudioSys = AudioSys;
+window.GameLogic = GameLogic;
+window.UI = UI;
