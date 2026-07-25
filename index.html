@@ -30,10 +30,17 @@
                     <img id="header-avatar" src="" class="avatar-small" alt="Аватар пользователя">
                 </div>
                 <div class="user-info">
-                    <h1 id="username" class="user-name-title">Логист</h1>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <h1 id="username" class="user-name-title">Логист</h1>
+                        <span id="user-level-badge" class="level-badge">LVL 1</span>
+                    </div>
                     <div class="balance-container">
                         <span id="user-money" class="badge-money">🪙 0</span>
                         <span id="user-fuel-stock" class="badge-fuel">⛽ 0л</span>
+                    </div>
+                    <!-- Полоса опыта -->
+                    <div class="xp-bar-container">
+                        <div id="xp-bar-fill" class="xp-bar-fill"></div>
                     </div>
                 </div>
             </div>
