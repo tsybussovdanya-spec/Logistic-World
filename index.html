@@ -2,197 +2,201 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <!-- Идеальный viewport для мобильных игр (без зума) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
-    <!-- Настройки для нативного вида на iOS/Android -->
     <meta name="theme-color" content="#05050A">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
-    <title>Logistic World — Cyber-Luxury Simulator</title>
-    
+    <title>Logistic World</title>
     <link rel="stylesheet" href="style.css">
-    
-    <!-- Библиотеки -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- Фоновый декоративный элемент для Cyber-Luxury стиля -->
-    <div class="cyber-glow-bg"></div>
+    <!-- Аудио система -->
+    <audio id="bg-music" loop>
+        <source src="https://assets.mixkit.co/music/preview/mixkit-tech-house-vibes-130.mp3" type="audio/mpeg">
+    </audio>
 
-    <div class="app-container">
-        <!-- Шапка профиля -->
+    <!-- Экран загрузки -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loader-content">
+            <h1 class="loader-title">LOGISTIC WORLD</h1>
+            <p id="loader-tip" class="loader-tip">ИИ-Диспетчер: Проверяю состояние серверов...</p>
+            <div class="progress-bar-container">
+                <div id="loader-progress" class="progress-bar-fill"></div>
+            </div>
+            <p id="loader-percent" class="loader-percent">0%</p>
+            <p id="loader-tap" class="loader-tap" style="display: none;">Коснитесь экрана, чтобы начать</p>
+        </div>
+    </div>
+
+    <!-- Уведомления и ИИ-Диспетчер -->
+    <div id="toast-container" class="toast-container"></div>
+    <div id="ai-dispatcher" class="ai-dispatcher">
+        <div class="ai-avatar">🤖</div>
+        <div class="ai-message" id="ai-message">Привет! Я твой ИИ-помощник.</div>
+    </div>
+
+    <!-- Анимированный параллакс фон -->
+    <div class="parallax-bg" id="parallax-bg"></div>
+
+    <div class="app-container" id="app-content" style="opacity: 0;">
         <header class="app-header" onclick="switchTab('profile')">
             <div class="user-profile-preview">
                 <div class="avatar-wrapper">
-                    <img id="header-avatar" src="" class="avatar-small" alt="Аватар пользователя">
+                    <img id="header-avatar" src="" class="avatar-small" alt="Avatar">
                 </div>
                 <div class="user-info">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <h1 id="username" class="user-name-title">Логист</h1>
+                    <div class="name-row">
+                        <h1 id="username" class="user-name-title premium-name">Логист</h1>
                         <span id="user-level-badge" class="level-badge">LVL 1</span>
                     </div>
                     <div class="balance-container">
                         <span id="user-money" class="badge-money">🪙 0</span>
                         <span id="user-fuel-stock" class="badge-fuel">⛽ 0л</span>
                     </div>
-                    <!-- Полоса опыта -->
                     <div class="xp-bar-container">
                         <div id="xp-bar-fill" class="xp-bar-fill"></div>
                     </div>
                 </div>
             </div>
-            <div class="syndicate-badge" id="syndicate-info">Одиночка</div>
+            <div class="weather-badge" id="weather-info" onclick="event.stopPropagation(); UI.showToast('Текущая погода влияет на износ и топливо!', 'info')">
+                ☀️ Ясно
+            </div>
         </header>
 
-        <!-- Основной контент -->
         <main class="content-area">
             
-            <!-- Вкладка 1: Гараж -->
+            <!-- Вкладка: Гараж (Транспорт и Детализация) -->
             <section id="tab-fleet" class="tab-content active">
                 <div class="section-header">
-                    <h2>Ваш Автопарк</h2>
-                    <p class="subtitle">Управляйте своими грузовиками</p>
+                    <h2>Автопарк</h2>
+                    <p class="subtitle">Управление транспортом и тюнинг</p>
                 </div>
                 
-                <div id="fleet-list" class="card-grid">
-                    <!-- Рендер из JS -->
-                </div>
+                <div id="fleet-list" class="card-grid"></div>
                 
                 <div class="card bonus-card">
                     <div class="card-content">
                         <h3>Ежедневный Бонус</h3>
-                        <p>Ресурсы для развития корпорации каждые 24 часа.</p>
-                        <button type="button" class="btn btn-primary" onclick="claimDailyBonus()">Забрать бонус 🎁</button>
-                    </div>
-                </div>
-
-                <div class="card upgrade-card">
-                    <div class="card-content">
-                        <h3>Модернизация Гаража (Ур. <span id="garage-lvl">1</span>)</h3>
-                        <p>Постройка АЗС и боксов снижает издержки на рейсы.</p>
-                        <button type="button" class="btn btn-upgrade" onclick="upgradeGarage()">Улучшить (🪙 <span id="garage-cost">10000</span>)</button>
+                        <p>Награды за лояльность компании.</p>
+                        <button type="button" class="btn btn-primary" onclick="GameLogic.claimDailyBonus()">Забрать 🎁</button>
                     </div>
                 </div>
             </section>
 
-            <!-- Вкладка 2: Логистика -->
+            <!-- Вкладка: Логистика (Контракты, Лицензии, Глобальные ивенты) -->
             <section id="tab-logistics" class="tab-content">
                 <div class="section-header">
-                    <h2>Логистический центр</h2>
-                    <p class="subtitle">Управление поставками</p>
+                    <h2>Центр Логистики</h2>
+                    <p class="subtitle">Поиск выгодных контрактов</p>
                 </div>
                 
-                <div id="active-trip-panel">
-                    <!-- Рендер активного рейса из JS -->
+                <!-- Глобальный ивент -->
+                <div class="global-event-banner" id="global-event-banner" style="display:none;">
+                    <h4>⚠️ Глобальное событие</h4>
+                    <p id="global-event-desc">Топливный кризис! Цены на бирже растут.</p>
                 </div>
+
+                <div id="active-trip-panel"></div>
                 
-                <h3 class="subsection-title">Доступные контракты</h3>
-                <div id="contracts-list" class="card-grid">
-                    <!-- Рендер контрактов из JS -->
+                <h3 class="subsection-title">Лицензии</h3>
+                <div class="licenses-row" id="licenses-list">
+                    <!-- Рендер лицензий -->
                 </div>
+
+                <h3 class="subsection-title" style="margin-top:12px;">Доступные контракты</h3>
+                <div id="contracts-list" class="card-grid"></div>
             </section>
 
-            <!-- Вкладка 3: Биржа -->
-            <section id="tab-market" class="tab-content">
+            <!-- Вкладка: Синдикат (Корпорации и Ко-оп) -->
+            <section id="tab-syndicate" class="tab-content">
                 <div class="section-header">
-                    <h2>Топливная биржа</h2>
-                    <p class="subtitle">Покупка сырья и запчастей</p>
+                    <h2>Корпорация</h2>
+                    <p class="subtitle">Объединяйтесь для масштабных целей</p>
                 </div>
                 
-                <div class="card market-card">
-                    <p class="price-ticker">Текущая стоимость сырья: <b id="fuel-price" class="highlight">🪙 12</b> / л</p>
-                    <div class="action-row">
-                        <button type="button" class="btn btn-outline" onclick="buyFuel(50)">Купить 50л</button>
-                        <button type="button" class="btn btn-outline" onclick="buyFuel(200)">Купить 200л</button>
-                    </div>
+                <div class="card">
+                    <h3 id="corp-name">Синдикат не выбран</h3>
+                    <p id="corp-role" style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Вам нужно вступить в корпорацию.</p>
+                    <button type="button" class="btn btn-primary" onclick="GameLogic.joinSyndicate('CyberLogistics')">Вступить в CyberLogistics</button>
                 </div>
-                
-                <h3 class="subsection-title">Черный рынок деталей (P2P)</h3>
-                <div class="card p2p-create-card">
-                    <h4>Создать свой лот</h4>
-                    <div class="input-group">
-                        <input type="text" id="p2p-item-name" class="input-text" placeholder="Название детали..." autocomplete="off">
+
+                <h3 class="subsection-title" style="margin-top:12px;">Совместный контракт (Co-op)</h3>
+                <div class="card">
+                    <h4>Поставка для орбитальной станции</h4>
+                    <p style="font-size:12px; color:var(--hint-color);">Прогресс корпорации: 12,000 / 50,000 тонн</p>
+                    <div class="progress-bar-container" style="margin: 8px 0;">
+                        <div class="progress-bar-fill" style="width: 24%;"></div>
                     </div>
-                    <div class="input-group">
-                        <input type="number" id="p2p-item-price" class="input-text" placeholder="Цена в монетах..." autocomplete="off" inputmode="numeric">
-                    </div>
-                    <button type="button" class="btn btn-action" onclick="createP2PLot()">Выставить на биржу</button>
-                </div>
-                
-                <div id="p2p-list" class="card-grid p2p-grid">
-                    <!-- Рендер лотов из JS -->
+                    <button type="button" class="btn btn-outline" onclick="UI.showToast('В разработке: требуется серверное обновление', 'info')">Внести свой вклад (Требуется 500л)</button>
                 </div>
             </section>
 
-            <!-- Вкладка 4: Рейтинг -->
-            <section id="tab-rating" class="tab-content">
-                <div class="section-header">
-                    <h2>Глобальный лидерборд</h2>
-                    <p class="subtitle">Топ логистов мира</p>
-                </div>
-                <div class="card leaderboard-card">
-                    <div id="leaderboard-list">
-                        <div class="loading-text">Загрузка рейтинга...</div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Вкладка 5: Профиль -->
+            <!-- Вкладка: Профиль, Боевой Пропуск, Настройки -->
             <section id="tab-profile" class="tab-content">
                 <div class="section-header">
-                    <h2>Управление профилем</h2>
-                    <p class="subtitle">Настройки и синдикат</p>
+                    <h2>Профиль & Настройки</h2>
+                    <p class="subtitle">История, Premium и Музыка</p>
                 </div>
                 
-                <div class="card profile-card">
-                    <div class="input-group">
-                        <label for="input-username">Никнейм:</label>
-                        <input type="text" id="input-username" class="input-text" autocomplete="off">
+                <!-- История компании -->
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <span class="stat-label">Всего заработано</span>
+                        <span class="stat-value" id="stat-total-profit">0 🪙</span>
                     </div>
-                    <div class="input-group">
-                        <label for="input-avatar">Ссылка на аватар (URL):</label>
-                        <input type="url" id="input-avatar" class="input-text" autocomplete="off">
+                    <div class="stat-box">
+                        <span class="stat-label">Выполнено рейсов</span>
+                        <span class="stat-value" id="stat-total-trips">0</span>
                     </div>
-                    <button type="button" class="btn btn-save" onclick="saveProfile()">Сохранить данные</button>
+                </div>
+
+                <!-- Battle Pass -->
+                <div class="card bp-card" style="margin-top: 12px;">
+                    <h3>🌟 Season Pass: Cyber Tokyo</h3>
+                    <p style="font-size: 12px; color: #ddd; margin-bottom: 8px;">Получайте уникальные скины и неон!</p>
+                    <button type="button" class="btn btn-action" onclick="UI.showToast('Сезонный пропуск будет доступен в следующем патче!', 'success')">Открыть пропуск</button>
+                </div>
+
+                <!-- Настройки -->
+                <div class="card" style="margin-top: 12px;">
+                    <h3>Настройки</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                        <span>Музыка</span>
+                        <button type="button" id="btn-music" class="btn btn-outline" style="width: auto;" onclick="AudioSys.toggleMusic()">Включить 🔇</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                        <span>Звуки (SFX)</span>
+                        <button type="button" id="btn-sfx" class="btn btn-outline" style="width: auto;" onclick="AudioSys.toggleSFX()">Включено 🔊</button>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 12px;">
+                    <div class="input-group">
+                        <label>Никнейм:</label>
+                        <input type="text" id="input-username" class="input-text">
+                    </div>
+                    <button type="button" class="btn btn-save" onclick="GameLogic.saveProfile()">Сохранить профиль</button>
                 </div>
                 
-                <div class="card syndicate-card">
-                    <h3>Ваш Синдикат</h3>
-                    <p id="syndicate-desc" class="syndicate-status">Вы свободный логист без синдиката.</p>
-                    <button type="button" class="btn btn-syndicate" onclick="joinSyndicate('CyberTransport')">Вступить в CyberTransport</button>
+                <!-- Обратная связь (из пункта 17) -->
+                <div class="card" style="margin-top: 12px;">
+                    <h3>Обратная связь</h3>
+                    <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+                        <button type="button" class="btn btn-outline social-btn" onclick="tg.openTelegramLink('https://t.me/TSYBUSS')">👑 Владелец (@TSYBUSS)</button>
+                        <button type="button" class="btn btn-outline social-btn" onclick="tg.openTelegramLink('https://t.me/LogisticWorld_news')">📰 Новости проекта</button>
+                        <button type="button" class="btn btn-outline social-btn" onclick="tg.openTelegramLink('https://t.me/LogisticWorld_sup')">🛠 Тех. Поддержка</button>
+                    </div>
                 </div>
             </section>
-
         </main>
 
-        <!-- Навигация -->
         <nav class="nav-tabs bottom-nav">
-            <button type="button" class="tab-btn active" onclick="switchTab('fleet')">
-                <span class="icon">🚛</span>
-                <span>Гараж</span>
-            </button>
-            <button type="button" class="tab-btn" onclick="switchTab('logistics')">
-                <span class="icon">🗺️</span>
-                <span>Рейсы</span>
-            </button>
-            <button type="button" class="tab-btn" onclick="switchTab('market')">
-                <span class="icon">📈</span>
-                <span>Биржа</span>
-            </button>
-            <button type="button" class="tab-btn" onclick="switchTab('rating')">
-                <span class="icon">🏆</span>
-                <span>Рейтинг</span>
-            </button>
-            <button type="button" class="tab-btn" onclick="switchTab('profile')">
-                <span class="icon">👤</span>
-                <span>Профиль</span>
-            </button>
+            <button type="button" class="tab-btn active" onclick="switchTab('fleet')"><span class="icon">🚛</span></button>
+            <button type="button" class="tab-btn" onclick="switchTab('logistics')"><span class="icon">🗺️</span></button>
+            <button type="button" class="tab-btn" onclick="switchTab('syndicate')"><span class="icon">🤝</span></button>
+            <button type="button" class="tab-btn" onclick="switchTab('profile')"><span class="icon">👤</span></button>
         </nav>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
