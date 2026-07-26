@@ -445,13 +445,21 @@ const AppState = {
     leaderboard: [],
     contracts: [
         { id: 1, title: 'Обычный: Доски', reward: 5200, fuel: 70, duration: 15, reqLvl: 1, reqLic: 'basic' },
-        { id: 2, title: 'Обычный: Стройматериалы', reward: 11500, fuel: 140, duration: 30, reqLvl: 3, reqLic: 'basic' },
-        { id: 3, title: 'Обычный: Электроника', reward: 25000, fuel: 220, duration: 60, reqLvl: 5, reqLic: 'basic' },
-        { id: 4, title: 'Опасный: Химикаты', reward: 40000, fuel: 350, duration: 120, reqLvl: 6, reqLic: 'dangerous' },
-        { id: 5, title: 'Опасный: Топливо', reward: 65000, fuel: 500, duration: 240, reqLvl: 8, reqLic: 'dangerous' },
-        { id: 6, title: 'Негабарит: Спецтехника', reward: 150000, fuel: 1000, duration: 600, reqLvl: 12, reqLic: 'oversized' },
-        { id: 7, title: 'Нелегальный: Контрабанда', reward: 220000, fuel: 1200, duration: 900, reqLvl: 12, reqLic: 'smuggling' },
-        { id: 8, title: 'Нелегальный: Синдикатный груз', reward: 450000, fuel: 1800, duration: 1500, reqLvl: 15, reqLic: 'falsified_docs' }
+        { id: 2, title: 'Обычный: Продукты питания', reward: 8900, fuel: 100, duration: 22, reqLvl: 2, reqLic: 'basic' },
+        { id: 3, title: 'Обычный: Стройматериалы', reward: 11500, fuel: 140, duration: 30, reqLvl: 3, reqLic: 'basic' },
+        { id: 4, title: 'Обычный: Текстиль и одежда', reward: 18000, fuel: 180, duration: 45, reqLvl: 4, reqLic: 'basic' },
+        { id: 5, title: 'Обычный: Электроника', reward: 25000, fuel: 220, duration: 60, reqLvl: 5, reqLic: 'basic' },
+        { id: 6, title: 'Опасный: Промышленные химикаты', reward: 40000, fuel: 350, duration: 120, reqLvl: 6, reqLic: 'dangerous' },
+        { id: 7, title: 'Опасный: Горрючее топливо', reward: 65000, fuel: 500, duration: 240, reqLvl: 8, reqLic: 'dangerous' },
+        { id: 8, title: 'Опасный: Радиоактивные изотопы', reward: 95000, fuel: 750, duration: 300, reqLvl: 10, reqLic: 'dangerous' },
+        { id: 9, title: 'Негабарит: Тяжелая спецтехника', reward: 150000, fuel: 1000, duration: 600, reqLvl: 12, reqLic: 'oversized' },
+        { id: 10, title: 'Негабарит: Турбины электростанции', reward: 280000, fuel: 1500, duration: 1200, reqLvl: 15, reqLic: 'oversized' },
+        { id: 11, title: 'Негабарит: Космический модуль', reward: 500000, fuel: 2500, duration: 1800, reqLvl: 18, reqLic: 'oversized' },
+        { id: 12, title: 'Теневой: Контрабандный алкоголь', reward: 220000, fuel: 1200, duration: 900, reqLvl: 12, reqLic: 'smuggling' },
+        { id: 13, title: 'Теневой: Военное обмундирование', reward: 380000, fuel: 1600, duration: 1300, reqLvl: 14, reqLic: 'smuggling' },
+        { id: 14, title: 'Черный рынок: Синдикатный груз', reward: 450000, fuel: 1800, duration: 1500, reqLvl: 15, reqLic: 'falsified_docs' },
+        { id: 15, title: 'Черный рынок: Крупные партии чипов', reward: 750000, fuel: 2400, duration: 2100, reqLvl: 18, reqLic: 'falsified_docs' },
+        { id: 16, title: 'Секретный коридор: Прототипы оружия', reward: 1300000, fuel: 3500, duration: 3000, reqLvl: 22, reqLic: 'black_market' }
     ]
 };
 
