@@ -28,50 +28,35 @@ const TRUCK_SHOP = [
 
 const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 const tgUser = tg.initDataUnsafe?.user;
-const telegramId = tgUser?.id ? Number(tgUser.id) : 
-    
-    // ============================================================================
+const telegramId = tgUser?.id ? Number(tgUser.id) : 123456789;
+
+// ============================================================================
 // 🎵 АУДИО СИСТЕМА И ВИБРАЦИЯ
 // ============================================================================
 const AudioSys = {
     musicOn: false,
     sfxOn: true,
-    bgm: null,
+    bgm: document.getElementById('bg-music'),
     
-    initAudio() {
-        if (!this.bgm) {
-            this.bgm = document.getElementById('bg-music');
-            if (!this.bgm) {
-                // Создаем элемент аудиоплеера динамически, если его нет в HTML
-                this.bgm = document.createElement('audio');
-                this.bgm.id = 'bg-music';
-                this.bgm.loop = true;
-                this.bgm.src = 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf7f6.mp3?filename=lofi-study-112191.mp3';
-                document.body.appendChild(this.bgm);
-            }
-        }
-    },
-
     toggleMusic() {
-        this.initAudio();
         this.musicOn = !this.musicOn;
         const btn = document.getElementById('btn-music');
         
         if (this.musicOn) {
-            this.bgm.volume = 0.5;
-            this.bgm.play().then(() => {
-                if (btn) btn.innerText = "Включено 🔊";
-                UI.showToast("Музыка включена 🎶", "success");
-            }).catch(e => {
-                console.log("Ошибка воспроизведения:", e);
-                this.musicOn = false;
-                if (btn) btn.innerText = "Выключено 🔇";
-                UI.showToast("Не удалось воспроизвести трек", "error");
-            });
+            if (this.bgm) {
+                this.bgm.volume = 0.5;
+                this.bgm.play().then(() => {
+                    if (btn) btn.innerText = "Включено 🔊";
+                }).catch(e => {
+                    console.log("Браузер заблокировал автовоспроизведение музыки:", e);
+                    this.musicOn = false;
+                    if (btn) btn.innerText = "Выключено 🔇";
+                    UI.showToast("Кликните еще раз для включения музыки", "info");
+                });
+            }
         } else {
-            this.bgm.pause();
+            if (this.bgm) this.bgm.pause();
             if (btn) btn.innerText = "Выключено 🔇";
-            UI.showToast("Музыка выключена", "info");
         }
         this.playVibrate('click');
     },
