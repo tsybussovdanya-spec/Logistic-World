@@ -307,9 +307,15 @@ const GameLogic = {
     async buyTruck(shopId) {
         const template = TRUCK_SHOP.find(t => t.id === shopId);
         if (!template) return;
-        if (AppState.player.money < template.price) return UI.showToast(`Нужно ${template.price.toLocaleString()} 🪙`, 'error');
+        
+        const currentMoney = Number(AppState.player.money) || 0;
+        const truckPrice = Number(template.price) || 0;
 
-        AppState.player.money -= template.price;
+        if (currentMoney < truckPrice) {
+            return UI.showToast(`Нужно ${truckPrice.toLocaleString()} 🪙`, 'error');
+        }
+
+        AppState.player.money = currentMoney - truckPrice;
         
         let { data, error } = await supabaseClient.from('trucks').insert([{
             player_id: AppState.player.id,
@@ -456,11 +462,17 @@ const GameLogic = {
     },
 
     async buyFuel(amount) {
-        let cost = amount * Number(AppState.player.fuel_price);
-        if (AppState.player.money < cost) return UI.showToast('Недостаточно монет!', 'error');
+        const currentMoney = Number(AppState.player.money) || 0;
+        const fuelPrice = Number(AppState.player.fuel_price) || 0;
+        const cost = Number(amount) * fuelPrice;
+
+        if (currentMoney < cost) {
+            return UI.showToast('Недостаточно монет!', 'error');
+        }
         
-        AppState.player.money -= cost;
-        AppState.player.fuel_stock = Number(AppState.player.fuel_stock) + amount;
+        AppState.player.money = currentMoney - cost;
+        AppState.player.fuel_stock = Number(AppState.player.fuel_stock) + Number(amount);
+        
         await DB.syncPlayer();
         UI.showToast(`Куплено ${amount}л топлива`, 'success');
         UI.renderAll();
@@ -867,7 +879,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     setTimeout(() => loader.remove(), 500);
                     
                     DB.init().then(() => {
-                        // Кастомное приветствие для новых игроков без машин
                         setTimeout(() => {
                             if (AppState.trucks.length === 0) {
                                 AIDispatcher.showPopup("Босс, гараж пуст! Зайдите в Автосалон и купите свой первый транспорт.");
@@ -883,7 +894,6 @@ document.addEventListener('DOMContentLoaded', () => {
         DB.init();
     }
 
-    // Обновляем таймер только если есть активные рейсы
     setInterval(() => { if (AppState.activeTrips.length > 0) UI.renderAll(); }, 1000);
     setInterval(() => { WorldState.generateWeather(); AIDispatcher.randomAdvice(); }, 60000);
     setInterval(() => { GameLogic.updateMarket(); }, 120000);
