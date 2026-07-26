@@ -116,7 +116,7 @@ const WorldState = {
 const AppState = {
     player: {
         id: null, name: tgUser?.first_name || 'Логист', avatar: tgUser?.photo_url || '',
-        money: 35000, fuel_stock: 400, fuel_price: 12, level: 1, xp: 0,
+        money: 100000, fuel_stock: 400, fuel_price: 12, level: 1, xp: 0,
         total_profit: 0, total_trips: 0, syndicate: null, last_bonus_time: 0,
         licenses: ['basic'], pass_level: 1, pass_claimed: []
     },
@@ -217,15 +217,6 @@ const DB = {
 
         if (newP) {
             AppState.player = { ...AppState.player, ...newP };
-            await supabaseClient.from('trucks').insert([{
-                player_id: AppState.player.id,
-                name: 'LW-CyberTruck Alpha',
-                capacity: 5000,
-                fuel_use: 45,
-                engineLvl: 100, tiresLvl: 100, gearLvl: 100, brakesLvl: 100,
-                engineLvlUpgrade: 0, tiresLvlUpgrade: 0, gearLvlUpgrade: 0, brakesLvlUpgrade: 0,
-                rarity: 'common'
-            }]);
         }
     },
 
@@ -668,7 +659,7 @@ const UI = {
         // 🚛 ГАРАЖ: АВТОПАРК, ИЗНОС И ТЮНИНГ
         const activeTruckIds = AppState.activeTrips.map(trip => trip.truck_id);
         
-        let fleetHtml = AppState.trucks.map((t, index) => {
+        let fleetHtml = AppState.trucks.length > 0 ? AppState.trucks.map((t, index) => {
             const isBusy = activeTruckIds.includes(t.id);
             const statusHtml = isBusy ? `<span style="font-size:12px; color:#EF4444;">🔴 В рейсе</span>` : `<span style="font-size:12px; color:#10B981;">🟢 Свободна</span>`;
             
@@ -720,7 +711,7 @@ const UI = {
                     }).join('')}
                 </div>
             </div>`;
-        }).join('');
+        }).join('') : `<p style="text-align:center; color:var(--hint-color); margin-bottom: 16px;">Ваш гараж пока пуст. Купите тягач в автосалоне ниже!</p>`;
 
         let shopHtml = `
         <h3 class="subsection-title" style="margin-top: 20px;">Автосалон</h3>
@@ -875,8 +866,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('app-content').style.opacity = '1';
                     setTimeout(() => loader.remove(), 500);
                     
-                    DB.init();
-                    setTimeout(() => AIDispatcher.showPopup("Добро пожаловать в Logistic World, Босс!"), 1500);
+                    DB.init().then(() => {
+                        // Кастомное приветствие для новых игроков без машин
+                        setTimeout(() => {
+                            if (AppState.trucks.length === 0) {
+                                AIDispatcher.showPopup("Босс, гараж пуст! Зайдите в Автосалон и купите свой первый транспорт.");
+                            } else {
+                                AIDispatcher.showPopup("Добро пожаловать в Logistic World, Босс!");
+                            }
+                        }, 1500);
+                    });
                 });
             }
         }, 300);
