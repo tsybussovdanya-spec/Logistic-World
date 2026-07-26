@@ -528,6 +528,9 @@ const GameLogic = {
     },
 
     claimPassReward(tierLevel, coinReward) {
+        if (!AppState.player.pass_level) AppState.player.pass_level = 1;
+        if (!AppState.player.pass_claimed) AppState.player.pass_claimed = [];
+
         if (AppState.player.pass_level < tierLevel) return UI.showToast('Уровень пропуска не достигнут!', 'error');
         if (AppState.player.pass_claimed.includes(tierLevel)) return UI.showToast('Награда уже получена!', 'info');
 
@@ -535,7 +538,7 @@ const GameLogic = {
         AppState.player.money = Number(AppState.player.money) + Number(coinReward);
         DB.syncPlayer();
 
-        UI.showToast(`Награда за пропуск полученa: +${coinReward} 🪙!`, 'success');
+        UI.showToast(`Награда за пропуск получена: +${coinReward.toLocaleString()} 🪙!`, 'success');
         UI.renderAll();
     },
 
@@ -589,12 +592,15 @@ const UI = {
 
     renderAll() {
         const p = AppState.player;
+        if (!p.pass_level) p.pass_level = 1;
+        if (!p.pass_claimed) p.pass_claimed = [];
         
         this.safeUpdate('username', p.name);
         this.safeUpdate('user-money', `🪙 ${Number(p.money).toLocaleString()}`);
         this.safeUpdate('user-fuel-stock', `⛽ ${Number(p.fuel_stock)}л`);
         this.safeUpdate('user-level-badge', `LVL ${p.level}`);
         this.safeUpdate('current-fuel-price', `${p.fuel_price} 🪙 / л`);
+        this.safeUpdate('pass-subtitle', `Ваш текущий уровень пропуска: ${p.pass_level}`);
         
         document.querySelectorAll('#user-avatar').forEach(img => {
             if (p.avatar) img.src = p.avatar;
@@ -752,10 +758,12 @@ const UI = {
             </div>
         `).join(''));
 
-        // Сезонный пропуск
+        // Сезонный пропуск (Battle Pass)
         const passTiers = [
             { level: 1, reward: 10000, title: 'Уровень 1: Старт Cyber Tokyo' },
+            { level: 2, reward: 18000, title: 'Уровень 2: Ускоритель логистики' },
             { level: 3, reward: 25000, title: 'Уровень 3: Неоновый обвес' },
+            { level: 4, reward: 40000, title: 'Уровень 4: Премиум топливо' },
             { level: 5, reward: 60000, title: 'Уровень 5: Элитный скин фуры' }
         ];
 
