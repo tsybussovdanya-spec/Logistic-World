@@ -474,10 +474,8 @@ const GameLogic = {
         if (AppState.player.fuel_stock < finalFuel) return UI.showToast(`Нужно ${finalFuel}л топлива!`, 'error');
 
         let endTime = Date.now() + (finalDur * 1000);
-        AppState.player.fuel_stock = Number(AppState.player.fuel_stock) - finalFuel;
-        
-        this.updateQuestProgress('fuel', finalFuel);
 
+        // ИСПРАВЛЕНИЕ РЕЙСА: Сначала отправляем в БД, гарантируя отсутствие ошибок базы данных
         let { data, error } = await supabaseClient.from('active_trips').insert([{
             player_id: AppState.player.id,
             truck_id: idleTruck.id, 
@@ -487,7 +485,11 @@ const GameLogic = {
             end_time: endTime
         }]).select().single();
 
-        if (error) return UI.showToast("Ошибка запуска рейса", "error");
+        if (error) return UI.showToast("Ошибка запуска рейса: " + error.message, "error");
+
+        // Если в БД записалось успешно — списываем топливо и фиксируем
+        AppState.player.fuel_stock = Number(AppState.player.fuel_stock) - finalFuel;
+        this.updateQuestProgress('fuel', finalFuel);
 
         AppState.activeTrips.push(data);
         await DB.syncPlayer();
@@ -542,29 +544,34 @@ const GameLogic = {
     },
 
     async repairPart(truckId, partName) {
-        const truck = AppState.trucks.find(t => t.id === truckId);
-        if (!truck) return;
+        const truck = AppState.trucks.find(t => String(t.id) === String(truckId));
+        if (!truck) return UI.showToast('Тягач не найден в памяти!', 'error');
 
-        const currentVal = truck[partName] || 0;
+        const currentVal = Number(truck[partName]) || 0;
         if (currentVal >= 100) return UI.showToast('Узел в идеальном состоянии!', 'info');
 
         const missingPercent = 100 - currentVal;
         const repairCost = missingPercent * 150; 
 
-        if (AppState.player.money < repairCost) return UI.showToast(`Нужно ${repairCost.toLocaleString()} 🪙 для полной починки узла`, 'error');
+        if (Number(AppState.player.money) < repairCost) {
+            return UI.showToast(`Нужно ${repairCost.toLocaleString()} 🪙 для починки`, 'error');
+        }
 
-        AppState.player.money -= repairCost;
+        AppState.player.money = Number(AppState.player.money) - repairCost;
         truck[partName] = 100;
 
-        await supabaseClient.from('trucks').update({ [partName]: 100 }).eq('id', truck.id);
-        await DB.syncPlayer();
+        let { error } = await supabaseClient.from('trucks').update({ [partName]: 100 }).eq('id', truck.id);
+        if (error) {
+            return UI.showToast("Ошибка сохранения ремонта в базе", "error");
+        }
 
-        UI.showToast(`Узел успешно отремонтирован за ${repairCost.toLocaleString()} 🪙!`, 'success');
+        await DB.syncPlayer();
+        UI.showToast(`Узел отремонтирован за ${repairCost.toLocaleString()} 🪙!`, 'success');
         UI.renderAll();
     },
 
     async upgradeTruckPart(truckId, partName) {
-        const truck = AppState.trucks.find(t => t.id === truckId);
+        const truck = AppState.trucks.find(t => String(t.id) === String(truckId));
         if (!truck) return;
 
         const upgradeKey = partName + 'Upgrade'; 
@@ -834,7 +841,7 @@ const UI = {
                 </div>
                 <div class="parts-grid">
                     ${parts.map(pt => {
-                        const val = t[pt.key] !== undefined ? t[pt.key] : 100;
+                        const val = t[pt.key] !== undefined ? Number(t[pt.key]) : 100;
                         const upgradeLvl = t[pt.key + 'Upgrade'] || 0;
                         const color = this.getHealthColor(val);
                         const repairCost = (100 - val) * 150;
@@ -855,10 +862,10 @@ const UI = {
                             </div>
                             <div class="upgrade-track">${dotsHtml}</div>
                             <div style="display:flex; gap:4px; margin-top:6px;">
-                                <button class="btn btn-outline btn-repair" style="flex:1; padding: 4px;" ${isBusy || val === 100 ? 'disabled' : ''} onclick="GameLogic.repairPart('${t.id}', '${pt.key}')">
+                                <button class="btn btn-outline btn-repair" style="flex:1; padding: 4px; pointer-events: auto;" ${isBusy || val === 100 ? 'disabled' : ''} onclick="GameLogic.repairPart('${t.id}', '${pt.key}')">
                                     ${val === 100 ? 'OK' : `${(repairCost/1000).toFixed(1)}k`}
                                 </button>
-                                <button class="btn btn-upgrade" style="flex:1; padding: 4px;" ${isBusy || upgradeLvl >= 5 ? 'disabled' : ''} onclick="GameLogic.upgradeTruckPart('${t.id}', '${pt.key}')">
+                                <button class="btn btn-upgrade" style="flex:1; padding: 4px; pointer-events: auto;" ${isBusy || upgradeLvl >= 5 ? 'disabled' : ''} onclick="GameLogic.upgradeTruckPart('${t.id}', '${pt.key}')">
                                     ${upgradeLvl >= 5 ? 'MAX' : `UP`}
                                 </button>
                             </div>
@@ -910,7 +917,7 @@ const UI = {
                 GameLogic.finishTrip(trip.id);
                 return '';
             }
-            const tripTruck = AppState.trucks.find(t => t.id === trip.truck_id);
+            const tripTruck = AppState.trucks.find(t => String(t.id) === String(trip.truck_id));
             const truckName = tripTruck ? tripTruck.name : 'Фура';
             
             return `<div class="card rarity-epic" style="margin-bottom: 12px; border-color: var(--accent-blue);">
@@ -922,7 +929,7 @@ const UI = {
         this.safeUpdateHTML('active-trip-panel', tripsHtml);
 
         const activeTruckIdsArr = AppState.activeTrips.map(trip => trip.truck_id);
-        const hasIdleTrucks = AppState.trucks.some(t => !activeTruckIdsArr.includes(t.id) && t.engineLvl > 0 && t.tiresLvl > 0 && t.gearLvl > 0 && t.brakesLvl > 0);
+        const hasIdleTrucks = AppState.trucks.some(t => !activeTruckIdsArr.includes(t.id) && Number(t.engineLvl) > 0 && Number(t.tiresLvl) > 0 && Number(t.gearLvl) > 0 && Number(t.brakesLvl) > 0);
         
         this.safeUpdateHTML('contracts-list', AppState.contracts.map(c => {
             const lockedLvl = p.level < c.reqLvl;
@@ -988,7 +995,7 @@ const UI = {
                 <button class="btn ${isClaimed ? 'btn-outline' : 'btn-primary'}" 
                     style="font-size:12px; padding:8px 12px; width:auto;"
                     ${!isReached || isClaimed ? 'disabled' : ''}
-                    onclick="GameLogic.claimPassReward(${tier.level}, ${tier.reward})">
+                    onclick="GameLogic.claimPassPassReward ? GameLogic.claimPassReward(${tier.level}, ${tier.reward}) : GameLogic.claimPassReward(${tier.level}, ${tier.reward})">
                     ${isClaimed ? 'Получено' : (isReached ? 'Забрать' : `Нужен ур. ${tier.level}`)}
                 </button>
             </div>`;
