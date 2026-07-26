@@ -15,8 +15,9 @@
         <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=cyberpunk-2099-10701.mp3" type="audio/mpeg">
     </audio>
 
-    <!-- Экран загрузки -->
+    <!-- Экран загрузки с анимированным фоном -->
     <div id="loading-screen" class="loading-screen">
+        <div class="loader-bg-animation"></div>
         <div class="loader-content">
             <h1 class="loader-title">LOGISTIC WORLD</h1>
             <p id="loader-tip" class="loader-tip">ИИ-Диспетчер: Проверяю состояние серверов...</p>
@@ -69,7 +70,7 @@
             <section id="tab-fleet" class="tab-content active">
                 <div class="section-header">
                     <h2>Автопарк</h2>
-                    <p class="subtitle">Управление транспортом и тюнинг</p>
+                    <p class="subtitle">Управление транспортом, СТО и тюнинг</p>
                 </div>
                 
                 <div id="fleet-list" class="card-grid"></div>
@@ -90,6 +91,15 @@
                     <p class="subtitle">Поиск выгодных контрактов</p>
                 </div>
                 
+                <!-- Ежедневные квесты -->
+                <div class="card" style="margin-bottom: 12px; border-color: var(--accent-purple);">
+                    <div class="card-title">
+                        <span>📋 Ежедневные Квесты</span>
+                        <span style="font-size: 11px; color: var(--hint-color);">Обновление каждый день</span>
+                    </div>
+                    <div id="quests-list" class="card-grid" style="gap: 8px;"></div>
+                </div>
+
                 <!-- Глобальный ивент -->
                 <div class="global-event-banner" id="global-event-banner" style="display:none;">
                     <h4>⚠️ <span id="global-event-title">Глобальное событие</span></h4>
@@ -183,6 +193,18 @@
                     </div>
                 </div>
 
+                <!-- Админ-панель (скрыта до ввода пароля) -->
+                <div class="card" id="admin-panel-card" style="margin-top: 12px; border-color: var(--accent-pink); display: none;">
+                    <h3 style="color: var(--accent-pink);">🛡️ Админ Панель</h3>
+                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Управление ресурсами разработчика</p>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <button type="button" class="btn btn-primary" onclick="AdminSys.addMoney(500000)">+500,000 🪙</button>
+                        <button type="button" class="btn btn-primary" onclick="AdminSys.addFuel(5000)">+5,000л Топлива</button>
+                        <button type="button" class="btn btn-primary" onclick="AdminSys.setLevel(25)">Установить Уровень 25</button>
+                        <button type="button" class="btn btn-outline" onclick="AdminSys.unlockAll()">Разблокировать всё</button>
+                    </div>
+                </div>
+
                 <div class="card" style="margin-top: 12px;">
                     <h3>Аватар профиля</h3>
                     <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 8px;">Загрузите свою фотографию из галереи</p>
@@ -204,7 +226,7 @@
 
                 <div class="card" style="margin-top: 12px;">
                     <div class="input-group">
-                        <label>Никнейм:</label>
+                        <label>Никнейм (введите секретный код для Админки):</label>
                         <input type="text" id="input-username" class="input-text">
                     </div>
                     <button type="button" class="btn btn-save" onclick="GameLogic.saveProfile()">Сохранить профиль</button>
