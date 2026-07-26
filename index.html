@@ -124,9 +124,7 @@
                 <div id="active-trip-panel"></div>
                 
                 <h3 class="subsection-title">Лицензии</h3>
-                <div class="licenses-row" id="licenses-list">
-                    <!-- Рендер лицензий -->
-                </div>
+                <div class="licenses-row" id="licenses-list"></div>
 
                 <h3 class="subsection-title" style="margin-top:12px;">Доступные контракты</h3>
                 <div id="contracts-list" class="card-grid"></div>
@@ -138,9 +136,7 @@
                     <h2>Рейтинг Логистов</h2>
                     <p class="subtitle">Топ лучших игроков по заработку</p>
                 </div>
-                <div id="leaderboard-list" class="card-grid">
-                    <!-- Сюда динамически подгружается рейтинг из БД -->
-                </div>
+                <div id="leaderboard-list" class="card-grid"></div>
             </section>
 
             <!-- Вкладка: Сезонный пропуск -->
@@ -149,9 +145,7 @@
                     <h2>Season Pass: Cyber Tokyo</h2>
                     <p class="subtitle">Получайте уникальные награды за уровни</p>
                 </div>
-                <div id="pass-tiers-list" class="card-grid">
-                    <!-- Сюда динамически рендерятся уровни пропуска -->
-                </div>
+                <div id="pass-tiers-list" class="card-grid"></div>
             </section>
 
             <!-- Вкладка: Синдикат -->
@@ -168,14 +162,7 @@
                 </div>
 
                 <h3 class="subsection-title" style="margin-top:12px;">Совместный контракт (Co-op)</h3>
-                <div class="card">
-                    <h4>Поставка для орбитальной станции</h4>
-                    <p style="font-size:12px; color:var(--hint-color);">Прогресс корпорации: 12,000 / 50,000 тонн</p>
-                    <div class="progress-bar-container" style="margin: 8px 0;">
-                        <div class="progress-bar-fill" style="width: 24%;"></div>
-                    </div>
-                    <button type="button" class="btn btn-outline" onclick="UI.showToast('В разработке: требуется серверное обновление', 'info')">Внести свой вклад (Требуется 500л)</button>
-                </div>
+                <div class="card" id="coop-panel"></div>
             </section>
 
             <!-- Вкладка: Профиль -->
