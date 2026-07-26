@@ -40,18 +40,34 @@ const AudioSys = {
     
     toggleMusic() {
         this.musicOn = !this.musicOn;
-        if (this.musicOn && this.bgm) this.bgm.play().catch(()=>{});
-        else if (this.bgm) this.bgm.pause();
         const btn = document.getElementById('btn-music');
-        if (btn) btn.innerText = this.musicOn ? "Включено 🔊" : "Выключено 🔇";
+        
+        if (this.musicOn) {
+            if (this.bgm) {
+                this.bgm.volume = 0.5;
+                this.bgm.play().then(() => {
+                    if (btn) btn.innerText = "Включено 🔊";
+                }).catch(e => {
+                    console.log("Браузер заблокировал автовоспроизведение музыки:", e);
+                    this.musicOn = false;
+                    if (btn) btn.innerText = "Выключено 🔇";
+                    UI.showToast("Кликните еще раз для включения музыки", "info");
+                });
+            }
+        } else {
+            if (this.bgm) this.bgm.pause();
+            if (btn) btn.innerText = "Выключено 🔇";
+        }
         this.playVibrate('click');
     },
+
     toggleSFX() {
         this.sfxOn = !this.sfxOn;
         const btn = document.getElementById('btn-sfx');
         if (btn) btn.innerText = this.sfxOn ? "Включено 🔊" : "Выключено 🔇";
         this.playVibrate('click');
     },
+
     playVibrate(type = 'success') {
         if (!this.sfxOn || !tg.HapticFeedback) return;
         if(type === 'success') tg.HapticFeedback.notificationOccurred('success');
@@ -249,18 +265,20 @@ const DB = {
 
             if (searchError) throw searchError;
 
+            const defaultQuests = [
+                { id: 'q1', title: 'Завершить 3 рейса', target: 3, progress: 0, rewardCoins: 15000, rewardXP: 250, claimed: false },
+                { id: 'q2', title: 'Потратить 500л топлива', target: 500, progress: 0, rewardCoins: 20000, rewardXP: 400, claimed: false },
+                { id: 'q3', title: 'Заработать 50,000 🪙', target: 50000, progress: 0, rewardCoins: 30000, rewardXP: 600, claimed: false }
+            ];
+
             if (!existingPlayer) {
                 await this.createNewPlayer();
             } else {
                 AppState.player = { ...AppState.player, ...existingPlayer };
                 if (!AppState.player.pass_level) AppState.player.pass_level = 1;
                 if (!AppState.player.pass_claimed) AppState.player.pass_claimed = [];
-                if (!AppState.player.quests) {
-                    AppState.player.quests = [
-                        { id: 'q1', title: 'Завершить 3 рейса', target: 3, progress: 0, rewardCoins: 15000, rewardXP: 250, claimed: false },
-                        { id: 'q2', title: 'Потратить 500л топлива', target: 500, progress: 0, rewardCoins: 20000, rewardXP: 400, claimed: false },
-                        { id: 'q3', title: 'Заработать 50,000 🪙', target: 50000, progress: 0, rewardCoins: 30000, rewardXP: 600, claimed: false }
-                    ];
+                if (!AppState.player.quests || !Array.isArray(AppState.player.quests)) {
+                    AppState.player.quests = defaultQuests;
                 }
             }
 
@@ -274,28 +292,43 @@ const DB = {
     },
 
     async createNewPlayer() {
+        const defaultQuests = [
+            { id: 'q1', title: 'Завершить 3 рейса', target: 3, progress: 0, rewardCoins: 15000, rewardXP: 250, claimed: false },
+            { id: 'q2', title: 'Потратить 500л топлива', target: 500, progress: 0, rewardCoins: 20000, rewardXP: 400, claimed: false },
+            { id: 'q3', title: 'Заработать 50,000 🪙', target: 50000, progress: 0, rewardCoins: 30000, rewardXP: 600, claimed: false }
+        ];
+
+        let insertPayload = {
+            telegram_id: telegramId,
+            name: AppState.player.name,
+            avatar: AppState.player.avatar,
+            money: AppState.player.money,
+            fuel_stock: AppState.player.fuel_stock,
+            level: AppState.player.level,
+            xp: AppState.player.xp,
+            total_trips: 0,
+            licenses: ['basic'],
+            pass_level: 1,
+            pass_claimed: [],
+            quests: defaultQuests
+        };
+
         let { data: newP, error: insertError } = await supabaseClient
             .from('players')
-            .insert([{
-                telegram_id: telegramId,
-                name: AppState.player.name,
-                avatar: AppState.player.avatar,
-                money: AppState.player.money,
-                fuel_stock: AppState.player.fuel_stock,
-                level: AppState.player.level,
-                xp: AppState.player.xp,
-                total_trips: 0,
-                licenses: ['basic'],
-                pass_level: 1,
-                pass_claimed: [],
-                quests: AppState.player.quests
-            }])
+            .insert([insertPayload])
             .select()
             .single();
 
-        if (insertError) throw insertError;
-
-        if (newP) {
+        if (insertError) {
+            delete insertPayload.quests;
+            let { data: newPFallback, error: fallbackError } = await supabaseClient
+                .from('players')
+                .insert([insertPayload])
+                .select()
+                .single();
+            if (fallbackError) throw fallbackError;
+            AppState.player = { ...AppState.player, ...newPFallback, quests: defaultQuests };
+        } else if (newP) {
             AppState.player = { ...AppState.player, ...newP };
         }
     },
@@ -344,7 +377,7 @@ const DB = {
         const p = AppState.player;
         if (!p.id) return;
 
-        const updateData = {
+        let updateData = {
             name: p.name, avatar: p.avatar, money: Number(p.money),
             fuel_stock: Number(p.fuel_stock), fuel_price: Number(p.fuel_price),
             level: Number(p.level), xp: Number(p.xp), total_profit: Number(p.total_profit),
@@ -353,8 +386,12 @@ const DB = {
             pass_level: p.pass_level, pass_claimed: p.pass_claimed, quests: p.quests
         };
 
-        const { error } = await supabaseClient.from('players').update(updateData).eq('id', p.id);
-        if (!error) this.loadLeaderboard();
+        let { error } = await supabaseClient.from('players').update(updateData).eq('id', p.id);
+        if (error) {
+            delete updateData.quests;
+            await supabaseClient.from('players').update(updateData).eq('id', p.id);
+        }
+        this.loadLeaderboard();
     }
 };
 
@@ -968,7 +1005,6 @@ const UI = {
             </div>
         `).join(''));
 
-        // Сезонный пропуск (Battle Pass) расширен до 30 уровней
         const passTiers = Array.from({ length: 30 }, (_, i) => {
             const lvl = i + 1;
             const rewardCoins = 10000 + (lvl - 1) * 20000;
