@@ -120,9 +120,25 @@ body {
 .input-text { background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; color: white; font-size: 14px; width: 100%; outline: none; transition: 0.2s; }
 .input-text:focus { border-color: var(--accent-pink); box-shadow: 0 0 10px rgba(236, 72, 153, 0.2); }
 
-/* Loading Screen */
-.loading-screen { position: fixed; inset: 0; background: var(--bg-color); z-index: 9999; display: flex; justify-content: center; align-items: center; transition: 0.5s; }
-.loader-content { width: 80%; max-width: 300px; text-align: center; }
+/* Loading Screen с фоновой анимацией */
+.loading-screen { position: fixed; inset: 0; background: var(--bg-color); z-index: 9999; display: flex; justify-content: center; align-items: center; transition: 0.5s; overflow: hidden; }
+
+.loader-bg-animation {
+    position: absolute; inset: -50px; z-index: 1;
+    background: radial-gradient(circle at 30% 30%, rgba(139, 92, 246, 0.25) 0%, transparent 60%),
+                radial-gradient(circle at 70% 70%, rgba(236, 72, 153, 0.2) 0%, transparent 60%);
+    background-size: 200% 200%;
+    animation: loaderBgMove 8s ease infinite alternate;
+    pointer-events: none;
+}
+
+@keyframes loaderBgMove {
+    0% { transform: scale(1) translate(0, 0); background-position: 0% 0%; }
+    50% { transform: scale(1.1) translate(-20px, 15px); background-position: 100% 50%; }
+    100% { transform: scale(1) translate(10px, -10px); background-position: 50% 100%; }
+}
+
+.loader-content { width: 80%; max-width: 300px; text-align: center; z-index: 2; position: relative; }
 .loader-title { 
     font-size: 24px; font-weight: 900; 
     background: var(--gradient-primary); 
@@ -232,8 +248,37 @@ body {
     transition: width 0.3s ease, background-color 0.3s ease;
 }
 
+.upgrade-track {
+    display: flex;
+    gap: 3px;
+    margin-top: 2px;
+}
+
+.upgrade-dot {
+    flex: 1;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 1px;
+}
+
+.upgrade-dot.active {
+    background: var(--accent-pink);
+    box-shadow: 0 0 6px rgba(236, 72, 153, 0.6);
+}
+
 .btn-repair {
-    padding: 6px 8px;
+    padding: 4px 6px;
     font-size: 11px;
     margin-top: 4px;
+    border-color: var(--success-color);
+    color: var(--success-color);
+}
+
+.btn-upgrade {
+    padding: 4px 6px;
+    font-size: 11px;
+    margin-top: 4px;
+    background: rgba(139, 92, 246, 0.2);
+    border: 1px solid var(--accent-purple);
+    color: var(--text-color);
 }
