@@ -20,14 +20,14 @@ const CONFIG = {
 };
 
 const TRUCK_SHOP = [
-    { id: 't1', name: 'ГАЗель "Метеор"', capacity: 1500, fuel_use: 20, rarity: 'common', price: 75000 },
-    { id: 't2', name: 'ЗАЗ Карго', capacity: 2800, fuel_use: 30, rarity: 'common', price: 140000 },
-    { id: 't3', name: 'Volvo FH Neo', capacity: 5000, fuel_use: 45, rarity: 'rare', price: 250000 },
-    { id: 't4', name: 'Scania R730', capacity: 8500, fuel_use: 60, rarity: 'rare', price: 420000 },
-    { id: 't5', name: 'Cyber Titan', capacity: 12000, fuel_use: 80, rarity: 'epic', price: 600000 },
-    { id: 't6', name: 'Peterbilt 389 Custom', capacity: 17000, fuel_use: 100, rarity: 'epic', price: 950000 },
-    { id: 't7', name: 'Quantum Leviathan', capacity: 25000, fuel_use: 120, rarity: 'legendary', price: 1500000 },
-    { id: 't8', name: 'Titanium Goliath X', capacity: 40000, fuel_use: 180, rarity: 'legendary', price: 2800000 }
+    { id: 't1', name: 'ГАЗель "Метеор"', capacity: 1500, fuel_use: 20, rarity: 'common', price: 75000, image: 'https://i.ibb.co/68v8s4W/gazel-meteor.png' },
+    { id: 't2', name: 'ЗАЗ Карго', capacity: 2800, fuel_use: 30, rarity: 'common', price: 140000, image: 'https://i.ibb.co/3mFv7q2/zaz-cargo.png' },
+    { id: 't3', name: 'Volvo FH Neo', capacity: 5000, fuel_use: 45, rarity: 'rare', price: 250000, image: 'https://i.ibb.co/5X9K4qW/volvo-fh-neo.png' },
+    { id: 't4', name: 'Scania R730', capacity: 8500, fuel_use: 60, rarity: 'rare', price: 420000, image: 'https://i.ibb.co/7t4K3qW/scania-r730.png' },
+    { id: 't5', name: 'Cyber Titan', capacity: 12000, fuel_use: 80, rarity: 'epic', price: 600000, image: 'https://i.ibb.co/9vK3qW1/cyber-titan.png' },
+    { id: 't6', name: 'Peterbilt 389 Custom', capacity: 17000, fuel_use: 100, rarity: 'epic', price: 950000, image: 'https://i.ibb.co/3K7qW1v/peterbilt-389-cactus.png' },
+    { id: 't7', name: 'Quantum Leviathan', capacity: 25000, fuel_use: 120, rarity: 'legendary', price: 1500000, image: 'https://i.ibb.co/8K7qW1v/quantum-leviathan.png' },
+    { id: 't8', name: 'Titanium Goliath X', capacity: 40000, fuel_use: 180, rarity: 'legendary', price: 2800000, image: 'https://i.ibb.co/9K7qW1v/titanium-goliath-x.png' }
 ];
 
 const LICENSES_SHOP = [
@@ -1287,12 +1287,17 @@ const UI = {
                 { key: 'brakesLvl', name: '🧯 Торм' }
             ];
 
+            // Подтягиваем картинку для гаража
+            const shopTemplate = TRUCK_SHOP.find(shopT => shopT.name === t.name);
+            const truckImage = shopTemplate ? shopTemplate.image : '';
+
             return `
             <div class="card rarity-${t.rarity || 'common'}" style="margin-bottom: 12px;">
                 <div class="card-title">
                     <span>🚚 ${t.name}</span>
                     ${statusHtml}
                 </div>
+                ${truckImage ? `<div style="text-align: center; margin: 10px 0;"><img src="${truckImage}" alt="${t.name}" style="max-width: 100%; height: 100px; object-fit: contain;"></div>` : ''}
                 <div class="parts-grid">
                     ${parts.map(pt => {
                         const val = t[pt.key] !== undefined ? Number(t[pt.key]) : 100;
@@ -1343,6 +1348,7 @@ const UI = {
                         <span>🚚 ${shopT.name}</span>
                         <span style="color:var(--accent-blue);">${shopT.price.toLocaleString()} 🪙</span>
                     </div>
+                    ${shopT.image ? `<div style="text-align: center; margin: 10px 0;"><img src="${shopT.image}" alt="${shopT.name}" style="max-width: 100%; height: 100px; object-fit: contain;"></div>` : ''}
                     <div class="specs-grid" style="margin-bottom:8px;">
                         <div>Вместимость: ${shopT.capacity}</div>
                         <div>Расход: ${shopT.fuel_use}л</div>
