@@ -44,6 +44,22 @@ const tgUser = tg.initDataUnsafe?.user;
 const telegramId = tgUser?.id ? Number(tgUser.id) : 123456789;
 
 // ============================================================================
+// 🏆 СИСТЕМА ЗВАНИЙ (REPUTATION)
+// ============================================================================
+const ReputationSys = {
+    getTitle(level) {
+        if (level < 5) return 'Частник-одиночка';
+        if (level < 10) return 'Вольный водитель';
+        if (level < 15) return 'Опытный дальнобойщик';
+        if (level < 20) return 'Владелец автопарка';
+        if (level < 30) return 'Босс логистики';
+        if (level < 40) return 'Теневой барон';
+        if (level < 50) return 'Глобальный оператор';
+        return 'Транспортный магнат';
+    }
+};
+
+// ============================================================================
 // 🎵 АУДИО СИСТЕМА И ВИБРАЦИЯ
 // ============================================================================
 const AudioSys = {
@@ -206,7 +222,7 @@ const WorldState = {
 };
 
 // ============================================================================
-// ⚡ СИСТЕМА СЛУЧАЙНЫХ СОБЫТИЙ В ПУТИ (RANDOM EVENTS & ENCOUNTERS)
+// ⚡ СИСТЕМА СЛУЧАЙНЫХ СОБЫТИЙ В ПУТИ
 // ============================================================================
 const EventSys = {
     activeEvent: null,
@@ -214,8 +230,15 @@ const EventSys = {
 
     checkEventsForTrip(trip) {
         if (this.activeEvent) return;
+        
+        // Навык удачи снижает шанс негативного события
+        let luckMod = 1.0;
+        if (AppState.player.skills && AppState.player.skills.luck) {
+            luckMod -= AppState.player.skills.luck * 0.1; // -10% шанса за каждый уровень удачи
+        }
 
-        const chance = Math.random();
+        const chance = Math.random() / luckMod;
+        
         if (chance < 0.15) {
             this.triggerEvent(trip, 'customs');
         } else if (chance < 0.30) {
@@ -433,7 +456,8 @@ const AppState = {
             { id: 'q1', title: 'Завершить 3 рейса', target: 3, progress: 0, rewardCoins: 15000, rewardXP: 250, claimed: false },
             { id: 'q2', title: 'Потратить 500л топлива', target: 500, progress: 0, rewardCoins: 20000, rewardXP: 400, claimed: false },
             { id: 'q3', title: 'Заработать 50,000 🪙', target: 50000, progress: 0, rewardCoins: 30000, rewardXP: 600, claimed: false }
-        ]
+        ],
+        skills: { eco: 0, luck: 0, mechanic: 0 }
     },
     syndicateData: {
         target: 50000,
@@ -515,6 +539,9 @@ const DB = {
                 if (!AppState.player.quests || !Array.isArray(AppState.player.quests)) {
                     AppState.player.quests = defaultQuests;
                 }
+                if (!AppState.player.skills) {
+                    AppState.player.skills = { eco: 0, luck: 0, mechanic: 0 };
+                }
             }
 
             await this.loadGameData();
@@ -533,19 +560,31 @@ const DB = {
             { id: 'q3', title: 'Заработать 50,000 🪙', target: 50000, progress: 0, rewardCoins: 30000, rewardXP: 600, claimed: false }
         ];
 
+        let startMoney = 100000;
+        let startFuel = 400;
+
+        // Считываем ID пригласившего из параметра Telegram (Реферальная система)
+        const refId = tg.initDataUnsafe?.start_param;
+        if (refId && String(refId) !== String(telegramId)) {
+            startMoney += 50000;
+            startFuel += 500;
+            this.rewardReferrer(refId); 
+        }
+
         let insertPayload = {
             telegram_id: telegramId,
             name: AppState.player.name,
             avatar: AppState.player.avatar,
-            money: AppState.player.money,
-            fuel_stock: AppState.player.fuel_stock,
+            money: startMoney,
+            fuel_stock: startFuel,
             level: AppState.player.level,
             xp: AppState.player.xp,
             total_trips: 0,
             licenses: ['basic'],
             pass_level: 1,
             pass_claimed: [],
-            quests: defaultQuests
+            quests: defaultQuests,
+            skills: { eco: 0, luck: 0, mechanic: 0 }
         };
 
         let { data: newP, error: insertError } = await supabaseClient
@@ -556,15 +595,35 @@ const DB = {
 
         if (insertError) {
             delete insertPayload.quests;
+            delete insertPayload.skills;
             let { data: newPFallback, error: fallbackError } = await supabaseClient
                 .from('players')
                 .insert([insertPayload])
                 .select()
                 .single();
             if (fallbackError) throw fallbackError;
-            AppState.player = { ...AppState.player, ...newPFallback, quests: defaultQuests };
+            AppState.player = { ...AppState.player, ...newPFallback, quests: defaultQuests, skills: { eco: 0, luck: 0, mechanic: 0 } };
         } else if (newP) {
             AppState.player = { ...AppState.player, ...newP };
+        }
+    },
+
+    async rewardReferrer(refId) {
+        try {
+            let { data: refUser } = await supabaseClient
+                .from('players')
+                .select('id, money, fuel_stock')
+                .eq('telegram_id', Number(refId))
+                .single();
+
+            if (refUser) {
+                await supabaseClient.from('players').update({
+                    money: Number(refUser.money) + 50000,
+                    fuel_stock: Number(refUser.fuel_stock) + 500
+                }).eq('id', refUser.id);
+            }
+        } catch (e) {
+            console.error('Ошибка начисления реферального бонуса:', e);
         }
     },
 
@@ -611,6 +670,7 @@ const DB = {
     async syncPlayer() {
         const p = AppState.player;
         if (!p.id) return;
+        if (!p.skills) p.skills = { eco: 0, luck: 0, mechanic: 0 };
 
         let updateData = {
             name: p.name, avatar: p.avatar, money: Number(p.money),
@@ -618,12 +678,14 @@ const DB = {
             level: Number(p.level), xp: Number(p.xp), total_profit: Number(p.total_profit),
             total_trips: Number(p.total_trips), syndicate: p.syndicate,
             last_bonus_time: Number(p.last_bonus_time), licenses: p.licenses,
-            pass_level: p.pass_level, pass_claimed: p.pass_claimed, quests: p.quests
+            pass_level: p.pass_level, pass_claimed: p.pass_claimed, quests: p.quests,
+            skills: p.skills
         };
 
         let { error } = await supabaseClient.from('players').update(updateData).eq('id', p.id);
         if (error) {
             delete updateData.quests;
+            delete updateData.skills;
             await supabaseClient.from('players').update(updateData).eq('id', p.id);
         }
         this.loadLeaderboard();
@@ -740,7 +802,13 @@ const GameLogic = {
             reward = Math.floor(reward * WorldState.marketEvent.multiplier);
         }
 
-        let finalFuel = Math.floor(fuel * WorldState.weather.fuelMod);
+        // Навык эко-вождения снижает расход топлива
+        let ecoMod = 1.0;
+        if (AppState.player.skills && AppState.player.skills.eco) {
+            ecoMod -= AppState.player.skills.eco * 0.05; // -5% за каждый уровень
+        }
+
+        let finalFuel = Math.floor(fuel * WorldState.weather.fuelMod * ecoMod);
         let finalDur = Math.floor(duration * WorldState.weather.timeMod);
 
         if (AppState.player.fuel_stock < finalFuel) return UI.showToast(`Нужно ${finalFuel}л топлива!`, 'error');
@@ -787,14 +855,22 @@ const GameLogic = {
         this.updateQuestProgress('profit', p);
 
         const truck = AppState.trucks.find(t => t.id === trip.truck_id);
-        if (truck) {
+        
+        // Навык Механика и износ (если это не аренда, аренда не тратит узлы)
+        if (truck && trip.title !== 'Аренда: Сдана в прокат') {
+            let mechMod = 1.0;
+            if (AppState.player.skills && AppState.player.skills.mechanic) {
+                mechMod -= AppState.player.skills.mechanic * 0.1; // Износ меньше на 10% за каждый уровень
+            }
+
             const baseWear = Math.floor(Math.random() * 6) + 5; 
             const wMod = WorldState.weather.wearMod;
+            const wear = Math.floor(baseWear * wMod * mechMod);
 
-            truck.engineLvl = Math.max(0, truck.engineLvl - Math.max(1, Math.floor(baseWear * wMod) - (truck.engineLvlUpgrade || 0)));
-            truck.tiresLvl = Math.max(0, truck.tiresLvl - Math.max(1, Math.floor((baseWear + 3) * wMod) - (truck.tiresLvlUpgrade || 0)));
-            truck.gearLvl = Math.max(0, truck.gearLvl - Math.max(1, Math.floor(baseWear * wMod) - (truck.gearLvlUpgrade || 0)));
-            truck.brakesLvl = Math.max(0, truck.brakesLvl - Math.max(1, Math.floor((baseWear + 2) * wMod) - (truck.brakesLvlUpgrade || 0)));
+            truck.engineLvl = Math.max(0, truck.engineLvl - Math.max(1, wear - (truck.engineLvlUpgrade || 0)));
+            truck.tiresLvl = Math.max(0, truck.tiresLvl - Math.max(1, Math.floor((wear + 3)) - (truck.tiresLvlUpgrade || 0)));
+            truck.gearLvl = Math.max(0, truck.gearLvl - Math.max(1, wear - (truck.gearLvlUpgrade || 0)));
+            truck.brakesLvl = Math.max(0, truck.brakesLvl - Math.max(1, Math.floor((wear + 2)) - (truck.brakesLvlUpgrade || 0)));
 
             await supabaseClient.from('trucks').update({
                 engineLvl: truck.engineLvl, tiresLvl: truck.tiresLvl,
@@ -808,7 +884,11 @@ const GameLogic = {
         this.isFinishing = false;
 
         await DB.syncPlayer();
-        UI.showToast(`Рейс завершен! +${p} 🪙 | +${earnedXP} XP`, 'success');
+        if (trip.title === 'Аренда: Сдана в прокат') {
+            UI.showToast(`Аренда завершена! +${p} 🪙`, 'success');
+        } else {
+            UI.showToast(`Рейс завершен! +${p} 🪙 | +${earnedXP} XP`, 'success');
+        }
         AIDispatcher.randomAdvice();
         UI.renderAll();
     },
@@ -995,6 +1075,62 @@ const GameLogic = {
         const maxPrice = 22;
         AppState.player.fuel_price = Math.floor(Math.random() * (maxPrice - minPrice + 1)) + minPrice;
         UI.renderAll();
+    },
+
+    async upgradeSkill(skillKey) {
+        const maxLevel = 5;
+        if (!AppState.player.skills) AppState.player.skills = { eco: 0, luck: 0, mechanic: 0 };
+        
+        const currentLevel = AppState.player.skills[skillKey] || 0;
+        if (currentLevel >= maxLevel) return UI.showToast('Навык прокачан на максимум!', 'info');
+
+        const cost = 50000 * (currentLevel + 1); 
+        if (AppState.player.money < cost) return UI.showToast(`Нужно ${cost.toLocaleString()} 🪙`, 'error');
+
+        AppState.player.money -= cost;
+        AppState.player.skills[skillKey] = currentLevel + 1;
+        
+        await DB.syncPlayer();
+        UI.showToast('Навык успешно улучшен!', 'success');
+        UI.renderAll();
+    },
+
+    async rentOutTruck(truckId) {
+        const truck = AppState.trucks.find(t => String(t.id) === String(truckId));
+        if (!truck) return;
+
+        if (truck.engineLvl < 100 || truck.tiresLvl < 100 || truck.gearLvl < 100 || truck.brakesLvl < 100) {
+            return UI.showToast('В аренду берут только полностью исправные фуры (все по 100%)!', 'error');
+        }
+
+        const rentTime = 4 * 60 * 60 * 1000; 
+        const reward = Math.floor(truck.capacity * 2); 
+        const endTime = Date.now() + rentTime;
+
+        let { data, error } = await supabaseClient.from('active_trips').insert([{
+            player_id: AppState.player.id,
+            truck_id: truck.id, 
+            title: 'Аренда: Сдана в прокат',
+            reward: reward,
+            fuel_req: 0, 
+            end_time: endTime
+        }]).select().single();
+
+        if (error) return UI.showToast("Ошибка сдачи в аренду", "error");
+
+        AppState.activeTrips.push(data);
+        await DB.syncPlayer();
+        UI.showToast(`Фура сдана в аренду на 4 часа! Принесет ${reward} 🪙`, 'success');
+        UI.renderAll();
+    },
+
+    inviteFriend() {
+        const botUsername = 'LogisticWorldBot'; // Замени на свой, если нужно
+        const refLink = `https://t.me/${botUsername}/app?startapp=${telegramId}`;
+        const shareText = `Присоединяйся к моей логистической империи! Тебя ждет крутой стартовый бонус.`;
+        
+        const url = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent(shareText)}`;
+        tg.openTelegramLink(url);
     }
 };
 
@@ -1036,6 +1172,7 @@ const UI = {
         if (!p.pass_claimed) p.pass_claimed = [];
         
         this.safeUpdate('username', p.name);
+        this.safeUpdate('user-title', ReputationSys.getTitle(p.level));
         this.safeUpdate('user-money', `🪙 ${Number(p.money).toLocaleString()}`);
         this.safeUpdate('user-fuel-stock', `⛽ ${Number(p.fuel_stock)}л`);
         this.safeUpdate('user-level-badge', `LVL ${p.level}`);
@@ -1100,8 +1237,10 @@ const UI = {
         
         let fleetHtml = AppState.trucks.length > 0 ? AppState.trucks.map((t) => {
             const isBusy = activeTruckIds.includes(t.id);
-            const statusHtml = isBusy ? `<span style="font-size:12px; color:#EF4444;">🔴 В рейсе</span>` : `<span style="font-size:12px; color:#10B981;">🟢 Свободна</span>`;
+            const statusHtml = isBusy ? `<span style="font-size:12px; color:#EF4444;">🔴 Занята</span>` : `<span style="font-size:12px; color:#10B981;">🟢 Свободна</span>`;
             
+            const allParts100 = t.engineLvl === 100 && t.tiresLvl === 100 && t.gearLvl === 100 && t.brakesLvl === 100;
+
             const parts = [
                 { key: 'engineLvl', name: '🛠 Двс' },
                 { key: 'tiresLvl', name: '🛞 Шины' },
@@ -1148,6 +1287,9 @@ const UI = {
                         </div>`;
                     }).join('')}
                 </div>
+                <button class="btn ${isBusy || !allParts100 ? 'btn-outline' : 'btn-primary'}" style="width: 100%; margin-top: 8px; font-size: 12px; padding: 6px;" ${isBusy || !allParts100 ? 'disabled' : ''} onclick="GameLogic.rentOutTruck('${t.id}')">
+                    ${isBusy ? 'Машина занята' : (!allParts100 ? 'Нужен ремонт 100%' : 'Сдать в аренду (4ч)')}
+                </button>
             </div>`;
         }).join('') : `<p style="text-align:center; color:var(--hint-color); margin-bottom: 16px;">Ваш гараж пока пуст. Купите тягач в автосалоне ниже!</p>`;
 
@@ -1210,8 +1352,7 @@ const UI = {
                 return '';
             }
             
-            // Уменьшенный шанс для редких случайных событий в пути (~0.8%)
-            if (Math.random() < 0.008) {
+            if (trip.title !== 'Аренда: Сдана в прокат' && Math.random() < 0.008) {
                 EventSys.checkEventsForTrip(trip);
             }
 
@@ -1295,6 +1436,31 @@ const UI = {
                 </button>
             </div>`;
         }).join(''));
+
+        // Рендер Навыков
+        if (!p.skills) p.skills = { eco: 0, luck: 0, mechanic: 0 };
+        const skillsData = [
+            { key: 'eco', name: '🍃 Эко-вождение', desc: 'Снижает расход топлива в пути', icon: '⛽' },
+            { key: 'luck', name: '🍀 Связи на таможне', desc: 'Снижает шанс форс-мажора', icon: '👮' },
+            { key: 'mechanic', name: '🔧 Опытный механик', desc: 'Замедляет износ деталей фуры', icon: '🛠' }
+        ];
+
+        this.safeUpdateHTML('skills-list', skillsData.map(s => {
+            const lvl = p.skills[s.key] || 0;
+            const cost = 50000 * (lvl + 1);
+            const isMax = lvl >= 5;
+            return `
+            <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-size: 13px; font-weight: 700;">${s.name} <span style="color:var(--accent-pink);">[Ур. ${lvl}/5]</span></div>
+                    <div style="font-size: 11px; color: var(--hint-color); margin-top: 2px;">${s.desc}</div>
+                </div>
+                <button class="btn ${isMax ? 'btn-outline' : 'btn-primary'}" style="font-size: 11px; padding: 6px 12px; width: auto;" 
+                    ${isMax ? 'disabled' : ''} onclick="GameLogic.upgradeSkill('${s.key}')">
+                    ${isMax ? 'MAX' : `${cost.toLocaleString()} 🪙`}
+                </button>
+            </div>`;
+        }).join(''));
     }
 };
 
@@ -1346,7 +1512,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setInterval(() => { if (AppState.activeTrips.length > 0) UI.renderAll(); }, 1000);
     
-    // Сбалансированные интервалы (погода и советы раз в 3 минуты, рынок раз в 10 минут)
     setInterval(() => { WorldState.generateWeather(); AIDispatcher.randomAdvice(); }, 180000);
     setInterval(() => { GameLogic.updateMarket(); }, 240000);
     setInterval(() => { WorldState.generateMarketEvent(); }, 600000);
