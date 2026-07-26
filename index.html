@@ -50,6 +50,8 @@
                         <h1 id="username" class="user-name-title premium-name">Логист</h1>
                         <span id="user-level-badge" class="level-badge">LVL 1</span>
                     </div>
+                    <!-- Звание Логиста -->
+                    <div id="user-title" style="font-size: 12px; color: var(--accent-pink); margin-top: 2px; font-weight: 600;">Частник-одиночка</div>
                     <div class="balance-container">
                         <span id="user-money" class="badge-money">🪙 0</span>
                         <span id="user-fuel-stock" class="badge-fuel">⛽ 0л</span>
@@ -193,7 +195,25 @@
                     </div>
                 </div>
 
-                <!-- Админ-панель (скрыта до ввода пароля) -->
+                <!-- Навыки Логиста -->
+                <div class="card" style="margin-top: 12px; border-color: var(--accent-blue);">
+                    <h3>🧠 Навыки Логиста</h3>
+                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 8px;">Прокачивайте пассивные перки за монеты.</p>
+                    <div id="skills-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                </div>
+
+                <!-- Транспортная сеть (Рефералы) -->
+                <div class="card" style="margin-top: 12px; border-color: var(--accent-purple);">
+                    <h3>🤝 Транспортная сеть</h3>
+                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 8px;">
+                        Пригласи партнера в игру! Вы оба получите бонус: <b>+50,000 🪙 и +500л топлива</b>.
+                    </p>
+                    <button type="button" class="btn btn-primary" style="background: var(--accent-purple);" onclick="GameLogic.inviteFriend()">
+                        🔗 Позвать логиста
+                    </button>
+                </div>
+
+                <!-- Админ-панель -->
                 <div class="card" id="admin-panel-card" style="margin-top: 12px; border-color: var(--accent-pink); display: none;">
                     <h3 style="color: var(--accent-pink);">🛡️ Админ Панель</h3>
                     <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Управление ресурсами разработчика</p>
