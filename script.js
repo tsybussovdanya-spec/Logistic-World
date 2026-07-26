@@ -475,7 +475,6 @@ const GameLogic = {
 
         let endTime = Date.now() + (finalDur * 1000);
 
-        // ИСПРАВЛЕНИЕ РЕЙСА: Сначала отправляем в БД, гарантируя отсутствие ошибок базы данных
         let { data, error } = await supabaseClient.from('active_trips').insert([{
             player_id: AppState.player.id,
             truck_id: idleTruck.id, 
@@ -487,7 +486,6 @@ const GameLogic = {
 
         if (error) return UI.showToast("Ошибка запуска рейса: " + error.message, "error");
 
-        // Если в БД записалось успешно — списываем топливо и фиксируем
         AppState.player.fuel_stock = Number(AppState.player.fuel_stock) - finalFuel;
         this.updateQuestProgress('fuel', finalFuel);
 
@@ -970,18 +968,16 @@ const UI = {
             </div>
         `).join(''));
 
-        const passTiers = [
-            { level: 1, reward: 10000, title: 'Уровень 1: Старт Cyber Tokyo' },
-            { level: 2, reward: 18000, title: 'Уровень 2: Ускоритель логистики' },
-            { level: 3, reward: 25000, title: 'Уровень 3: Неоновый обвес' },
-            { level: 4, reward: 40000, title: 'Уровень 4: Премиум топливо' },
-            { level: 5, reward: 60000, title: 'Уровень 5: Элитный скин фуры' },
-            { level: 6, reward: 85000, title: 'Уровень 6: Тяжелые контракты' },
-            { level: 7, reward: 120000, title: 'Уровень 7: Квантовый двигатель' },
-            { level: 8, reward: 170000, title: 'Уровень 8: Корпоративный бонус' },
-            { level: 9, reward: 250000, title: 'Уровень 9: Легендарный автопарк' },
-            { level: 10, reward: 500000, title: 'Уровень 10: Властелин Logistic World' }
-        ];
+        // Сезонный пропуск (Battle Pass) расширен до 30 уровней
+        const passTiers = Array.from({ length: 30 }, (_, i) => {
+            const lvl = i + 1;
+            const rewardCoins = 10000 + (lvl - 1) * 20000;
+            return {
+                level: lvl,
+                reward: rewardCoins,
+                title: `Уровень ${lvl}: Этап Cyber Tokyo #${lvl}`
+            };
+        });
 
         this.safeUpdateHTML('pass-tiers-list', passTiers.map(tier => {
             const isReached = p.pass_level >= tier.level;
@@ -995,7 +991,7 @@ const UI = {
                 <button class="btn ${isClaimed ? 'btn-outline' : 'btn-primary'}" 
                     style="font-size:12px; padding:8px 12px; width:auto;"
                     ${!isReached || isClaimed ? 'disabled' : ''}
-                    onclick="GameLogic.claimPassPassReward ? GameLogic.claimPassReward(${tier.level}, ${tier.reward}) : GameLogic.claimPassReward(${tier.level}, ${tier.reward})">
+                    onclick="GameLogic.claimPassReward(${tier.level}, ${tier.reward})">
                     ${isClaimed ? 'Получено' : (isReached ? 'Забрать' : `Нужен ур. ${tier.level}`)}
                 </button>
             </div>`;
