@@ -19,6 +19,13 @@ const CONFIG = {
     ]
 };
 
+const TRUCK_SHOP = [
+    { id: 't1', name: 'ГАЗель "Метеор"', capacity: 1500, fuel_use: 20, rarity: 'common', price: 75000 },
+    { id: 't2', name: 'Volvo FH Neo', capacity: 5000, fuel_use: 45, rarity: 'rare', price: 250000 },
+    { id: 't3', name: 'Cyber Titan', capacity: 12000, fuel_use: 80, rarity: 'epic', price: 600000 },
+    { id: 't4', name: 'Quantum Leviathan', capacity: 25000, fuel_use: 120, rarity: 'legendary', price: 1500000 }
+];
+
 const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 const tgUser = tg.initDataUnsafe?.user;
 const telegramId = tgUser?.id ? Number(tgUser.id) : 123456789;
@@ -119,7 +126,7 @@ const AppState = {
         reward: 250000
     },
     trucks: [],
-    activeTrip: null,
+    activeTrips: [],
     leaderboard: [],
     contracts: [
         { id: 1, title: 'Обычный: Доски', reward: 5200, fuel: 70, duration: 15, reqLvl: 1, reqLic: 'basic' },
@@ -226,7 +233,7 @@ const DB = {
         try {
             const [trucksRes, tripRes] = await Promise.all([
                 supabaseClient.from('trucks').select('*').eq('player_id', AppState.player.id),
-                supabaseClient.from('active_trips').select('*').eq('player_id', AppState.player.id).maybeSingle()
+                supabaseClient.from('active_trips').select('*').eq('player_id', AppState.player.id)
             ]);
 
             AppState.trucks = trucksRes.data || [];
@@ -242,7 +249,7 @@ const DB = {
                 if (t.brakesLvlUpgrade === undefined) t.brakesLvlUpgrade = 0;
             });
 
-            AppState.activeTrip = tripRes.data || null;
+            AppState.activeTrips = tripRes.data || [];
         } catch (e) {
             console.error('Ошибка загрузки данных:', e);
         }
@@ -306,15 +313,42 @@ const GameLogic = {
         }
     },
 
+    async buyTruck(shopId) {
+        const template = TRUCK_SHOP.find(t => t.id === shopId);
+        if (!template) return;
+        if (AppState.player.money < template.price) return UI.showToast(`Нужно ${template.price.toLocaleString()} 🪙`, 'error');
+
+        AppState.player.money -= template.price;
+        
+        let { data, error } = await supabaseClient.from('trucks').insert([{
+            player_id: AppState.player.id,
+            name: template.name,
+            capacity: template.capacity,
+            fuel_use: template.fuel_use,
+            rarity: template.rarity,
+            engineLvl: 100, tiresLvl: 100, gearLvl: 100, brakesLvl: 100,
+            engineLvlUpgrade: 0, tiresLvlUpgrade: 0, gearLvlUpgrade: 0, brakesLvlUpgrade: 0
+        }]).select().single();
+
+        if (error) return UI.showToast("Ошибка при покупке фуры", "error");
+
+        AppState.trucks.push(data);
+        await DB.syncPlayer();
+        UI.showToast(`Куплен новый транспорт: ${template.name}!`, 'success');
+        UI.renderAll();
+    },
+
     async startTrip(reward, fuel, duration, title, reqLvl, reqLic) {
         if (AppState.player.level < reqLvl) return UI.showToast(`Требуется уровень ${reqLvl}!`, 'error');
         if (!AppState.player.licenses.includes(reqLic)) return UI.showToast('Отсутствует нужная лицензия!', 'error');
         
-        const mainTruck = AppState.trucks[0];
-        if (mainTruck) {
-            if (mainTruck.engineLvl <= 0 || mainTruck.tiresLvl <= 0 || mainTruck.gearLvl <= 0 || mainTruck.brakesLvl <= 0) {
-                return UI.showToast('⚠️ Тягач сломан! Отремонтируйте узлы в Гараже!', 'error');
-            }
+        const activeTruckIds = AppState.activeTrips.map(t => t.truck_id);
+        const idleTruck = AppState.trucks.find(t => !activeTruckIds.includes(t.id));
+
+        if (!idleTruck) return UI.showToast('Нет свободных тягачей в гараже!', 'error');
+
+        if (idleTruck.engineLvl <= 0 || idleTruck.tiresLvl <= 0 || idleTruck.gearLvl <= 0 || idleTruck.brakesLvl <= 0) {
+            return UI.showToast('⚠️ Свободный тягач сломан! Отремонтируйте его!', 'error');
         }
 
         if (WorldState.marketEvent.effect !== 'none' && title.includes(WorldState.marketEvent.effect)) {
@@ -331,6 +365,7 @@ const GameLogic = {
         
         let { data, error } = await supabaseClient.from('active_trips').insert([{
             player_id: AppState.player.id,
+            truck_id: idleTruck.id, 
             title: title,
             reward: reward,
             fuel_req: finalFuel,
@@ -339,47 +374,47 @@ const GameLogic = {
 
         if (error) return UI.showToast("Ошибка запуска рейса", "error");
 
-        AppState.activeTrip = data;
+        AppState.activeTrips.push(data);
         await DB.syncPlayer();
-        UI.showToast('Рейс начат! Удачной дороги!', 'success');
+        UI.showToast(`Рейс начат на ${idleTruck.name}!`, 'success');
         UI.renderAll();
     },
 
-    async finishTrip() {
-        if (!AppState.activeTrip || this.isFinishing) return;
+    async finishTrip(tripId) {
+        if (this.isFinishing) return;
+        
+        const tripIndex = AppState.activeTrips.findIndex(t => t.id === tripId);
+        if (tripIndex === -1) return;
+        const trip = AppState.activeTrips[tripIndex];
+
         this.isFinishing = true;
         
-        let p = Number(AppState.activeTrip.reward);
+        let p = Number(trip.reward);
         let earnedXP = Math.floor(p * CONFIG.XP_MULTIPLIER);
         
         AppState.player.money = Number(AppState.player.money) + p;
         AppState.player.total_profit = Number(AppState.player.total_profit) + p;
         AppState.player.total_trips = Number(AppState.player.total_trips) + 1;
 
-        const mainTruck = AppState.trucks[0];
-        if (mainTruck) {
+        const truck = AppState.trucks.find(t => t.id === trip.truck_id);
+        if (truck) {
             const baseWear = Math.floor(Math.random() * 6) + 5; 
             const wMod = WorldState.weather.wearMod;
 
-            const engUp = mainTruck.engineLvlUpgrade || 0;
-            const tiresUp = mainTruck.tiresLvlUpgrade || 0;
-            const gearUp = mainTruck.gearLvlUpgrade || 0;
-            const brakesUp = mainTruck.brakesLvlUpgrade || 0;
-
-            mainTruck.engineLvl = Math.max(0, mainTruck.engineLvl - Math.max(1, Math.floor(baseWear * wMod) - engUp));
-            mainTruck.tiresLvl = Math.max(0, mainTruck.tiresLvl - Math.max(1, Math.floor((baseWear + 3) * wMod) - tiresUp));
-            mainTruck.gearLvl = Math.max(0, mainTruck.gearLvl - Math.max(1, Math.floor(baseWear * wMod) - gearUp));
-            mainTruck.brakesLvl = Math.max(0, mainTruck.brakesLvl - Math.max(1, Math.floor((baseWear + 2) * wMod) - brakesUp));
+            truck.engineLvl = Math.max(0, truck.engineLvl - Math.max(1, Math.floor(baseWear * wMod) - (truck.engineLvlUpgrade || 0)));
+            truck.tiresLvl = Math.max(0, truck.tiresLvl - Math.max(1, Math.floor((baseWear + 3) * wMod) - (truck.tiresLvlUpgrade || 0)));
+            truck.gearLvl = Math.max(0, truck.gearLvl - Math.max(1, Math.floor(baseWear * wMod) - (truck.gearLvlUpgrade || 0)));
+            truck.brakesLvl = Math.max(0, truck.brakesLvl - Math.max(1, Math.floor((baseWear + 2) * wMod) - (truck.brakesLvlUpgrade || 0)));
 
             await supabaseClient.from('trucks').update({
-                engineLvl: mainTruck.engineLvl, tiresLvl: mainTruck.tiresLvl,
-                gearLvl: mainTruck.gearLvl, brakesLvl: mainTruck.brakesLvl
-            }).eq('id', mainTruck.id);
+                engineLvl: truck.engineLvl, tiresLvl: truck.tiresLvl,
+                gearLvl: truck.gearLvl, brakesLvl: truck.brakesLvl
+            }).eq('id', truck.id);
         }
 
         await this.addXP(earnedXP);
-        await supabaseClient.from('active_trips').delete().eq('player_id', AppState.player.id);
-        AppState.activeTrip = null;
+        await supabaseClient.from('active_trips').delete().eq('id', trip.id); 
+        AppState.activeTrips.splice(tripIndex, 1);
         this.isFinishing = false;
 
         await DB.syncPlayer();
@@ -388,19 +423,15 @@ const GameLogic = {
         UI.renderAll();
     },
 
-    async repairPart(partName) {
-        const truck = AppState.trucks[0];
+    async repairPart(truckId, partName) {
+        const truck = AppState.trucks.find(t => t.id === truckId);
         if (!truck) return;
 
         const currentVal = truck[partName] || 0;
         if (currentVal >= 100) return UI.showToast('Узел в идеальном состоянии!', 'info');
 
-        const missing = 100 - currentVal;
-        const repairCost = missing * 100; 
-
-        if (AppState.player.money < repairCost) {
-            return UI.showToast(`Для ремонта нужно ${repairCost.toLocaleString()} 🪙`, 'error');
-        }
+        const repairCost = (100 - currentVal) * 100; 
+        if (AppState.player.money < repairCost) return UI.showToast(`Нужно ${repairCost.toLocaleString()} 🪙`, 'error');
 
         AppState.player.money -= repairCost;
         truck[partName] = 100;
@@ -412,20 +443,16 @@ const GameLogic = {
         UI.renderAll();
     },
 
-    async upgradeTruckPart(partName) {
-        const truck = AppState.trucks[0];
+    async upgradeTruckPart(truckId, partName) {
+        const truck = AppState.trucks.find(t => t.id === truckId);
         if (!truck) return;
 
         const upgradeKey = partName + 'Upgrade'; 
         if (truck[upgradeKey] === undefined) truck[upgradeKey] = 0;
-        
         if (truck[upgradeKey] >= 5) return UI.showToast('Узел прокачан на максимум!', 'info');
 
         const cost = 25000 * (truck[upgradeKey] + 1); 
-
-        if (AppState.player.money < cost) {
-            return UI.showToast(`Для тюнинга нужно ${cost.toLocaleString()} 🪙`, 'error');
-        }
+        if (AppState.player.money < cost) return UI.showToast(`Нужно ${cost.toLocaleString()} 🪙`, 'error');
 
         AppState.player.money -= cost;
         truck[upgradeKey] += 1;
@@ -639,22 +666,25 @@ const UI = {
         if (xpFill) xpFill.style.width = `${xpProg}%`;
 
         // 🚛 ГАРАЖ: АВТОПАРК, ИЗНОС И ТЮНИНГ
-        const t = AppState.trucks[0] || { name: 'LW-CyberTruck Alpha', engineLvl: 100, tiresLvl: 100, gearLvl: 100, brakesLvl: 100 };
+        const activeTruckIds = AppState.activeTrips.map(trip => trip.truck_id);
         
-        const parts = [
-            { key: 'engineLvl', name: '🛠 Двигатель' },
-            { key: 'tiresLvl', name: '🛞 Шины' },
-            { key: 'gearLvl', name: '⚙️ КПП' },
-            { key: 'brakesLvl', name: '🧯 Тормоза' }
-        ];
+        let fleetHtml = AppState.trucks.map((t, index) => {
+            const isBusy = activeTruckIds.includes(t.id);
+            const statusHtml = isBusy ? `<span style="font-size:12px; color:#EF4444;">🔴 В рейсе</span>` : `<span style="font-size:12px; color:#10B981;">🟢 Свободна</span>`;
+            
+            const parts = [
+                { key: 'engineLvl', name: '🛠 Двс' },
+                { key: 'tiresLvl', name: '🛞 Шины' },
+                { key: 'gearLvl', name: '⚙️ КПП' },
+                { key: 'brakesLvl', name: '🧯 Торм' }
+            ];
 
-        this.safeUpdateHTML('fleet-list', `
-            <div class="card rarity-epic">
+            return `
+            <div class="card rarity-${t.rarity || 'common'}" style="margin-bottom: 12px;">
                 <div class="card-title">
                     <span>🚚 ${t.name}</span>
-                    <span style="font-size:11px; color:var(--accent-pink);">ГЛАВНЫЙ ТЯГАЧ</span>
+                    ${statusHtml}
                 </div>
-                <p style="font-size:12px; color:var(--hint-color); margin-bottom: 8px;">Состояние и прокачка узлов:</p>
                 <div class="parts-grid">
                     ${parts.map(pt => {
                         const val = t[pt.key] !== undefined ? t[pt.key] : 100;
@@ -679,22 +709,38 @@ const UI = {
                             </div>
                             <div class="upgrade-track">${dotsHtml}</div>
                             <div style="display:flex; gap:4px; margin-top:6px;">
-                                ${val < 100 ? `
-                                    <button class="btn btn-outline btn-repair" style="flex:1;" onclick="GameLogic.repairPart('${pt.key}')">
-                                        Чинить (${repairCost / 1000}k)
-                                    </button>
-                                ` : `<button class="btn btn-outline btn-repair" style="flex:1; opacity:0.5;" disabled>Исправен</button>`}
-                                ${upgradeLvl < 5 ? `
-                                    <button class="btn btn-upgrade" style="flex:1;" onclick="GameLogic.upgradeTruckPart('${pt.key}')">
-                                        UP (${upgradeCost / 1000}k)
-                                    </button>
-                                ` : `<button class="btn btn-upgrade" style="flex:1; opacity:0.5;" disabled>MAX</button>`}
+                                <button class="btn btn-outline btn-repair" style="flex:1; padding: 4px;" ${isBusy || val === 100 ? 'disabled' : ''} onclick="GameLogic.repairPart('${t.id}', '${pt.key}')">
+                                    ${val === 100 ? 'OK' : `${repairCost / 1000}k`}
+                                </button>
+                                <button class="btn btn-upgrade" style="flex:1; padding: 4px;" ${isBusy || upgradeLvl >= 5 ? 'disabled' : ''} onclick="GameLogic.upgradeTruckPart('${t.id}', '${pt.key}')">
+                                    ${upgradeLvl >= 5 ? 'MAX' : `UP`}
+                                </button>
                             </div>
                         </div>`;
                     }).join('')}
                 </div>
-            </div>
-        `);
+            </div>`;
+        }).join('');
+
+        let shopHtml = `
+        <h3 class="subsection-title" style="margin-top: 20px;">Автосалон</h3>
+        <div class="card-grid">
+            ${TRUCK_SHOP.map(shopT => `
+                <div class="card">
+                    <div class="card-title">
+                        <span>🚚 ${shopT.name}</span>
+                        <span style="color:var(--accent-blue);">${shopT.price.toLocaleString()} 🪙</span>
+                    </div>
+                    <div class="specs-grid" style="margin-bottom:8px;">
+                        <div>Вместимость: ${shopT.capacity}</div>
+                        <div>Расход: ${shopT.fuel_use}л</div>
+                    </div>
+                    <button class="btn btn-primary" onclick="GameLogic.buyTruck('${shopT.id}')">Купить машину</button>
+                </div>
+            `).join('')}
+        </div>`;
+
+        this.safeUpdateHTML('fleet-list', fleetHtml + shopHtml);
 
         // Лицензии
         const allLic = [
@@ -709,20 +755,27 @@ const UI = {
             else return `<span class="license-badge" onclick="GameLogic.buyLicense('${l.id}')" style="cursor:pointer; border-color: var(--accent-pink);">${l.n} 🔒 (${(l.cost / 1000)}k 🪙)</span>`;
         }).join(''));
 
-        // Активный рейс
-        let tripHtml = '';
-        if (AppState.activeTrip) {
-            let left = Math.floor((AppState.activeTrip.end_time - Date.now()) / 1000);
-            if (left > 0) {
-                tripHtml = `<div class="card rarity-epic" style="margin-bottom: 12px;">
-                    <div class="card-title"><span>🚚 В рейсе...</span><span style="color:var(--accent-pink);">⏳ ${left} сек</span></div>
-                    <p style="font-size:12px; color:var(--hint-color);">${AppState.activeTrip.title}</p>
-                </div>`;
-            } else GameLogic.finishTrip();
-        }
-        this.safeUpdateHTML('active-trip-panel', tripHtml);
+        // Множественные Активные рейсы
+        let tripsHtml = AppState.activeTrips.map(trip => {
+            let left = Math.floor((trip.end_time - Date.now()) / 1000);
+            if (left <= 0) {
+                GameLogic.finishTrip(trip.id);
+                return '';
+            }
+            const tripTruck = AppState.trucks.find(t => t.id === trip.truck_id);
+            const truckName = tripTruck ? tripTruck.name : 'Фура';
+            
+            return `<div class="card rarity-epic" style="margin-bottom: 12px; border-color: var(--accent-blue);">
+                <div class="card-title"><span>🚚 ${truckName} в пути</span><span style="color:var(--accent-blue);">⏳ ${left} сек</span></div>
+                <p style="font-size:12px; color:var(--hint-color);">${trip.title}</p>
+            </div>`;
+        }).join('');
+        
+        this.safeUpdateHTML('active-trip-panel', tripsHtml);
 
         // Контракты (Биржа)
+        const hasIdleTruck = AppState.trucks.length > AppState.activeTrips.length;
+        
         this.safeUpdateHTML('contracts-list', AppState.contracts.map(c => {
             const lockedLvl = p.level < c.reqLvl;
             const lockedLic = !p.licenses.includes(c.reqLic);
@@ -733,12 +786,17 @@ const UI = {
                 currentReward = Math.floor(currentReward * WorldState.marketEvent.multiplier);
             }
 
+            let btnText = 'Начать рейс';
+            if (lockedLvl) btnText = `Нужен Ур. ${c.reqLvl}`;
+            else if (lockedLic) btnText = 'Нет лицензии';
+            else if (!hasIdleTruck) btnText = 'Нет свободных тягачей';
+
             return `<div class="card" style="${isLocked ? 'opacity:0.6' : ''}">
                 <div class="card-title"><span>${c.title}</span><span style="color:var(--accent-pink);">+${currentReward.toLocaleString()} 🪙</span></div>
                 <div class="specs-grid"><div>Время: ${c.duration}с</div><div>Топливо: ${c.fuel}л</div></div>
-                <button class="btn btn-primary" ${AppState.activeTrip || isLocked ? 'disabled' : ''} 
+                <button class="btn btn-primary" ${!hasIdleTruck || isLocked ? 'disabled' : ''} 
                     onclick="GameLogic.startTrip(${currentReward}, ${c.fuel}, ${c.duration}, '${c.title}', ${c.reqLvl}, '${c.reqLic}')">
-                    ${lockedLvl ? `Нужен Ур. ${c.reqLvl}` : (lockedLic ? 'Нет лицензии' : (AppState.activeTrip ? 'Транспорт занят' : 'Начать рейс'))}
+                    ${btnText}
                 </button>
             </div>`;
         }).join(''));
@@ -826,7 +884,8 @@ document.addEventListener('DOMContentLoaded', () => {
         DB.init();
     }
 
-    setInterval(() => { if (AppState.activeTrip) UI.renderAll(); }, 1000);
+    // Обновляем таймер только если есть активные рейсы
+    setInterval(() => { if (AppState.activeTrips.length > 0) UI.renderAll(); }, 1000);
     setInterval(() => { WorldState.generateWeather(); AIDispatcher.randomAdvice(); }, 60000);
     setInterval(() => { GameLogic.updateMarket(); }, 120000);
     setInterval(() => { WorldState.generateMarketEvent(); }, 300000);
