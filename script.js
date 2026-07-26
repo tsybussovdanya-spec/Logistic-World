@@ -61,6 +61,72 @@ const AudioSys = {
 };
 
 // ============================================================================
+// 🛡️ АДМИН СИСТЕМА
+// ============================================================================
+const AdminSys = {
+    isAdmin() {
+        return AppState.player.name === 'TSYBUSS' || AppState.player.is_admin === true;
+    },
+    checkAdminAccess() {
+        const nameInput = AppState.player.name;
+        const adminCard = document.getElementById('admin-panel-card');
+        if (!adminCard) return;
+
+        if (nameInput === 'TSYBUSS' || nameInput === 'AdminPass2026') {
+            adminCard.style.display = 'block';
+            if (nameInput === 'AdminPass2026') {
+                AppState.player.name = 'TSYBUSS';
+            }
+        } else {
+            adminCard.style.display = 'none';
+        }
+    },
+    addMoney(amount) {
+        if (!this.isAdmin()) return;
+        AppState.player.money += amount;
+        DB.syncPlayer();
+        UI.showToast(`[ADMIN] Зачислено ${amount.toLocaleString()} 🪙`, 'success');
+        UI.renderAll();
+    },
+    addFuel(amount) {
+        if (!this.isAdmin()) return;
+        AppState.player.fuel_stock += amount;
+        DB.syncPlayer();
+        UI.showToast(`[ADMIN] Зачислено ${amount}л топлива`, 'success');
+        UI.renderAll();
+    },
+    setLevel(lvl) {
+        if (!this.isAdmin()) return;
+        AppState.player.level = lvl;
+        AppState.player.pass_level = Math.max(AppState.player.pass_level, lvl);
+        DB.syncPlayer();
+        UI.showToast(`[ADMIN] Установлен уровень ${lvl}`, 'success');
+        UI.renderAll();
+    },
+    unlockAll() {
+        if (!this.isAdmin()) return;
+        AppState.player.licenses = ['basic', 'dangerous', 'oversized'];
+        TRUCK_SHOP.forEach(shopT => {
+            if (!AppState.trucks.some(t => t.name === shopT.name)) {
+                AppState.trucks.push({
+                    id: 'admin_' + Math.random(),
+                    player_id: AppState.player.id,
+                    name: shopT.name,
+                    capacity: shopT.capacity,
+                    fuel_use: shopT.fuel_use,
+                    rarity: shopT.rarity,
+                    engineLvl: 100, tiresLvl: 100, gearLvl: 100, brakesLvl: 100,
+                    engineLvlUpgrade: 0, tiresLvlUpgrade: 0, gearLvlUpgrade: 0, brakesLvlUpgrade: 0
+                });
+            }
+        });
+        DB.syncPlayer();
+        UI.showToast('[ADMIN] Все лицензии и фуры разблокированы!', 'success');
+        UI.renderAll();
+    }
+};
+
+// ============================================================================
 // 🌍 ПОГОДА И ГЛОБАЛЬНЫЕ ИВЕНТЫ
 // ============================================================================
 const WorldState = {
@@ -118,7 +184,12 @@ const AppState = {
         id: null, name: tgUser?.first_name || 'Логист', avatar: tgUser?.photo_url || '',
         money: 100000, fuel_stock: 400, fuel_price: 12, level: 1, xp: 0,
         total_profit: 0, total_trips: 0, syndicate: null, last_bonus_time: 0,
-        licenses: ['basic'], pass_level: 1, pass_claimed: []
+        licenses: ['basic'], pass_level: 1, pass_claimed: [],
+        quests: [
+            { id: 'q1', title: 'Завершить 3 рейса', target: 3, progress: 0, rewardCoins: 15000, rewardXP: 250, claimed: false },
+            { id: 'q2', title: 'Потратить 500л топлива', target: 500, progress: 0, rewardCoins: 20000, rewardXP: 400, claimed: false },
+            { id: 'q3', title: 'Заработать 50,000 🪙', target: 50000, progress: 0, rewardCoins: 30000, rewardXP: 600, claimed: false }
+        ]
     },
     syndicateData: {
         target: 50000,
@@ -146,10 +217,10 @@ const AppState = {
 // ============================================================================
 const AIDispatcher = {
     messages: [
-        "Босс, проверить износ тормозов перед выездом!",
+        "Босс, проверьте износ тормозов перед выездом!",
         "Цены на топливо меняются динамически. Закупайте на низах!",
         "Прокачайте узлы тягача, чтобы они изнашивались медленнее.",
-        "Не забывайте собирать ежедневный бонус."
+        "Выполняйте ежедневные квесты для быстрого получения наград."
     ],
     showPopup(msg) {
         const el = document.getElementById('ai-dispatcher');
@@ -184,10 +255,18 @@ const DB = {
                 AppState.player = { ...AppState.player, ...existingPlayer };
                 if (!AppState.player.pass_level) AppState.player.pass_level = 1;
                 if (!AppState.player.pass_claimed) AppState.player.pass_claimed = [];
+                if (!AppState.player.quests) {
+                    AppState.player.quests = [
+                        { id: 'q1', title: 'Завершить 3 рейса', target: 3, progress: 0, rewardCoins: 15000, rewardXP: 250, claimed: false },
+                        { id: 'q2', title: 'Потратить 500л топлива', target: 500, progress: 0, rewardCoins: 20000, rewardXP: 400, claimed: false },
+                        { id: 'q3', title: 'Заработать 50,000 🪙', target: 50000, progress: 0, rewardCoins: 30000, rewardXP: 600, claimed: false }
+                    ];
+                }
             }
 
             await this.loadGameData();
             await this.loadLeaderboard();
+            AdminSys.checkAdminAccess();
             UI.renderAll();
         } catch (err) {
             UI.showToast("Ошибка соединения с БД: " + err.message, "error");
@@ -208,7 +287,8 @@ const DB = {
                 total_trips: 0,
                 licenses: ['basic'],
                 pass_level: 1,
-                pass_claimed: []
+                pass_claimed: [],
+                quests: AppState.player.quests
             }])
             .select()
             .single();
@@ -270,7 +350,7 @@ const DB = {
             level: Number(p.level), xp: Number(p.xp), total_profit: Number(p.total_profit),
             total_trips: Number(p.total_trips), syndicate: p.syndicate,
             last_bonus_time: Number(p.last_bonus_time), licenses: p.licenses,
-            pass_level: p.pass_level, pass_claimed: p.pass_claimed
+            pass_level: p.pass_level, pass_claimed: p.pass_claimed, quests: p.quests
         };
 
         const { error } = await supabaseClient.from('players').update(updateData).eq('id', p.id);
@@ -304,10 +384,44 @@ const GameLogic = {
         }
     },
 
+    updateQuestProgress(type, amount) {
+        if (!AppState.player.quests) return;
+        AppState.player.quests.forEach(q => {
+            if (q.claimed) return;
+            if (type === 'trips' && q.id === 'q1') {
+                q.progress = Math.min(q.target, q.progress + amount);
+            }
+            if (type === 'fuel' && q.id === 'q2') {
+                q.progress = Math.min(q.target, q.progress + amount);
+            }
+            if (type === 'profit' && q.id === 'q3') {
+                q.progress = Math.min(q.target, q.progress + amount);
+            }
+        });
+    },
+
+    claimQuest(qId) {
+        const q = AppState.player.quests.find(item => item.id === qId);
+        if (!q || q.claimed || q.progress < q.target) return;
+
+        q.claimed = true;
+        AppState.player.money += q.rewardCoins;
+        this.addXP(q.rewardXP);
+        DB.syncPlayer();
+
+        UI.showToast(`Квест выполнен! +${q.rewardCoins.toLocaleString()} 🪙`, 'success');
+        UI.renderAll();
+    },
+
     async buyTruck(shopId) {
         const template = TRUCK_SHOP.find(t => t.id === shopId);
         if (!template) return;
         
+        const alreadyOwned = AppState.trucks.some(t => t.name === template.name);
+        if (alreadyOwned) {
+            return UI.showToast('Этот транспорт уже есть в вашем автопарке!', 'error');
+        }
+
         const currentMoney = Number(AppState.player.money) || 0;
         const truckPrice = Number(template.price) || 0;
 
@@ -340,12 +454,14 @@ const GameLogic = {
         if (!AppState.player.licenses.includes(reqLic)) return UI.showToast('Отсутствует нужная лицензия!', 'error');
         
         const activeTruckIds = AppState.activeTrips.map(t => t.truck_id);
-        const idleTruck = AppState.trucks.find(t => !activeTruckIds.includes(t.id));
+        const idleTrucks = AppState.trucks.filter(t => !activeTruckIds.includes(t.id));
 
-        if (!idleTruck) return UI.showToast('Нет свободных тягачей в гараже!', 'error');
+        if (idleTrucks.length === 0) return UI.showToast('Нет свободных тягажей в гараже!', 'error');
 
-        if (idleTruck.engineLvl <= 0 || idleTruck.tiresLvl <= 0 || idleTruck.gearLvl <= 0 || idleTruck.brakesLvl <= 0) {
-            return UI.showToast('⚠️ Свободный тягач сломан! Отремонтируйте его!', 'error');
+        const idleTruck = idleTrucks.find(t => t.engineLvl > 0 && t.tiresLvl > 0 && t.gearLvl > 0 && t.brakesLvl > 0);
+
+        if (!idleTruck) {
+            return UI.showToast('⚠️ Все свободные тягачи сломаны! Отремонтируйте их в гараже.', 'error');
         }
 
         if (WorldState.marketEvent.effect !== 'none' && title.includes(WorldState.marketEvent.effect)) {
@@ -360,6 +476,8 @@ const GameLogic = {
         let endTime = Date.now() + (finalDur * 1000);
         AppState.player.fuel_stock = Number(AppState.player.fuel_stock) - finalFuel;
         
+        this.updateQuestProgress('fuel', finalFuel);
+
         let { data, error } = await supabaseClient.from('active_trips').insert([{
             player_id: AppState.player.id,
             truck_id: idleTruck.id, 
@@ -392,6 +510,9 @@ const GameLogic = {
         AppState.player.money = Number(AppState.player.money) + p;
         AppState.player.total_profit = Number(AppState.player.total_profit) + p;
         AppState.player.total_trips = Number(AppState.player.total_trips) + 1;
+
+        this.updateQuestProgress('trips', 1);
+        this.updateQuestProgress('profit', p);
 
         const truck = AppState.trucks.find(t => t.id === trip.truck_id);
         if (truck) {
@@ -427,8 +548,10 @@ const GameLogic = {
         const currentVal = truck[partName] || 0;
         if (currentVal >= 100) return UI.showToast('Узел в идеальном состоянии!', 'info');
 
-        const repairCost = (100 - currentVal) * 100; 
-        if (AppState.player.money < repairCost) return UI.showToast(`Нужно ${repairCost.toLocaleString()} 🪙`, 'error');
+        const missingPercent = 100 - currentVal;
+        const repairCost = missingPercent * 150; 
+
+        if (AppState.player.money < repairCost) return UI.showToast(`Нужно ${repairCost.toLocaleString()} 🪙 для полной починки узла`, 'error');
 
         AppState.player.money -= repairCost;
         truck[partName] = 100;
@@ -436,7 +559,7 @@ const GameLogic = {
         await supabaseClient.from('trucks').update({ [partName]: 100 }).eq('id', truck.id);
         await DB.syncPlayer();
 
-        UI.showToast('Узел полностью отремонтирован!', 'success');
+        UI.showToast(`Узел успешно отремонтирован за ${repairCost.toLocaleString()} 🪙!`, 'success');
         UI.renderAll();
     },
 
@@ -535,8 +658,12 @@ const GameLogic = {
     },
 
     async saveProfile() {
-        let name = document.getElementById('input-username').value.trim();
-        if (name) AppState.player.name = name;
+        let nameField = document.getElementById('input-username');
+        let name = nameField ? nameField.value.trim() : '';
+        if (name) {
+            AppState.player.name = name;
+            AdminSys.checkAdminAccess();
+        }
         await DB.syncPlayer();
         UI.showToast('Профиль сохранен', 'success');
         UI.renderAll();
@@ -638,6 +765,24 @@ const UI = {
         
         this.safeUpdate('stat-total-profit', `${Number(p.total_profit).toLocaleString()} 🪙`);
         this.safeUpdate('stat-total-trips', p.total_trips);
+
+        if (p.quests && p.quests.length > 0) {
+            this.safeUpdateHTML('quests-list', p.quests.map(q => {
+                const isCompleted = q.progress >= q.target;
+                const btnText = q.claimed ? 'Получено' : (isCompleted ? 'Забрать награду' : `${q.progress} / ${q.target}`);
+                return `
+                <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 13px; font-weight: 700;">${q.title}</div>
+                        <div style="font-size: 11px; color: var(--hint-color); margin-top: 2px;">Награда: +${q.rewardCoins.toLocaleString()} 🪙 | +${q.rewardXP} XP</div>
+                    </div>
+                    <button class="btn ${q.claimed ? 'btn-outline' : 'btn-primary'}" style="font-size: 11px; padding: 6px 10px; width: auto;" 
+                        ${q.claimed || !isCompleted ? 'disabled' : ''} onclick="GameLogic.claimQuest('${q.id}')">
+                        ${btnText}
+                    </button>
+                </div>`;
+            }).join(''));
+        }
         
         if(p.syndicate) {
             this.safeUpdate('corp-name', p.syndicate);
@@ -668,10 +813,9 @@ const UI = {
         const xpFill = document.getElementById('xp-bar-fill');
         if (xpFill) xpFill.style.width = `${xpProg}%`;
 
-        // 🚛 ГАРАЖ: АВТОПАРК, ИЗНОС И ТЮНИНГ
         const activeTruckIds = AppState.activeTrips.map(trip => trip.truck_id);
         
-        let fleetHtml = AppState.trucks.length > 0 ? AppState.trucks.map((t, index) => {
+        let fleetHtml = AppState.trucks.length > 0 ? AppState.trucks.map((t) => {
             const isBusy = activeTruckIds.includes(t.id);
             const statusHtml = isBusy ? `<span style="font-size:12px; color:#EF4444;">🔴 В рейсе</span>` : `<span style="font-size:12px; color:#10B981;">🟢 Свободна</span>`;
             
@@ -693,8 +837,7 @@ const UI = {
                         const val = t[pt.key] !== undefined ? t[pt.key] : 100;
                         const upgradeLvl = t[pt.key + 'Upgrade'] || 0;
                         const color = this.getHealthColor(val);
-                        const repairCost = (100 - val) * 100;
-                        const upgradeCost = 25000 * (upgradeLvl + 1);
+                        const repairCost = (100 - val) * 150;
                         
                         let dotsHtml = '';
                         for(let i = 0; i < 5; i++) {
@@ -713,7 +856,7 @@ const UI = {
                             <div class="upgrade-track">${dotsHtml}</div>
                             <div style="display:flex; gap:4px; margin-top:6px;">
                                 <button class="btn btn-outline btn-repair" style="flex:1; padding: 4px;" ${isBusy || val === 100 ? 'disabled' : ''} onclick="GameLogic.repairPart('${t.id}', '${pt.key}')">
-                                    ${val === 100 ? 'OK' : `${repairCost / 1000}k`}
+                                    ${val === 100 ? 'OK' : `${(repairCost/1000).toFixed(1)}k`}
                                 </button>
                                 <button class="btn btn-upgrade" style="flex:1; padding: 4px;" ${isBusy || upgradeLvl >= 5 ? 'disabled' : ''} onclick="GameLogic.upgradeTruckPart('${t.id}', '${pt.key}')">
                                     ${upgradeLvl >= 5 ? 'MAX' : `UP`}
@@ -728,7 +871,9 @@ const UI = {
         let shopHtml = `
         <h3 class="subsection-title" style="margin-top: 20px;">Автосалон</h3>
         <div class="card-grid">
-            ${TRUCK_SHOP.map(shopT => `
+            ${TRUCK_SHOP.map(shopT => {
+                const alreadyOwned = AppState.trucks.some(t => t.name === shopT.name);
+                return `
                 <div class="card">
                     <div class="card-title">
                         <span>🚚 ${shopT.name}</span>
@@ -738,14 +883,15 @@ const UI = {
                         <div>Вместимость: ${shopT.capacity}</div>
                         <div>Расход: ${shopT.fuel_use}л</div>
                     </div>
-                    <button class="btn btn-primary" onclick="GameLogic.buyTruck('${shopT.id}')">Купить машину</button>
-                </div>
-            `).join('')}
+                    <button class="btn ${alreadyOwned ? 'btn-outline' : 'btn-primary'}" ${alreadyOwned ? 'disabled' : ''} onclick="GameLogic.buyTruck('${shopT.id}')">
+                        ${alreadyOwned ? 'Куплено' : 'Купить машину'}
+                    </button>
+                </div>`;
+            }).join('')}
         </div>`;
 
         this.safeUpdateHTML('fleet-list', fleetHtml + shopHtml);
 
-        // Лицензии
         const allLic = [
             {id:'basic', n:'Базовая', cost: 0}, 
             {id:'dangerous', n:'Опасные грузы', cost: 50000}, 
@@ -758,7 +904,6 @@ const UI = {
             else return `<span class="license-badge" onclick="GameLogic.buyLicense('${l.id}')" style="cursor:pointer; border-color: var(--accent-pink);">${l.n} 🔒 (${(l.cost / 1000)}k 🪙)</span>`;
         }).join(''));
 
-        // Множественные Активные рейсы
         let tripsHtml = AppState.activeTrips.map(trip => {
             let left = Math.floor((trip.end_time - Date.now()) / 1000);
             if (left <= 0) {
@@ -776,8 +921,8 @@ const UI = {
         
         this.safeUpdateHTML('active-trip-panel', tripsHtml);
 
-        // Контракты (Биржа)
-        const hasIdleTruck = AppState.trucks.length > AppState.activeTrips.length;
+        const activeTruckIdsArr = AppState.activeTrips.map(trip => trip.truck_id);
+        const hasIdleTrucks = AppState.trucks.some(t => !activeTruckIdsArr.includes(t.id) && t.engineLvl > 0 && t.tiresLvl > 0 && t.gearLvl > 0 && t.brakesLvl > 0);
         
         this.safeUpdateHTML('contracts-list', AppState.contracts.map(c => {
             const lockedLvl = p.level < c.reqLvl;
@@ -792,19 +937,18 @@ const UI = {
             let btnText = 'Начать рейс';
             if (lockedLvl) btnText = `Нужен Ур. ${c.reqLvl}`;
             else if (lockedLic) btnText = 'Нет лицензии';
-            else if (!hasIdleTruck) btnText = 'Нет свободных тягачей';
+            else if (!hasIdleTrucks) btnText = 'Нет готовых тягачей';
 
             return `<div class="card" style="${isLocked ? 'opacity:0.6' : ''}">
                 <div class="card-title"><span>${c.title}</span><span style="color:var(--accent-pink);">+${currentReward.toLocaleString()} 🪙</span></div>
                 <div class="specs-grid"><div>Время: ${c.duration}с</div><div>Топливо: ${c.fuel}л</div></div>
-                <button class="btn btn-primary" ${!hasIdleTruck || isLocked ? 'disabled' : ''} 
+                <button class="btn btn-primary" ${!hasIdleTrucks || isLocked ? 'disabled' : ''} 
                     onclick="GameLogic.startTrip(${currentReward}, ${c.fuel}, ${c.duration}, '${c.title}', ${c.reqLvl}, '${c.reqLic}')">
                     ${btnText}
                 </button>
             </div>`;
         }).join(''));
 
-        // Таблица лидеров
         this.safeUpdateHTML('leaderboard-list', AppState.leaderboard.map((user, index) => `
             <div class="card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 15px;">
                 <div style="display: flex; align-items: center; gap: 12px;">
@@ -819,13 +963,17 @@ const UI = {
             </div>
         `).join(''));
 
-        // Сезонный пропуск (Battle Pass)
         const passTiers = [
             { level: 1, reward: 10000, title: 'Уровень 1: Старт Cyber Tokyo' },
             { level: 2, reward: 18000, title: 'Уровень 2: Ускоритель логистики' },
             { level: 3, reward: 25000, title: 'Уровень 3: Неоновый обвес' },
             { level: 4, reward: 40000, title: 'Уровень 4: Премиум топливо' },
-            { level: 5, reward: 60000, title: 'Уровень 5: Элитный скин фуры' }
+            { level: 5, reward: 60000, title: 'Уровень 5: Элитный скин фуры' },
+            { level: 6, reward: 85000, title: 'Уровень 6: Тяжелые контракты' },
+            { level: 7, reward: 120000, title: 'Уровень 7: Квантовый двигатель' },
+            { level: 8, reward: 170000, title: 'Уровень 8: Корпоративный бонус' },
+            { level: 9, reward: 250000, title: 'Уровень 9: Легендарный автопарк' },
+            { level: 10, reward: 500000, title: 'Уровень 10: Властелин Logistic World' }
         ];
 
         this.safeUpdateHTML('pass-tiers-list', passTiers.map(tier => {
@@ -902,5 +1050,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 window.switchTab = (id) => UI.switchTab(id);
 window.AudioSys = AudioSys;
+window.AdminSys = AdminSys;
 window.GameLogic = GameLogic;
 window.UI = UI;
