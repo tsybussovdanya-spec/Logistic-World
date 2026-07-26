@@ -113,6 +113,11 @@ const AppState = {
         total_profit: 0, total_trips: 0, syndicate: null, last_bonus_time: 0,
         licenses: ['basic'], pass_level: 1, pass_claimed: []
     },
+    syndicateData: {
+        target: 50000,
+        current: 12000,
+        reward: 250000
+    },
     trucks: [],
     activeTrip: null,
     leaderboard: [],
@@ -312,7 +317,6 @@ const GameLogic = {
             }
         }
 
-        // Влияние глобального рынка на цену контракта
         if (WorldState.marketEvent.effect !== 'none' && title.includes(WorldState.marketEvent.effect)) {
             reward = Math.floor(reward * WorldState.marketEvent.multiplier);
         }
@@ -357,7 +361,6 @@ const GameLogic = {
             const baseWear = Math.floor(Math.random() * 6) + 5; 
             const wMod = WorldState.weather.wearMod;
 
-            // Износ снижается в зависимости от уровня прокачки узла
             const engUp = mainTruck.engineLvlUpgrade || 0;
             const tiresUp = mainTruck.tiresLvlUpgrade || 0;
             const gearUp = mainTruck.gearLvlUpgrade || 0;
@@ -442,6 +445,32 @@ const GameLogic = {
         AppState.player.fuel_stock = Number(AppState.player.fuel_stock) + amount;
         await DB.syncPlayer();
         UI.showToast(`Куплено ${amount}л топлива`, 'success');
+        UI.renderAll();
+    },
+
+    async contributeToCoop(fuelAmount) {
+        if (!AppState.player.syndicate) {
+            return UI.showToast('Сначала вступите в корпорацию!', 'error');
+        }
+        
+        if (AppState.player.fuel_stock < fuelAmount) {
+            return UI.showToast(`Нужно ${fuelAmount}л топлива! У вас: ${AppState.player.fuel_stock}л`, 'error');
+        }
+
+        AppState.player.fuel_stock -= fuelAmount;
+        AppState.syndicateData.current += fuelAmount;
+
+        await DB.syncPlayer();
+        UI.showToast(`Вы пожертвовали ${fuelAmount}л топлива!`, 'success');
+
+        if (AppState.syndicateData.current >= AppState.syndicateData.target) {
+            UI.showToast('🎉 Контракт ВЫПОЛНЕН! Вы получили премию!', 'success');
+            AIDispatcher.showPopup("Орбитальная станция снабжена! Бонус зачислен.");
+            AppState.player.money += AppState.syndicateData.reward;
+            AppState.syndicateData.current = 0; 
+            await DB.syncPlayer();
+        }
+
         UI.renderAll();
     },
 
@@ -577,6 +606,26 @@ const UI = {
         if(p.syndicate) {
             this.safeUpdate('corp-name', p.syndicate);
             this.safeUpdate('corp-role', 'Ваша должность: Логист');
+            
+            const syn = AppState.syndicateData;
+            const pct = Math.min((syn.current / syn.target) * 100, 100).toFixed(1);
+            
+            this.safeUpdateHTML('coop-panel', `
+                <h4>Поставка для орбитальной станции</h4>
+                <p style="font-size:12px; color:var(--hint-color); margin: 4px 0;">Собрано топлива: ${syn.current.toLocaleString()} / ${syn.target.toLocaleString()} л</p>
+                <div class="progress-bar-container" style="margin: 8px 0;">
+                    <div class="progress-bar-fill" style="width: ${pct}%; background: var(--accent-blue); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);"></div>
+                </div>
+                <button type="button" class="btn btn-primary" style="background: var(--accent-blue);" onclick="GameLogic.contributeToCoop(500)">
+                    Пожертвовать 500л
+                </button>
+            `);
+        } else {
+            this.safeUpdate('corp-name', 'Синдикат не выбран');
+            this.safeUpdate('corp-role', 'Вам нужно вступить в корпорацию.');
+            this.safeUpdateHTML('coop-panel', `
+                <p style="font-size:12px; color:var(--hint-color); text-align:center;">Контракты корпорации станут доступны после вступления в Синдикат.</p>
+            `);
         }
 
         const xpProg = Math.min((p.xp / GameLogic.getReqXP(p.level)) * 100, 100);
@@ -772,7 +821,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(() => { if (AppState.activeTrip) UI.renderAll(); }, 1000);
     setInterval(() => { WorldState.generateWeather(); AIDispatcher.randomAdvice(); }, 60000);
     setInterval(() => { GameLogic.updateMarket(); }, 120000);
-    setInterval(() => { WorldState.generateMarketEvent(); }, 300000); // Ивенты меняются раз в 5 минут
+    setInterval(() => { WorldState.generateMarketEvent(); }, 300000);
 });
 
 window.switchTab = (id) => UI.switchTab(id);
