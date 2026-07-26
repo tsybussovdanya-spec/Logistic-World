@@ -21,9 +21,22 @@ const CONFIG = {
 
 const TRUCK_SHOP = [
     { id: 't1', name: 'ГАЗель "Метеор"', capacity: 1500, fuel_use: 20, rarity: 'common', price: 75000 },
-    { id: 't2', name: 'Volvo FH Neo', capacity: 5000, fuel_use: 45, rarity: 'rare', price: 250000 },
-    { id: 't3', name: 'Cyber Titan', capacity: 12000, fuel_use: 80, rarity: 'epic', price: 600000 },
-    { id: 't4', name: 'Quantum Leviathan', capacity: 25000, fuel_use: 120, rarity: 'legendary', price: 1500000 }
+    { id: 't2', name: 'ЗАЗ Карго', capacity: 2800, fuel_use: 30, rarity: 'common', price: 140000 },
+    { id: 't3', name: 'Volvo FH Neo', capacity: 5000, fuel_use: 45, rarity: 'rare', price: 250000 },
+    { id: 't4', name: 'Scania R730', capacity: 8500, fuel_use: 60, rarity: 'rare', price: 420000 },
+    { id: 't5', name: 'Cyber Titan', capacity: 12000, fuel_use: 80, rarity: 'epic', price: 600000 },
+    { id: 't6', name: 'Peterbilt 389 Custom', capacity: 17000, fuel_use: 100, rarity: 'epic', price: 950000 },
+    { id: 't7', name: 'Quantum Leviathan', capacity: 25000, fuel_use: 120, rarity: 'legendary', price: 1500000 },
+    { id: 't8', name: 'Titanium Goliath X', capacity: 40000, fuel_use: 180, rarity: 'legendary', price: 2800000 }
+];
+
+const LICENSES_SHOP = [
+    { id: 'basic', name: 'Базовая', type: 'legal', cost: 0, reqLvl: 1, col1: 'Риск: 0%', col2: 'Штраф: 0', col3: 'Бонус: 0%', col4: 'Скрытность: 100%', col5: 'Доступ: База' },
+    { id: 'dangerous', name: 'Опасные грузы', type: 'legal', cost: 50000, reqLvl: 5, col1: 'Риск: 5%', col2: 'Штраф: 10k', col3: 'Бонус: +10%', col4: 'Скрытность: 80%', col5: 'Доступ: Химия' },
+    { id: 'oversized', name: 'Негабарит', type: 'legal', cost: 150000, reqLvl: 10, col1: 'Риск: 2%', col2: 'Штраф: 25k', col3: 'Бонус: +25%', col4: 'Скрытность: 90%', col5: 'Доступ: Техника' },
+    { id: 'smuggling', name: 'Контрабанда', type: 'illegal', cost: 300000, reqLvl: 12, col1: 'Риск: 35%', col2: 'Штраф: 120k', col3: 'Бонус: +60%', col4: 'Скрытность: 40%', col5: 'Доступ: Теневой' },
+    { id: 'falsified_docs', name: 'Липовые допуски', type: 'illegal', cost: 600000, reqLvl: 15, col1: 'Риск: 55%', col2: 'Штраф: 250k', col3: 'Бонус: +120%', col4: 'Скрытность: 20%', col5: 'Доступ: Синдикат' },
+    { id: 'black_market', name: 'Черный коридор', type: 'illegal', cost: 1200000, reqLvl: 20, col1: 'Риск: 80%', col2: 'Штраф: 600k', col3: 'Бонус: +250%', col4: 'Скрытность: 10%', col5: 'Доступ: Элитный черный' }
 ];
 
 const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -121,7 +134,7 @@ const AdminSys = {
     },
     unlockAll() {
         if (!this.isAdmin()) return;
-        AppState.player.licenses = ['basic', 'dangerous', 'oversized'];
+        AppState.player.licenses = LICENSES_SHOP.map(l => l.id);
         TRUCK_SHOP.forEach(shopT => {
             if (!AppState.trucks.some(t => t.name === shopT.name)) {
                 AppState.trucks.push({
@@ -163,7 +176,7 @@ const WorldState = {
     generateMarketEvent() {
         const events = [
             { name: '⚖️ Стабильность', effect: 'none', multiplier: 1.0, desc: "Рынок стабилен, цены в норме." },
-            { name: '📈 Строительный бум', effect: 'Стройматериалы', multiplier: 1.5, desc: "Спрос на стройматериалы вырос! Награды за них увеличены на 50%." },
+            { name: '📈 Строительный бум', effect: 'Стройматериалы', multiplier: 1.5, desc: "Спрос на стройматериалы вырос! Награды увеличены на 50%." },
             { name: '⚡ Кризис микрочипов', effect: 'Электроника', multiplier: 1.8, desc: "Дефицит электроники! Платят почти вдвое больше." },
             { name: '🛢 Топливный кризис', effect: 'fuel_price', multiplier: 2.0, desc: "Цены на топливо взлетели! Экономьте бензин." }
         ];
@@ -189,6 +202,221 @@ const WorldState = {
             AppState.player.fuel_price = Math.floor(AppState.player.fuel_price * this.marketEvent.multiplier);
             UI.renderAll();
         }
+    }
+};
+
+// ============================================================================
+// ⚡ СИСТЕМА СЛУЧАЙНЫХ СОБЫТИЙ В ПУТИ (RANDOM EVENTS & ENCOUNTERS)
+// ============================================================================
+const EventSys = {
+    activeEvent: null,
+    timerInterval: null,
+
+    checkEventsForTrip(trip) {
+        if (this.activeEvent) return;
+
+        const chance = Math.random();
+        if (chance < 0.15) {
+            this.triggerEvent(trip, 'customs');
+        } else if (chance < 0.30) {
+            this.triggerEvent(trip, 'breakdown');
+        } else if (chance < 0.45) {
+            this.triggerEvent(trip, 'weather_traffic');
+        } else if (chance < 0.52) {
+            this.triggerEvent(trip, 'accident');
+        }
+    },
+
+    triggerEvent(trip, type) {
+        const tripTruck = AppState.trucks.find(t => String(t.id) === String(trip.truck_id));
+        const truckName = tripTruck ? tripTruck.name : 'Тягач';
+
+        let eventData = {
+            tripId: trip.id,
+            type: type,
+            timeLeft: 30,
+            title: '',
+            desc: '',
+            choices: []
+        };
+
+        switch(type) {
+            case 'breakdown':
+                eventData.title = `🛠 Поломка в пути: ${truckName}`;
+                eventData.desc = `Шеф! Узел машины не выдержал нагрузки. Движение остановлено, рейс заморожен!`;
+                eventData.choices = [
+                    { id: 1, text: 'Мобильный ремкомплект (Бесплатно)', action: () => EventSys.resolveEvent('breakdown_kit') },
+                    { id: 2, text: 'Вызвать эвакуатор и сервис (-15,000 🪙)', action: () => EventSys.resolveEvent('breakdown_tow') },
+                    { id: 3, text: 'Бросить машину / ждать помощи', action: () => EventSys.resolveEvent('breakdown_abandon') }
+                ];
+                break;
+
+            case 'weather_traffic':
+                eventData.title = `🌧 Дорожный затор / Шторм`;
+                eventData.desc = `Колонна встала из-за непогоды или пробки. Скорость упала к нулю.`;
+                eventData.choices = [
+                    { id: 1, text: 'Объехать по платной дороге (-5,000 🪙)', action: () => EventSys.resolveEvent('traffic_toll') },
+                    { id: 2, text: 'Переждать бурю (Потеря времени)', action: () => EventSys.resolveEvent('traffic_wait') },
+                    { id: 3, text: 'Рискнуть и гнать сквозь бурю', action: () => EventSys.resolveEvent('traffic_rush') }
+                ];
+                break;
+
+            case 'accident':
+                eventData.title = `💥 Дорожно-транспортное происшествие!`;
+                eventData.desc = `ЧП на дороге! Машина попала в жесткую аварию, часть груза повреждена.`;
+                eventData.choices = [
+                    { id: 1, text: 'Использовать страховку (Покрытие 80% ущерба)', action: () => EventSys.resolveEvent('accident_insured') },
+                    { id: 2, text: 'Обойтись своими силами (-50,000 🪙 штраф)', action: () => EventSys.resolveEvent('accident_raw') }
+                ];
+                break;
+
+            case 'customs':
+                eventData.title = `🚨 Таможенный и полицеский контроль`;
+                eventData.desc = `Шеф, нас тормозит патруль на посту! Требуют полный досмотр груза.`;
+                eventData.choices = [
+                    { id: 1, text: 'Дать взятку инспектору (-25,000 🪙)', action: () => EventSys.resolveEvent('customs_bribe') },
+                    { id: 2, text: 'Попытаться прорваться (Риск ареста)', action: () => EventSys.resolveEvent('customs_break') },
+                    { id: 3, text: 'Сотрудничать / Пройти досмотр', action: () => EventSys.resolveEvent('customs_legal') }
+                ];
+                break;
+        }
+
+        this.activeEvent = eventData;
+        this.renderEventModal();
+        this.startEventTimer();
+        AIDispatcher.showPopup(`⚠️ Внимание! Форс-мажор в активном рейсе!`);
+    },
+
+    startEventTimer() {
+        if (this.timerInterval) clearInterval(this.timerInterval);
+        
+        this.timerInterval = setInterval(() => {
+            if (!this.activeEvent) {
+                clearInterval(this.timerInterval);
+                return;
+            }
+
+            this.activeEvent.timeLeft--;
+            UI.safeUpdate('event-timer-badge', `⏳ ${this.activeEvent.timeLeft}с`);
+
+            if (this.activeEvent.timeLeft <= 0) {
+                clearInterval(this.timerInterval);
+                this.handleTimeout();
+            }
+        }, 1000);
+    },
+
+    handleTimeout() {
+        UI.showToast('Время истекло! Сработал худший сценарий по умолчанию.', 'error');
+        this.closeEventModal();
+        AppState.player.money = Math.max(0, AppState.player.money - 10000);
+        DB.syncPlayer();
+        UI.renderAll();
+    },
+
+    resolveEvent(actionId) {
+        if (this.timerInterval) clearInterval(this.timerInterval);
+
+        switch(actionId) {
+            case 'breakdown_kit':
+                UI.showToast('Ремонт на месте завершен успешно!', 'success');
+                break;
+            case 'breakdown_tow':
+                if (AppState.player.money < 15000) {
+                    UI.showToast('Недостаточно средств на эвакуатор! Штраф.', 'error');
+                } else {
+                    AppState.player.money -= 15000;
+                    UI.showToast('Эвакуатор доставил тягач в сервис.', 'info');
+                }
+                break;
+            case 'breakdown_abandon':
+                UI.showToast('Машина брошена на трассе, задержка рейса увеличена.', 'error');
+                AppState.player.total_profit = Math.max(0, AppState.player.total_profit - 5000);
+                break;
+            case 'traffic_toll':
+                if (AppState.player.money >= 5000) {
+                    AppState.player.money -= 5000;
+                    UI.showToast('Платная дорога успешно пройдена!', 'success');
+                } else {
+                    UI.showToast('Нет денег на платку! Пришлось стоять в пробке.', 'error');
+                }
+                break;
+            case 'traffic_wait':
+                UI.showToast('Буря переждана, потеряно драгоценное время.', 'info');
+                break;
+            case 'traffic_rush':
+                if (Math.random() > 0.5) {
+                    UI.showToast('Успешно проскочили сквозь бурю на адреналине!', 'success');
+                } else {
+                    UI.showToast('Авария при проезде шторма! Поломка узлов.', 'error');
+                }
+                break;
+            case 'accident_insured':
+                UI.showToast('Страховая компания покрыла 80% убытков.', 'success');
+                break;
+            case 'accident_raw':
+                AppState.player.money = Math.max(0, AppState.player.money - 50000);
+                UI.showToast('Огромный штраф за ДТП и ремонт выплачен!', 'error');
+                break;
+            case 'customs_bribe':
+                if (AppState.player.money >= 25000) {
+                    AppState.player.money -= 25000;
+                    UI.showToast('Инспектор взял взятку и закрыл глаза.', 'success');
+                } else {
+                    UI.showToast('Не хватило денег на взятку! Груз конфискован.', 'error');
+                }
+                break;
+            case 'customs_break':
+                if (Math.random() > 0.6) {
+                    UI.showToast('Удачный прорыв блокады! Пост остался позади.', 'success');
+                } else {
+                    UI.showToast('Погоня! Груз арестован, штраф списан.', 'error');
+                    AppState.player.money = Math.max(0, AppState.player.money - 80000);
+                }
+                break;
+            case 'customs_legal':
+                UI.showToast('Досмотр пройден штатно. Чистая репутация.', 'success');
+                break;
+        }
+
+        this.closeEventModal();
+        DB.syncPlayer();
+        UI.renderAll();
+    },
+
+    renderEventModal() {
+        let existingModal = document.getElementById('event-modal');
+        if (existingModal) existingModal.remove();
+
+        const ev = this.activeEvent;
+        if (!ev) return;
+
+        const modalHtml = `
+        <div id="event-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(8px);">
+            <div class="card" style="width: 100%; max-width: 400px; border-color: var(--accent-pink); box-shadow: 0 0 30px rgba(236, 72, 153, 0.3);">
+                <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: var(--accent-pink);">${ev.title}</span>
+                    <span id="event-timer-badge" style="background: rgba(236,72,153,0.2); padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: bold;">⏳ ${ev.timeLeft}с</span>
+                </div>
+                <p style="font-size: 13px; color: var(--hint-color); margin: 12px 0 16px 0; line-height: 1.4;">${ev.desc}</p>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    ${ev.choices.map((choice, idx) => `
+                        <button type="button" class="btn btn-outline" style="text-align: left; font-size: 12px; padding: 10px; border-color: var(--accent-blue); color: #fff;" onclick="EventSys.resolveEvent('${['breakdown_kit','breakdown_tow','breakdown_abandon','traffic_toll','traffic_wait','traffic_rush','accident_insured','accident_raw','customs_bribe','customs_break','customs_legal'][idx]}')">
+                            👉 ${choice.text}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        </div>`;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    },
+
+    closeEventModal() {
+        const modal = document.getElementById('event-modal');
+        if (modal) modal.remove();
+        this.activeEvent = null;
+        if (this.timerInterval) clearInterval(this.timerInterval);
     }
 };
 
@@ -221,10 +449,9 @@ const AppState = {
         { id: 3, title: 'Обычный: Электроника', reward: 25000, fuel: 220, duration: 60, reqLvl: 5, reqLic: 'basic' },
         { id: 4, title: 'Опасный: Химикаты', reward: 40000, fuel: 350, duration: 120, reqLvl: 6, reqLic: 'dangerous' },
         { id: 5, title: 'Опасный: Топливо', reward: 65000, fuel: 500, duration: 240, reqLvl: 8, reqLic: 'dangerous' },
-        { id: 6, title: 'Опасный: Изотопы', reward: 90000, fuel: 700, duration: 360, reqLvl: 10, reqLic: 'dangerous' },
-        { id: 7, title: 'Негабарит: Спецтехника', reward: 150000, fuel: 1000, duration: 600, reqLvl: 12, reqLic: 'oversized' },
-        { id: 8, title: 'Негабарит: Турбины', reward: 280000, fuel: 1500, duration: 1200, reqLvl: 15, reqLic: 'oversized' },
-        { id: 9, title: 'Негабарит: Ракета', reward: 500000, fuel: 2500, duration: 1800, reqLvl: 20, reqLic: 'oversized' }
+        { id: 6, title: 'Негабарит: Спецтехника', reward: 150000, fuel: 1000, duration: 600, reqLvl: 12, reqLic: 'oversized' },
+        { id: 7, title: 'Нелегальный: Контрабанда', reward: 220000, fuel: 1200, duration: 900, reqLvl: 12, reqLic: 'smuggling' },
+        { id: 8, title: 'Нелегальный: Синдикатный груз', reward: 450000, fuel: 1800, duration: 1500, reqLvl: 15, reqLic: 'falsified_docs' }
     ]
 };
 
@@ -684,18 +911,24 @@ const GameLogic = {
     },
 
     async buyLicense(licId) {
-        if (AppState.player.licenses.includes(licId)) return UI.showToast('Лицензия уже куплена!', 'info');
-        const prices = { 'dangerous': 50000, 'oversized': 150000 };
-        const cost = prices[licId];
-        if (!cost) return;
+        if (AppState.player.licenses.includes(licId)) return UI.showToast('Лицензия уже приобретена!', 'info');
+        
+        const lic = LICENSES_SHOP.find(l => l.id === licId);
+        if (!lic) return;
 
-        if (AppState.player.money < cost) return UI.showToast(`Нужно ${cost.toLocaleString()} 🪙`, 'error');
+        if (AppState.player.level < lic.reqLvl) {
+            return UI.showToast(`Требуется ${lic.reqLvl} уровень!`, 'error');
+        }
 
-        AppState.player.money = Number(AppState.player.money) - cost;
+        if (AppState.player.money < lic.cost) {
+            return UI.showToast(`Нужно ${lic.cost.toLocaleString()} 🪙`, 'error');
+        }
+
+        AppState.player.money = Number(AppState.player.money) - lic.cost;
         AppState.player.licenses.push(licId);
         
         await DB.syncPlayer();
-        UI.showToast('Лицензия приобретена!', 'success');
+        UI.showToast(`Лицензия "${lic.name}" успешно получена!`, 'success');
         UI.renderAll();
     },
 
@@ -934,17 +1167,33 @@ const UI = {
 
         this.safeUpdateHTML('fleet-list', fleetHtml + shopHtml);
 
-        const allLic = [
-            {id:'basic', n:'Базовая', cost: 0}, 
-            {id:'dangerous', n:'Опасные грузы', cost: 50000}, 
-            {id:'oversized', n:'Негабарит', cost: 150000}
-        ];
-        
-        this.safeUpdateHTML('licenses-list', allLic.map(l => {
+        let licensesHtml = LICENSES_SHOP.map(l => {
             const hasLicense = p.licenses.includes(l.id);
-            if (hasLicense) return `<span class="license-badge active">${l.n}</span>`;
-            else return `<span class="license-badge" onclick="GameLogic.buyLicense('${l.id}')" style="cursor:pointer; border-color: var(--accent-pink);">${l.n} 🔒 (${(l.cost / 1000)}k 🪙)</span>`;
-        }).join(''));
+            const isIllegal = l.type === 'illegal';
+            const borderColor = isIllegal ? 'var(--accent-pink)' : 'var(--accent-blue)';
+            
+            return `
+            <div class="card" style="border-color: ${borderColor}; margin-bottom: 10px;">
+                <div class="card-title">
+                    <span>${isIllegal ? '🥷' : '📜'} ${l.name} ${isIllegal ? '(Нелегально)' : ''}</span>
+                    <span style="color: ${hasLicense ? '#10B981' : 'var(--accent-pink)'};">${hasLicense ? 'Куплено' : `${l.cost.toLocaleString()} 🪙`}</span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; font-size: 10px; color: var(--hint-color); margin: 8px 0; text-align: center; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 6px;">
+                    <div>${l.col1}</div>
+                    <div>${l.col2}</div>
+                    <div>${l.col3}</div>
+                    <div>${l.col4}</div>
+                    <div>${l.col5}</div>
+                </div>
+                <button class="btn ${hasLicense ? 'btn-outline' : 'btn-primary'}" 
+                    ${hasLicense ? 'disabled' : ''} 
+                    onclick="GameLogic.buyLicense('${l.id}')">
+                    ${hasLicense ? 'Активировано' : 'Приобрести'}
+                </button>
+            </div>`;
+        }).join('');
+
+        this.safeUpdateHTML('licenses-list', licensesHtml);
 
         let tripsHtml = AppState.activeTrips.map(trip => {
             let left = Math.floor((trip.end_time - Date.now()) / 1000);
@@ -952,6 +1201,11 @@ const UI = {
                 GameLogic.finishTrip(trip.id);
                 return '';
             }
+            
+            if (Math.random() < 0.05) {
+                EventSys.checkEventsForTrip(trip);
+            }
+
             const tripTruck = AppState.trucks.find(t => String(t.id) === String(trip.truck_id));
             const truckName = tripTruck ? tripTruck.name : 'Фура';
             
@@ -1091,4 +1345,5 @@ window.switchTab = (id) => UI.switchTab(id);
 window.AudioSys = AudioSys;
 window.AdminSys = AdminSys;
 window.GameLogic = GameLogic;
+window.EventSys = EventSys;
 window.UI = UI;
