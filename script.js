@@ -1210,7 +1210,8 @@ const UI = {
                 return '';
             }
             
-            if (Math.random() < 0.05) {
+            // Уменьшенный шанс для редких случайных событий в пути (~0.8%)
+            if (Math.random() < 0.008) {
                 EventSys.checkEventsForTrip(trip);
             }
 
@@ -1344,9 +1345,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     setInterval(() => { if (AppState.activeTrips.length > 0) UI.renderAll(); }, 1000);
-    setInterval(() => { WorldState.generateWeather(); AIDispatcher.randomAdvice(); }, 60000);
-    setInterval(() => { GameLogic.updateMarket(); }, 120000);
-    setInterval(() => { WorldState.generateMarketEvent(); }, 300000);
+    
+    // Сбалансированные интервалы (погода и советы раз в 3 минуты, рынок раз в 10 минут)
+    setInterval(() => { WorldState.generateWeather(); AIDispatcher.randomAdvice(); }, 180000);
+    setInterval(() => { GameLogic.updateMarket(); }, 240000);
+    setInterval(() => { WorldState.generateMarketEvent(); }, 600000);
 });
 
 window.switchTab = (id) => UI.switchTab(id);
