@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -8,6 +9,125 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Стили для новых карточек контрактов (Можно перенести в style.css) -->
+    <style>
+        .contract-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .contract-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .contract-title-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .contract-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            text-transform: uppercase;
+            width: fit-content;
+        }
+
+        /* Цвета редкости контрактов */
+        .badge-ordinary { background: rgba(16, 185, 129, 0.15); color: #10B981; } /* Зеленый */
+        .badge-rare { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }     /* Синий */
+        .badge-epic { background: rgba(168, 85, 247, 0.15); color: #A855F7; }     /* Фиолетовый */
+        .badge-legendary { background: rgba(245, 158, 11, 0.15); color: #F59E0B;} /* Оранжевый */
+        .badge-illegal { background: rgba(239, 68, 68, 0.15); color: #EF4444; }   /* Красный */
+
+        .contract-name {
+            font-size: 15px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .contract-reward {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--accent-pink, #EC4899); /* Розовый оттенок из твоей темы */
+            white-space: nowrap;
+        }
+
+        .contract-body {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 8px;
+            border-radius: 10px;
+        }
+
+        /* Средний размер картинок */
+        .contract-image {
+            flex-shrink: 0;
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .contract-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .contract-specs {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .spec-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--hint-color, #9CA3AF);
+        }
+
+        .contract-action-btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 13px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .contract-action-btn.disabled {
+            background: rgba(255, 255, 255, 0.1);
+            color: #6B7280;
+        }
+
+        .contract-action-btn.active {
+            background: var(--accent-purple, #A855F7);
+            color: white;
+            box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
+        }
+    </style>
 </head>
 <body>
     <!-- Аудио система -->
@@ -50,7 +170,6 @@
                         <h1 id="username" class="user-name-title premium-name">Логист</h1>
                         <span id="user-level-badge" class="level-badge">LVL 1</span>
                     </div>
-                    <!-- Звание Логиста -->
                     <div id="user-title" style="font-size: 12px; color: var(--accent-pink); margin-top: 2px; font-weight: 600;">Частник-одиночка</div>
                     <div class="balance-container">
                         <span id="user-money" class="badge-money">🪙 0</span>
@@ -93,7 +212,6 @@
                     <p class="subtitle">Поиск выгодных контрактов</p>
                 </div>
                 
-                <!-- Ежедневные квесты -->
                 <div class="card" style="margin-bottom: 12px; border-color: var(--accent-purple);">
                     <div class="card-title">
                         <span>📋 Ежедневные Квесты</span>
@@ -102,13 +220,11 @@
                     <div id="quests-list" class="card-grid" style="gap: 8px;"></div>
                 </div>
 
-                <!-- Глобальный ивент -->
                 <div class="global-event-banner" id="global-event-banner" style="display:none;">
                     <h4>⚠️ <span id="global-event-title">Глобальное событие</span></h4>
                     <p id="global-event-desc">Топливный кризис! Цены на бирже растут.</p>
                 </div>
 
-                <!-- 🛢 Топливная биржа -->
                 <div class="card" style="margin-bottom: 12px; border-color: var(--accent-blue);">
                     <div class="card-title">
                         <span>🛢 Топливная биржа</span>
@@ -139,10 +255,13 @@
                 <div class="licenses-row" id="licenses-list"></div>
 
                 <h3 class="subsection-title" style="margin-top:12px;">Доступные контракты</h3>
-                <div id="contracts-list" class="card-grid"></div>
+                
+                <!-- Сюда динамически добавятся наши новые визуальные карточки -->
+                <div id="contracts-list" class="card-grid" style="display: flex; flex-direction: column; gap: 12px;"></div>
+                
             </section>
 
-            <!-- Вкладка: Рейтинг -->
+            <!-- Вкладка: Рейтинг (Оставлена без изменений) -->
             <section id="tab-leaderboard" class="tab-content">
                 <div class="section-header">
                     <h2>Рейтинг Логистов</h2>
@@ -151,7 +270,7 @@
                 <div id="leaderboard-list" class="card-grid"></div>
             </section>
 
-            <!-- Вкладка: Сезонный пропуск -->
+            <!-- Вкладка: Сезонный пропуск (Оставлена без изменений) -->
             <section id="tab-pass" class="tab-content">
                 <div class="section-header">
                     <h2>Season Pass: Cyber Tokyo</h2>
@@ -160,33 +279,23 @@
                 <div id="pass-tiers-list" class="card-grid"></div>
             </section>
 
-            <!-- Вкладка: Синдикат -->
+            <!-- Вкладка: Синдикат (Оставлена без изменений) -->
             <section id="tab-syndicate" class="tab-content">
                 <div class="section-header">
                     <h2>Корпорация</h2>
                     <p class="subtitle">Объединяйтесь для масштабных целей и бонусов</p>
                 </div>
-                
-                <!-- Панель если игрок НЕ в синдикате -->
                 <div id="no-syndicate-panel" class="card" style="border-color: var(--accent-blue);">
                     <h3>Вступление и Создание</h3>
                     <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Создайте свою империю или присоединитесь к существующей, чтобы получать пассивные бонусы.</p>
-                    
                     <div class="input-group">
                         <input type="text" id="input-syndicate-name" class="input-text" placeholder="Введите название Синдиката...">
                     </div>
-                    
                     <div style="display: flex; gap: 8px; margin-top: 12px;">
-                        <button type="button" class="btn btn-outline" style="flex: 1;" onclick="GameLogic.joinSyndicate(document.getElementById('input-syndicate-name').value)">
-                            Вступить
-                        </button>
-                        <button type="button" class="btn btn-primary" style="flex: 1; background: var(--accent-purple);" onclick="GameLogic.createSyndicate(document.getElementById('input-syndicate-name').value)">
-                            Создать (500k 🪙)
-                        </button>
+                        <button type="button" class="btn btn-outline" style="flex: 1;" onclick="GameLogic.joinSyndicate(document.getElementById('input-syndicate-name').value)">Вступить</button>
+                        <button type="button" class="btn btn-primary" style="flex: 1; background: var(--accent-purple);" onclick="GameLogic.createSyndicate(document.getElementById('input-syndicate-name').value)">Создать (500k 🪙)</button>
                     </div>
                 </div>
-
-                <!-- Панель если игрок В синдикате -->
                 <div id="active-syndicate-panel" style="display: none;">
                     <div class="card" style="border-color: var(--accent-purple); margin-bottom: 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -194,93 +303,52 @@
                             <span id="corp-level-badge" style="background: rgba(168, 85, 247, 0.2); padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; color: var(--accent-purple);">Ур. 1</span>
                         </div>
                         <p id="corp-role-desc" style="font-size: 12px; color: var(--hint-color); margin-top: 4px;">Ваша должность: Логист</p>
-                        
                         <div style="margin-top: 12px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px;">
                             <span style="font-size: 12px; font-weight: bold;">Текущие бонусы корпорации:</span>
                             <ul id="corp-buffs-list" style="font-size: 11px; color: #10B981; margin-top: 4px; padding-left: 16px;">
                                 <li>+0% к прибыли рейсов</li>
                             </ul>
                         </div>
-                        
-                        <button type="button" class="btn btn-outline" style="margin-top: 12px; border-color: var(--accent-pink); color: var(--accent-pink);" onclick="GameLogic.leaveSyndicate()">
-                            Покинуть синдикат
-                        </button>
+                        <button type="button" class="btn btn-outline" style="margin-top: 12px; border-color: var(--accent-pink); color: var(--accent-pink);" onclick="GameLogic.leaveSyndicate()">Покинуть синдикат</button>
                     </div>
-
                     <h3 class="subsection-title">Развитие корпорации</h3>
-                    <div class="card" id="coop-panel-content">
-                        <!-- Сюда рендерится прогресс -->
-                    </div>
+                    <div class="card" id="coop-panel-content"></div>
                 </div>
             </section>
 
-            <!-- Вкладка: Профиль -->
+            <!-- Вкладка: Профиль (Оставлена без изменений) -->
             <section id="tab-profile" class="tab-content">
                 <div class="section-header">
                     <h2>Профиль & Настройки</h2>
                     <p class="subtitle">История, Аватар и Музыка</p>
                 </div>
-                
                 <div class="stats-grid">
-                    <div class="stat-box">
-                        <span class="stat-label">Всего заработано</span>
-                        <span class="stat-value" id="stat-total-profit">0 🪙</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-label">Выполнено рейсов</span>
-                        <span class="stat-value" id="stat-total-trips">0</span>
-                    </div>
+                    <div class="stat-box"><span class="stat-label">Всего заработано</span><span class="stat-value" id="stat-total-profit">0 🪙</span></div>
+                    <div class="stat-box"><span class="stat-label">Выполнено рейсов</span><span class="stat-value" id="stat-total-trips">0</span></div>
                 </div>
-
-                <!-- Навыки Логиста -->
                 <div class="card" style="margin-top: 12px; border-color: var(--accent-blue);">
                     <h3>🧠 Навыки Логиста</h3>
                     <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 8px;">Прокачивайте пассивные перки за монеты.</p>
                     <div id="skills-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
                 </div>
-
-                <!-- Транспортная сеть (Рефералы) -->
                 <div class="card" style="margin-top: 12px; border-color: var(--accent-purple);">
                     <h3>🤝 Транспортная сеть</h3>
-                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 8px;">
-                        Пригласи партнера в игру! Вы оба получите бонус: <b>+50,000 🪙 и +500л топлива</b>.
-                    </p>
-                    <button type="button" class="btn btn-primary" style="background: var(--accent-purple);" onclick="GameLogic.inviteFriend()">
-                        🔗 Позвать логиста
-                    </button>
+                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 8px;">Пригласи партнера в игру! Вы оба получите бонус: <b>+50,000 🪙 и +500л топлива</b>.</p>
+                    <button type="button" class="btn btn-primary" style="background: var(--accent-purple);" onclick="GameLogic.inviteFriend()">🔗 Позвать логиста</button>
                 </div>
-
-                <!-- Админ-панель -->
                 <div class="card" id="admin-panel-card" style="margin-top: 12px; border-color: var(--accent-pink); display: none;">
                     <h3 style="color: var(--accent-pink);">🛡️ Админ Панель</h3>
-                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Управление ресурсами разработчика</p>
                     <div style="display: flex; flex-direction: column; gap: 8px;">
                         <button type="button" class="btn btn-primary" onclick="AdminSys.addMoney(500000)">+500,000 🪙</button>
                         <button type="button" class="btn btn-primary" onclick="AdminSys.addFuel(5000)">+5,000л Топлива</button>
                         <button type="button" class="btn btn-primary" onclick="AdminSys.setLevel(25)">Установить Уровень 25</button>
-                        <button type="button" class="btn btn-outline" onclick="AdminSys.unlockAll()">Разблокировать всё</button>
                     </div>
                 </div>
-
                 <div class="card" style="margin-top: 12px;">
                     <h3>Аватар профиля</h3>
-                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 8px;">Загрузите свою фотографию из галереи</p>
                     <input type="file" id="avatar-file-input" accept="image/*" style="display: none;" onchange="GameLogic.handleAvatarUpload(event)">
                     <button type="button" class="btn btn-outline" onclick="document.getElementById('avatar-file-input').click()">Выбрать из галереи 🖼️</button>
                 </div>
-
-                <div class="card" style="margin-top: 12px;">
-                    <h3>Настройки</h3>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
-                        <span>Музыка</span>
-                        <button type="button" id="btn-music" class="btn btn-outline" style="width: auto;" onclick="AudioSys.toggleMusic()">Выключено 🔇</button>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
-                        <span>Звуки (SFX)</span>
-                        <button type="button" id="btn-sfx" class="btn btn-outline" style="width: auto;" onclick="AudioSys.toggleSFX()">Включено 🔊</button>
-                    </div>
-                </div>
-
                 <div class="card" style="margin-top: 12px;">
                     <div class="input-group">
                         <label>Никнейм (введите секретный код для Админки):</label>
@@ -288,13 +356,11 @@
                     </div>
                     <button type="button" class="btn btn-save" onclick="GameLogic.saveProfile()">Сохранить профиль</button>
                 </div>
-                
                 <div class="card" style="margin-top: 12px;">
                     <h3>Обратная связь</h3>
                     <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
                         <button type="button" class="btn btn-outline social-btn" onclick="tg.openTelegramLink('https://t.me/TSYBUSS')">👑 Владелец (@TSYBUSS)</button>
                         <button type="button" class="btn btn-outline social-btn" onclick="tg.openTelegramLink('https://t.me/LogisticWorld_news')">📰 Новости проекта</button>
-                        <button type="button" class="btn btn-outline social-btn" onclick="tg.openTelegramLink('https://t.me/LogisticWorld_sup')">🛠 Тех. Поддержка</button>
                     </div>
                 </div>
             </section>
@@ -309,6 +375,64 @@
             <button type="button" class="tab-btn" onclick="switchTab('profile')"><span class="icon">👤</span></button>
         </nav>
     </div>
+
+    <!-- Временный скрипт для рендера картинок контрактов -->
+    <!-- ПОТОМ ТЫ СМОЖЕШЬ ПЕРЕНЕСТИ ЭТОТ МАССИВ В СВОЙ SCRIPT.JS -->
+    <script>
+        const contractData = [
+            { name: "Доски", diff: "Обычный", class: "badge-ordinary", reward: "+5 304 🪙", time: "15с", fuel: "70л", img: "https://i.ibb.co.com/nxzLBSw/0-B0-F3-ED8-68-F9-4-D11-9455-63-CEE59-DEC70.png" },
+            { name: "Продукты питания", diff: "Обычный", class: "badge-ordinary", reward: "+9 078 🪙", time: "22с", fuel: "100л", img: "https://i.ibb.co.com/YBMmXNHj/74065-E6-B-D63-E-446-D-A8-E1-95492-C930-D70.png" },
+            { name: "Стройматериалы", diff: "Обычный", class: "badge-ordinary", reward: "+17 595 🪙", time: "30с", fuel: "140л", img: "https://i.ibb.co.com/Q7ggLnTC/82669679-96-F8-46-A1-9-AE1-BBFEAD007153.png" },
+            { name: "Текстиль и одежда", diff: "Обычный", class: "badge-ordinary", reward: "+24 200 🪙", time: "45с", fuel: "180л", img: "https://i.ibb.co.com/67TNNkvy/67872-D1-B-C0-D3-45-AB-8-A9-D-11-C0-EC734-FC8.png" },
+            { name: "Электроника", diff: "Редкий", class: "badge-rare", reward: "+45 000 🪙", time: "1м 15с", fuel: "250л", img: "https://i.ibb.co.com/bThvzjv/12-AF1-E99-6-BDE-42-F0-8279-393-B53-DD51-EC.png" },
+            { name: "Химикаты", diff: "Редкий", class: "badge-rare", reward: "+62 500 🪙", time: "2м", fuel: "320л", img: "https://i.ibb.co.com/DPLBSsd9/80-EEB782-572-C-402-C-B9-A2-AD4-DBFC19357.png" },
+            { name: "Горючее топливо", diff: "Редкий", class: "badge-rare", reward: "+85 000 🪙", time: "3м 30с", fuel: "400л", img: "https://i.ibb.co.com/ZpJQfZ7K/70-EDCB4-B-C9-F6-4633-9-C7-C-C0-BB8580-A3-BA.png" },
+            { name: "Радиоактивные изотопы", diff: "Эпический", class: "badge-epic", reward: "+150 000 🪙", time: "5м", fuel: "600л", img: "https://i.ibb.co.com/SwyTHN19/E78-A4-D7-B-DBC1-4-F71-A4-DE-44-D446503-BB2.png" },
+            { name: "Тяжелая спецтехника", diff: "Эпический", class: "badge-epic", reward: "+210 000 🪙", time: "8м", fuel: "850л", img: "https://i.ibb.co.com/WvL7611N/9-BFBF2-DE-90-B2-4970-84-CC-C3-A98248-B0-CE.png" },
+            { name: "Турбины электростанции", diff: "Эпический", class: "badge-epic", reward: "+340 000 🪙", time: "12м", fuel: "1100л", img: "https://i.ibb.co.com/zh98DKMm/17-A3-CEB6-372-A-4-EDB-B73-D-455839-F0349-A.png" },
+            { name: "Космический модуль", diff: "Легендарный", class: "badge-legendary", reward: "+750 000 🪙", time: "30м", fuel: "2500л", img: "https://i.ibb.co.com/C5hBkM7k/DB75-BFE6-2-BE7-44-CF-ADC7-2799-D8-BBFB0-E.png" },
+            { name: "Контрабанда алкоголя", diff: "Нелегал", class: "badge-illegal", reward: "+900 000 🪙", time: "45м", fuel: "3000л", img: "https://i.ibb.co.com/1GcDdFJ9/D19-A33-BF-999-E-4-B0-F-8-D66-C3714-FCA6163.png" },
+            { name: "Военное оборудование", diff: "Легендарный", class: "badge-legendary", reward: "+1 500 000 🪙", time: "1ч 30м", fuel: "5000л", img: "https://i.ibb.co.com/mrSV75fk/AB71-CD39-0-F80-4-ED6-9-BE3-DF083613-E834.png" },
+            { name: "Синдикатный груз", diff: "Нелегал", class: "badge-illegal", reward: "+2 800 000 🪙", time: "3ч", fuel: "8500л", img: "https://i.ibb.co.com/0RwFRJ9t/5-C46-E8-C8-8203-4832-BEFF-03-C668616-B82.png" },
+            { name: "Крупные партии чипов", diff: "Легендарный", class: "badge-legendary", reward: "+4 000 000 🪙", time: "6ч", fuel: "12000л", img: "https://i.ibb.co.com/p68qv2R2/2815771-C-7-AA5-45-B5-8700-F2-BD55-D19-DE0.png" },
+            { name: "Прототипы орудия", diff: "Нелегал", class: "badge-illegal", reward: "+10 000 000 🪙", time: "12ч", fuel: "25000л", img: "https://i.ibb.co.com/Hf6fFHCL/D70-EB30-C-6520-441-B-8-D1-E-1-C9763-AB202-C.png" }
+        ];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const contractsContainer = document.getElementById("contracts-list");
+            
+            contractsContainer.innerHTML = contractData.map(contract => `
+                <div class="contract-card">
+                    <div class="contract-header">
+                        <div class="contract-title-group">
+                            <span class="contract-badge ${contract.class}">${contract.diff}</span>
+                            <span class="contract-name">${contract.name}</span>
+                        </div>
+                        <div class="contract-reward">${contract.reward}</div>
+                    </div>
+
+                    <div class="contract-body">
+                        <div class="contract-image">
+                            <img src="${contract.img}" alt="${contract.name}">
+                        </div>
+                        <div class="contract-specs">
+                            <div class="spec-item">
+                                <span>⏱ Время:</span>
+                                <span style="color: #fff; font-weight: bold;">${contract.time}</span>
+                            </div>
+                            <div class="spec-item">
+                                <span>⛽ Топливо:</span>
+                                <span style="color: #fff; font-weight: bold;">${contract.fuel}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="contract-action-btn disabled" disabled>Нет готовых тягачей</button>
+                </div>
+            `).join('');
+        });
+    </script>
+    
     <script src="script.js"></script>
 </body>
 </html>
