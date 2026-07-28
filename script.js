@@ -468,22 +468,22 @@ const AppState = {
     activeTrips: [],
     leaderboard: [],
     contracts: [
-        { id: 1, title: 'Обычный: Доски', reward: 5200, fuel: 70, duration: 15, reqLvl: 1, reqLic: 'basic' },
-        { id: 2, title: 'Обычный: Продукты питания', reward: 8900, fuel: 100, duration: 22, reqLvl: 2, reqLic: 'basic' },
-        { id: 3, title: 'Обычный: Стройматериалы', reward: 11500, fuel: 140, duration: 30, reqLvl: 3, reqLic: 'basic' },
-        { id: 4, title: 'Обычный: Текстиль и одежда', reward: 18000, fuel: 180, duration: 45, reqLvl: 4, reqLic: 'basic' },
-        { id: 5, title: 'Обычный: Электроника', reward: 25000, fuel: 220, duration: 60, reqLvl: 5, reqLic: 'basic' },
-        { id: 6, title: 'Опасный: Промышленные химикаты', reward: 40000, fuel: 350, duration: 120, reqLvl: 6, reqLic: 'dangerous' },
-        { id: 7, title: 'Опасный: Горрючее топливо', reward: 65000, fuel: 500, duration: 240, reqLvl: 8, reqLic: 'dangerous' },
-        { id: 8, title: 'Опасный: Радиоактивные изотопы', reward: 95000, fuel: 750, duration: 300, reqLvl: 10, reqLic: 'dangerous' },
-        { id: 9, title: 'Негабарит: Тяжелая спецтехника', reward: 150000, fuel: 1000, duration: 600, reqLvl: 12, reqLic: 'oversized' },
-        { id: 10, title: 'Негабарит: Турбины электростанции', reward: 280000, fuel: 1500, duration: 1200, reqLvl: 15, reqLic: 'oversized' },
-        { id: 11, title: 'Негабарит: Космический модуль', reward: 500000, fuel: 2500, duration: 1800, reqLvl: 18, reqLic: 'oversized' },
-        { id: 12, title: 'Теневой: Контрабандный алкоголь', reward: 220000, fuel: 1200, duration: 900, reqLvl: 12, reqLic: 'smuggling' },
-        { id: 13, title: 'Теневой: Военное обмундирование', reward: 380000, fuel: 1600, duration: 1300, reqLvl: 14, reqLic: 'smuggling' },
-        { id: 14, title: 'Черный рынок: Синдикатный груз', reward: 450000, fuel: 1800, duration: 1500, reqLvl: 15, reqLic: 'falsified_docs' },
-        { id: 15, title: 'Черный рынок: Крупные партии чипов', reward: 750000, fuel: 2400, duration: 2100, reqLvl: 18, reqLic: 'falsified_docs' },
-        { id: 16, title: 'Секретный коридор: Прототипы оружия', reward: 1300000, fuel: 3500, duration: 3000, reqLvl: 22, reqLic: 'black_market' }
+        { id: 1, title: 'Обычный: Доски', name: 'Доски', diff: 'Обычный', badgeClass: 'badge-ordinary', image: 'https://i.ibb.co.com/nxzLBSw/0-B0-F3-ED8-68-F9-4-D11-9455-63-CEE59-DEC70.png', reward: 5200, fuel: 70, duration: 15, reqLvl: 1, reqLic: 'basic' },
+        { id: 2, title: 'Обычный: Продукты питания', name: 'Продукты питания', diff: 'Обычный', badgeClass: 'badge-ordinary', image: 'https://i.ibb.co.com/YBMmXNHj/74065-E6-B-D63-E-446-D-A8-E1-95492-C930-D70.png', reward: 8900, fuel: 100, duration: 22, reqLvl: 2, reqLic: 'basic' },
+        { id: 3, title: 'Обычный: Стройматериалы', name: 'Стройматериалы', diff: 'Обычный', badgeClass: 'badge-ordinary', image: 'https://i.ibb.co.com/Q7ggLnTC/82669679-96-F8-46-A1-9-AE1-BBFEAD007153.png', reward: 11500, fuel: 140, duration: 30, reqLvl: 3, reqLic: 'basic' },
+        { id: 4, title: 'Обычный: Текстиль и одежда', name: 'Текстиль и одежда', diff: 'Обычный', badgeClass: 'badge-ordinary', image: 'https://i.ibb.co.com/67TNNkvy/67872-D1-B-C0-D3-45-AB-8-A9-D-11-C0-EC734-FC8.png', reward: 18000, fuel: 180, duration: 45, reqLvl: 4, reqLic: 'basic' },
+        { id: 5, title: 'Обычный: Электроника', name: 'Электроника', diff: 'Редкий', badgeClass: 'badge-rare', image: 'https://i.ibb.co.com/bThvzjv/12-AF1-E99-6-BDE-42-F0-8279-393-B53-DD51-EC.png', reward: 25000, fuel: 220, duration: 60, reqLvl: 5, reqLic: 'basic' },
+        { id: 6, title: 'Опасный: Промышленные химикаты', name: 'Химикаты', diff: 'Редкий', badgeClass: 'badge-rare', image: 'https://i.ibb.co.com/DPLBSsd9/80-EEB782-572-C-402-C-B9-A2-AD4-DBFC19357.png', reward: 40000, fuel: 350, duration: 120, reqLvl: 6, reqLic: 'dangerous' },
+        { id: 7, title: 'Опасный: Горючее топливо', name: 'Горючее топливо', diff: 'Редкий', badgeClass: 'badge-rare', image: 'https://i.ibb.co.com/ZpJQfZ7K/70-EDCB4-B-C9-F6-4633-9-C7-C-C0-BB8580-A3-BA.png', reward: 65000, fuel: 500, duration: 240, reqLvl: 8, reqLic: 'dangerous' },
+        { id: 8, title: 'Опасный: Радиоактивные изотопы', name: 'Радиоактивные изотопы', diff: 'Эпический', badgeClass: 'badge-epic', image: 'https://i.ibb.co.com/SwyTHN19/E78-A4-D7-B-DBC1-4-F71-A4-DE-44-D446503-BB2.png', reward: 95000, fuel: 750, duration: 300, reqLvl: 10, reqLic: 'dangerous' },
+        { id: 9, title: 'Негабарит: Тяжелая спецтехника', name: 'Тяжелая спецтехника', diff: 'Эпический', badgeClass: 'badge-epic', image: 'https://i.ibb.co.com/WvL7611N/9-BFBF2-DE-90-B2-4970-84-CC-C3-A98248-B0-CE.png', reward: 150000, fuel: 1000, duration: 600, reqLvl: 12, reqLic: 'oversized' },
+        { id: 10, title: 'Негабарит: Турбины электростанции', name: 'Турбины электростанции', diff: 'Эпический', badgeClass: 'badge-epic', image: 'https://i.ibb.co.com/zh98DKMm/17-A3-CEB6-372-A-4-EDB-B73-D-455839-F0349-A.png', reward: 280000, fuel: 1500, duration: 1200, reqLvl: 15, reqLic: 'oversized' },
+        { id: 11, title: 'Негабарит: Космический модуль', name: 'Космический модуль', diff: 'Легендарный', badgeClass: 'badge-legendary', image: 'https://i.ibb.co.com/C5hBkM7k/DB75-BFE6-2-BE7-44-CF-ADC7-2799-D8-BBFB0-E.png', reward: 500000, fuel: 2500, duration: 1800, reqLvl: 18, reqLic: 'oversized' },
+        { id: 12, title: 'Теневой: Контрабандный алкоголь', name: 'Контрабанда алкоголя', diff: 'Нелегал', badgeClass: 'badge-illegal', image: 'https://i.ibb.co.com/1GcDdFJ9/D19-A33-BF-999-E-4-B0-F-8-D66-C3714-FCA6163.png', reward: 220000, fuel: 1200, duration: 900, reqLvl: 12, reqLic: 'smuggling' },
+        { id: 13, title: 'Теневой: Военное обмундирование', name: 'Военное оборудование', diff: 'Легендарный', badgeClass: 'badge-legendary', image: 'https://i.ibb.co.com/mrSV75fk/AB71-CD39-0-F80-4-ED6-9-BE3-DF083613-E834.png', reward: 380000, fuel: 1600, duration: 1300, reqLvl: 14, reqLic: 'smuggling' },
+        { id: 14, title: 'Черный рынок: Синдикатный груз', name: 'Синдикатный груз', diff: 'Нелегал', badgeClass: 'badge-illegal', image: 'https://i.ibb.co.com/0RwFRJ9t/5-C46-E8-C8-8203-4832-BEFF-03-C668616-B82.png', reward: 450000, fuel: 1800, duration: 1500, reqLvl: 15, reqLic: 'falsified_docs' },
+        { id: 15, title: 'Черный рынок: Крупные партии чипов', name: 'Крупные партии чипов', diff: 'Легендарный', badgeClass: 'badge-legendary', image: 'https://i.ibb.co.com/p68qv2R2/2815771-C-7-AA5-45-B5-8700-F2-BD55-D19-DE0.png', reward: 750000, fuel: 2400, duration: 2100, reqLvl: 18, reqLic: 'falsified_docs' },
+        { id: 16, title: 'Секретный коридор: Прототипы оружия', name: 'Прототипы орудия', diff: 'Нелегал', badgeClass: 'badge-illegal', image: 'https://i.ibb.co.com/Hf6fFHCL/D70-EB30-C-6520-441-B-8-D1-E-1-C9763-AB202-C.png', reward: 1300000, fuel: 3500, duration: 3000, reqLvl: 22, reqLic: 'black_market' }
     ]
 };
 
@@ -1415,6 +1415,7 @@ const UI = {
         const activeTruckIdsArr = AppState.activeTrips.map(trip => trip.truck_id);
         const hasIdleTrucks = AppState.trucks.some(t => !activeTruckIdsArr.includes(t.id) && Number(t.engineLvl) > 0 && Number(t.tiresLvl) > 0 && Number(t.gearLvl) > 0 && Number(t.brakesLvl) > 0);
         
+        // --- ОБНОВЛЕННЫЙ РЕНДЕР КОНТРАКТОВ С КАРТИНКАМИ ---
         this.safeUpdateHTML('contracts-list', AppState.contracts.map(c => {
             const lockedLvl = p.level < c.reqLvl;
             const lockedLic = !p.licenses.includes(c.reqLic);
@@ -1425,21 +1426,56 @@ const UI = {
                 currentReward = Math.floor(currentReward * WorldState.marketEvent.multiplier);
             }
 
-            // Предварительный рендер с баффом синдиката (чисто визуально для игрока)
+            // Предварительный рендер с баффом синдиката
             if (AppState.player.syndicate && AppState.syndicateData.level) {
                 const synBonus = (AppState.syndicateData.level * 0.02);
                 currentReward = Math.floor(currentReward * (1 + synBonus));
             }
 
             let btnText = 'Начать рейс';
-            if (lockedLvl) btnText = `Нужен Ур. ${c.reqLvl}`;
-            else if (lockedLic) btnText = 'Нет лицензии';
-            else if (!hasIdleTrucks) btnText = 'Нет готовых тягачей';
+            let btnClass = 'contract-action-btn active';
+            
+            if (lockedLvl) {
+                btnText = `Нужен Ур. ${c.reqLvl}`;
+                btnClass = 'contract-action-btn disabled';
+            } else if (lockedLic) {
+                btnText = 'Нет лицензии';
+                btnClass = 'contract-action-btn disabled';
+            } else if (!hasIdleTrucks) {
+                btnText = 'Нет готовых тягачей';
+                btnClass = 'contract-action-btn disabled';
+            }
 
-            return `<div class="card" style="${isLocked ? 'opacity:0.6' : ''}">
-                <div class="card-title"><span>${c.title}</span><span style="color:var(--accent-pink);">+${currentReward.toLocaleString()} 🪙</span></div>
-                <div class="specs-grid"><div>Время: ${c.duration}с</div><div>Топливо: ${c.fuel}л</div></div>
-                <button class="btn btn-primary" ${!hasIdleTrucks || isLocked ? 'disabled' : ''} 
+            // Красивое форматирование времени (например "1м 30с" вместо "90с")
+            let timeStr = c.duration >= 60 ? `${Math.floor(c.duration/60)}м ${c.duration%60 > 0 ? c.duration%60+'с' : ''}` : `${c.duration}с`;
+
+            return `
+            <div class="contract-card" style="${isLocked ? 'opacity:0.6' : ''}">
+                <div class="contract-header">
+                    <div class="contract-title-group">
+                        <span class="contract-badge ${c.badgeClass}">${c.diff}</span>
+                        <span class="contract-name">${c.name}</span>
+                    </div>
+                    <div class="contract-reward">+${currentReward.toLocaleString()} 🪙</div>
+                </div>
+
+                <div class="contract-body">
+                    <div class="contract-image">
+                        <img src="${c.image}" alt="${c.name}">
+                    </div>
+                    <div class="contract-specs">
+                        <div class="spec-item">
+                            <span>⏱ Время:</span>
+                            <span style="color: #fff; font-weight: bold;">${timeStr}</span>
+                        </div>
+                        <div class="spec-item">
+                            <span>⛽ Топливо:</span>
+                            <span style="color: #fff; font-weight: bold;">${c.fuel}л</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="${btnClass}" ${!hasIdleTrucks || isLocked ? 'disabled' : ''} 
                     onclick="GameLogic.startTrip(${c.reward}, ${c.fuel}, ${c.duration}, '${c.title}', ${c.reqLvl}, '${c.reqLic}')">
                     ${btnText}
                 </button>
