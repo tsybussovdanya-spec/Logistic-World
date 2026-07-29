@@ -1171,11 +1171,18 @@ const GameLogic = {
 // 🎨 УПРАВЛЕНИЕ ИНТЕРФЕЙСОМ
 // ============================================================================
 const UI = {
+    // 👇 ВОТ ЗДЕСЬ ИЗМЕНИЛАСЬ ЛОГИКА ВЫДЕЛЕНИЯ КНОПОК МЕНЮ (.nav-item)
     switchTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-        document.getElementById(`tab-${tabId}`).classList.add('active');
-        document.querySelectorAll('.tab-btn').forEach(b => { if(b.getAttribute('onclick')?.includes(tabId)) b.classList.add('active'); });
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active')); 
+        
+        const selectedTab = document.getElementById(`tab-${tabId}`);
+        if (selectedTab) selectedTab.classList.add('active');
+        
+        document.querySelectorAll('.nav-item').forEach(b => { 
+            if(b.getAttribute('onclick')?.includes(tabId)) b.classList.add('active'); 
+        });
+        
         AudioSys.playVibrate('click');
         this.renderAll();
     },
