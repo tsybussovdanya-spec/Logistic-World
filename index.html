@@ -8,165 +8,6 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <style>
-        .contract-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        
-        .contract-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-
-        .contract-title-group {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .contract-badge {
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-            text-transform: uppercase;
-            width: fit-content;
-        }
-
-        /* Цвета редкости контрактов */
-        .badge-ordinary { background: rgba(16, 185, 129, 0.15); color: #10B981; }
-        .badge-rare { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
-        .badge-epic { background: rgba(168, 85, 247, 0.15); color: #A855F7; }
-        .badge-legendary { background: rgba(245, 158, 11, 0.15); color: #F59E0B;}
-        .badge-illegal { background: rgba(239, 68, 68, 0.15); color: #EF4444; }
-
-        .contract-name {
-            font-size: 15px;
-            font-weight: bold;
-            color: #ffffff;
-        }
-
-        .contract-reward {
-            font-size: 16px;
-            font-weight: 800;
-            color: var(--accent-pink, #EC4899);
-            white-space: nowrap;
-        }
-
-        .contract-body {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 8px;
-            border-radius: 10px;
-        }
-
-        .contract-image {
-            flex-shrink: 0;
-            width: 80px;
-            height: 80px;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-
-        .contract-image img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .contract-specs {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            width: 100%;
-        }
-
-        .spec-item {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            color: var(--hint-color, #9CA3AF);
-        }
-
-        .contract-action-btn {
-            width: 100%;
-            padding: 12px;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 13px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .contract-action-btn.disabled {
-            background: rgba(255, 255, 255, 0.1);
-            color: #6B7280;
-        }
-
-        .contract-action-btn.active {
-            background: var(--accent-purple, #A855F7);
-            color: white;
-            box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
-        }
-
-        /* --- НОВЫЕ СТИЛИ ДЛЯ НАВИГАЦИИ --- */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background-color: #0b0813; 
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            padding: 12px 0;
-            padding-bottom: calc(12px + env(safe-area-inset-bottom)); 
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            z-index: 1000;
-        }
-
-        .nav-item {
-            background: transparent;
-            border: none;
-            padding: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            opacity: 0.4;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .nav-item img {
-            width: 26px; 
-            height: 26px;
-            object-fit: contain;
-            transition: all 0.3s ease; 
-        }
-
-        .nav-item.active {
-            opacity: 1;
-        }
-
-        .nav-item.active img {
-            transform: scale(1.2);
-            filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.4));
-        }
-    </style>
 </head>
 <body>
     <!-- Аудио система -->
@@ -403,96 +244,29 @@
             </section>
         </main>
 
-        <!-- --- НОВОЕ КАСТОМНОЕ МЕНЮ --- -->
+        <!-- КАСТОМНОЕ НИЖНЕЕ МЕНЮ С ТВОИМИ PNG ИКОНКАМИ -->
         <nav class="bottom-nav">
-            <!-- Вкладка fleet активна по умолчанию, как и было в твоем коде -->
-            <button type="button" class="nav-item active" onclick="switchTab('fleet'); setActiveNav(this)">
+            <button type="button" class="nav-item active" onclick="switchTab('fleet')">
                 <img src="https://i.ibb.co.com/ZzVjLmm9/617-BDB5-A-BB5-D-48-C6-979-A-782-F10-A32-D12.png" alt="Грузовик">
             </button>
-            <button type="button" class="nav-item" onclick="switchTab('logistics'); setActiveNav(this)">
+            <button type="button" class="nav-item" onclick="switchTab('logistics')">
                 <img src="https://i.ibb.co.com/WNvzwmy4/EDCE1-AB1-5-CBB-40-B6-9145-973-CF25-C9866.png" alt="Карта">
             </button>
-            <button type="button" class="nav-item" onclick="switchTab('leaderboard'); setActiveNav(this)">
+            <button type="button" class="nav-item" onclick="switchTab('leaderboard')">
                 <img src="https://i.ibb.co.com/3y2JkV6S/163-E5-B98-49-D0-461-D-85-DE-53519885928-B.png" alt="Кубок">
             </button>
-            <button type="button" class="nav-item" onclick="switchTab('pass'); setActiveNav(this)">
+            <button type="button" class="nav-item" onclick="switchTab('pass')">
                 <img src="https://i.ibb.co.com/gbKJkbFW/D2-E6-F7-AF-03-A6-496-E-A750-31-BDA7-D0587-A.png" alt="Лицензия">
             </button>
-            <button type="button" class="nav-item" onclick="switchTab('syndicate'); setActiveNav(this)">
+            <button type="button" class="nav-item" onclick="switchTab('syndicate')">
                 <img src="https://i.ibb.co.com/cW7dMWR/1-DC31-D33-86-F1-4-F61-8844-F0-A70-A4-D2-E09.png" alt="Корпорация">
             </button>
-            <button type="button" class="nav-item" onclick="switchTab('profile'); setActiveNav(this)">
+            <button type="button" class="nav-item" onclick="switchTab('profile')">
                 <img src="https://i.ibb.co.com/C5QWBNMx/6-A1-CD3-A0-2258-443-C-8705-55-E5-E15-BC85-E.png" alt="Профиль">
             </button>
         </nav>
     </div>
 
-    <!-- Скрипт для подсветки активной кнопки меню -->
-    <script>
-        function setActiveNav(clickedBtn) {
-            document.querySelectorAll('.bottom-nav .nav-item').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            clickedBtn.classList.add('active');
-        }
-    </script>
-
-    <!-- Временный скрипт для рендера картинок контрактов -->
-    <script>
-        const contractData = [
-            { name: "Доски", diff: "Обычный", class: "badge-ordinary", reward: "+5 304 🪙", time: "15с", fuel: "70л", img: "https://i.ibb.co.com/nxzLBSw/0-B0-F3-ED8-68-F9-4-D11-9455-63-CEE59-DEC70.png" },
-            { name: "Продукты питания", diff: "Обычный", class: "badge-ordinary", reward: "+9 078 🪙", time: "22с", fuel: "100л", img: "https://i.ibb.co.com/YBMmXNHj/74065-E6-B-D63-E-446-D-A8-E1-95492-C930-D70.png" },
-            { name: "Стройматериалы", diff: "Обычный", class: "badge-ordinary", reward: "+17 595 🪙", time: "30с", fuel: "140л", img: "https://i.ibb.co.com/Q7ggLnTC/82669679-96-F8-46-A1-9-AE1-BBFEAD007153.png" },
-            { name: "Текстиль и одежда", diff: "Обычный", class: "badge-ordinary", reward: "+24 200 🪙", time: "45с", fuel: "180л", img: "https://i.ibb.co.com/67TNNkvy/67872-D1-B-C0-D3-45-AB-8-A9-D-11-C0-EC734-FC8.png" },
-            { name: "Электроника", diff: "Редкий", class: "badge-rare", reward: "+45 000 🪙", time: "1м 15с", fuel: "250л", img: "https://i.ibb.co.com/bThvzjv/12-AF1-E99-6-BDE-42-F0-8279-393-B53-DD51-EC.png" },
-            { name: "Химикаты", diff: "Редкий", class: "badge-rare", reward: "+62 500 🪙", time: "2м", fuel: "320л", img: "https://i.ibb.co.com/DPLBSsd9/80-EEB782-572-C-402-C-B9-A2-AD4-DBFC19357.png" },
-            { name: "Горючее топливо", diff: "Редкий", class: "badge-rare", reward: "+85 000 🪙", time: "3м 30с", fuel: "400л", img: "https://i.ibb.co.com/ZpJQfZ7K/70-EDCB4-B-C9-F6-4633-9-C7-C-C0-BB8580-A3-BA.png" },
-            { name: "Радиоактивные изотопы", diff: "Эпический", class: "badge-epic", reward: "+150 000 🪙", time: "5м", fuel: "600л", img: "https://i.ibb.co.com/SwyTHN19/E78-A4-D7-B-DBC1-4-F71-A4-DE-44-D446503-BB2.png" },
-            { name: "Тяжелая спецтехника", diff: "Эпический", class: "badge-epic", reward: "+210 000 🪙", time: "8м", fuel: "850л", img: "https://i.ibb.co.com/WvL7611N/9-BFBF2-DE-90-B2-4970-84-CC-C3-A98248-B0-CE.png" },
-            { name: "Турбины электростанции", diff: "Эпический", class: "badge-epic", reward: "+340 000 🪙", time: "12м", fuel: "1100л", img: "https://i.ibb.co.com/zh98DKMm/17-A3-CEB6-372-A-4-EDB-B73-D-455839-F0349-A.png" },
-            { name: "Космический модуль", diff: "Легендарный", class: "badge-legendary", reward: "+750 000 🪙", time: "30м", fuel: "2500л", img: "https://i.ibb.co.com/C5hBkM7k/DB75-BFE6-2-BE7-44-CF-ADC7-2799-D8-BBFB0-E.png" },
-            { name: "Контрабанда алкоголя", diff: "Нелегал", class: "badge-illegal", reward: "+900 000 🪙", time: "45м", fuel: "3000л", img: "https://i.ibb.co.com/1GcDdFJ9/D19-A33-BF-999-E-4-B0-F-8-D66-C3714-FCA6163.png" },
-            { name: "Военное оборудование", diff: "Легендарный", class: "badge-legendary", reward: "+1 500 000 🪙", time: "1ч 30м", fuel: "5000л", img: "https://i.ibb.co.com/mrSV75fk/AB71-CD39-0-F80-4-ED6-9-BE3-DF083613-E834.png" },
-            { name: "Синдикатный груз", diff: "Нелегал", class: "badge-illegal", reward: "+2 800 000 🪙", time: "3ч", fuel: "8500л", img: "https://i.ibb.co.com/0RwFRJ9t/5-C46-E8-C8-8203-4832-BEFF-03-C668616-B82.png" },
-            { name: "Крупные партии чипов", diff: "Легендарный", class: "badge-legendary", reward: "+4 000 000 🪙", time: "6ч", fuel: "12000л", img: "https://i.ibb.co.com/p68qv2R2/2815771-C-7-AA5-45-B5-8700-F2-BD55-D19-DE0.png" },
-            { name: "Прототипы орудия", diff: "Нелегал", class: "badge-illegal", reward: "+10 000 000 🪙", time: "12ч", fuel: "25000л", img: "https://i.ibb.co.com/Hf6fFHCL/D70-EB30-C-6520-441-B-8-D1-E-1-C9763-AB202-C.png" }
-        ];
-
-        document.addEventListener("DOMContentLoaded", () => {
-            const contractsContainer = document.getElementById("contracts-list");
-            
-            contractsContainer.innerHTML = contractData.map(contract => `
-                <div class="contract-card">
-                    <div class="contract-header">
-                        <div class="contract-title-group">
-                            <span class="contract-badge ${contract.class}">${contract.diff}</span>
-                            <span class="contract-name">${contract.name}</span>
-                        </div>
-                        <div class="contract-reward">${contract.reward}</div>
-                    </div>
-
-                    <div class="contract-body">
-                        <div class="contract-image">
-                            <img src="${contract.img}" alt="${contract.name}">
-                        </div>
-                        <div class="contract-specs">
-                            <div class="spec-item">
-                                <span>⏱ Время:</span>
-                                <span style="color: #fff; font-weight: bold;">${contract.time}</span>
-                            </div>
-                            <div class="spec-item">
-                                <span>⛽ Топливо:</span>
-                                <span style="color: #fff; font-weight: bold;">${contract.fuel}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button class="contract-action-btn disabled" disabled>Нет готовых тягачей</button>
-                </div>
-            `).join('');
-        });
-    </script>
-    
     <script src="script.js"></script>
 </body>
 </html>
