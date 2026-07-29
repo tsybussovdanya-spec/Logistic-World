@@ -78,7 +78,7 @@ body {
 .xp-bar-fill { height: 100%; width: 0%; background: var(--gradient-primary); transition: width 0.5s ease; }
 .weather-badge { font-size: 11px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 6px 10px; border-radius: 12px; cursor: pointer; text-align: center;}
 
-/* Bottom Nav: Растянуто на всю ширину экрана с полноценными активными зонами */
+/* Bottom Nav */
 .bottom-nav {
     position: fixed; 
     bottom: 0; 
@@ -255,3 +255,72 @@ body {
 .contract-action-btn { width: 100%; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 13px; border: none; cursor: pointer; transition: all 0.2s ease; }
 .contract-action-btn.disabled { background: rgba(255, 255, 255, 0.1); color: #6B7280; }
 .contract-action-btn.active { background: var(--accent-purple, #A855F7); color: white; box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3); }
+
+/* ========================================= */
+/* НОВЫЙ ПРОФИЛЬ: ID-КАРТА, СТАТЫ, VIP БЛОК  */
+/* ========================================= */
+
+/* ID-Карта */
+.id-card {
+    position: relative;
+    background: linear-gradient(135deg, rgba(20, 20, 30, 0.95), rgba(40, 30, 60, 0.9));
+    border: 1px solid rgba(139, 92, 246, 0.5);
+    border-radius: 16px;
+    padding: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(139, 92, 246, 0.1);
+    margin-bottom: 20px;
+}
+.id-holo-overlay {
+    position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(236, 72, 153, 0.05), transparent, rgba(59, 130, 246, 0.05), transparent);
+    transform: rotate(45deg);
+    animation: holo-sweep 4s linear infinite;
+    pointer-events: none; z-index: 1;
+}
+@keyframes holo-sweep {
+    0% { transform: translate(-30%, -30%) rotate(45deg); }
+    100% { transform: translate(30%, 30%) rotate(45deg); }
+}
+.id-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; z-index: 2; position: relative; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
+.id-chip {
+    width: 32px; height: 24px;
+    background: linear-gradient(135deg, #d4af37, #aa7c11);
+    border-radius: 4px; border: 1px solid #ffe066;
+    background-image: repeating-linear-gradient(90deg, transparent, transparent 4px, rgba(0,0,0,0.2) 4px, rgba(0,0,0,0.2) 6px);
+}
+.id-logo-text { font-size: 10px; font-weight: 900; letter-spacing: 2px; color: rgba(255,255,255,0.4); }
+.id-body { display: flex; gap: 16px; align-items: center; z-index: 2; position: relative; }
+.id-avatar-frame {
+    width: 70px; height: 70px; border-radius: 12px;
+    background: var(--gradient-primary); padding: 2px;
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+}
+.id-avatar-frame img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; background: #000; }
+.id-info { flex: 1; }
+.id-label { font-size: 9px; color: var(--hint-color); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
+.id-name { font-size: 18px; line-height: 1.1; margin-bottom: 4px; }
+.id-role { font-size: 13px; color: var(--text-color); font-weight: 500; }
+.id-level-box { position: absolute; top: 0; right: 0; display: flex; flex-direction: column; align-items: flex-end; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.3); }
+.id-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 20px; z-index: 2; position: relative; }
+.id-barcode {
+    height: 24px; width: 120px;
+    background: repeating-linear-gradient(90deg, rgba(255,255,255,0.6), rgba(255,255,255,0.6) 2px, transparent 2px, transparent 4px, rgba(255,255,255,0.6) 4px, rgba(255,255,255,0.6) 5px, transparent 5px, transparent 8px);
+    opacity: 0.7;
+}
+.id-reg-date { font-size: 10px; color: rgba(255,255,255,0.5); font-weight: bold; letter-spacing: 1px; }
+
+/* Цвета для новой статы */
+.stat-blue { color: var(--accent-blue) !important; }
+.stat-purple { color: var(--accent-purple) !important; }
+
+/* VIP Блок */
+.vip-support-card {
+    background: linear-gradient(135deg, rgba(30, 20, 10, 0.8), rgba(60, 30, 15, 0.9));
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.15);
+}
+.vip-header { display: flex; justify-content: space-between; align-items: center; }
+.vip-badge { background: linear-gradient(90deg, #F59E0B, #D97706); color: #000; font-size: 10px; font-weight: 900; padding: 3px 8px; border-radius: 6px; letter-spacing: 1px; box-shadow: 0 0 10px rgba(245, 158, 11, 0.5); }
+.btn-vip { background: linear-gradient(90deg, #F59E0B, #D97706); color: #000; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3); font-weight: 800; border: none; padding: 14px 16px; border-radius: 12px; cursor: pointer; text-align: center; display: inline-flex; justify-content: center; width: 100%; transition: 0.2s;}
+.btn-vip:active { transform: scale(0.96); }
