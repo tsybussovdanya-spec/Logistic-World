@@ -157,15 +157,16 @@
                 <div id="pass-tiers-list" class="card-grid"></div>
             </section>
 
-            <!-- Вкладка: Синдикат -->
+            <!-- Вкладка: Синдикат (Корпорация) -->
             <section id="tab-syndicate" class="tab-content">
                 <div class="section-header">
                     <h2>Корпорация</h2>
-                    <p class="subtitle">Объединяйтесь для масштабных целей и бонусов</p>
+                    <p class="subtitle">Кибер-синдикат, технологии и общие цели</p>
                 </div>
+                
                 <div id="no-syndicate-panel" class="card" style="border-color: var(--accent-blue);">
                     <h3>Вступление и Создание</h3>
-                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Создайте свою империю или присоединитесь к существующей, чтобы получать пассивные бонусы.</p>
+                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Создайте свою империю или присоединитесь к существующей, чтобы получать мощные пассивные баффы.</p>
                     <div class="input-group">
                         <input type="text" id="input-syndicate-name" class="input-text" placeholder="Введите название Синдиката...">
                     </div>
@@ -174,23 +175,41 @@
                         <button type="button" class="btn btn-primary" style="flex: 1; background: var(--accent-purple);" onclick="GameLogic.createSyndicate(document.getElementById('input-syndicate-name').value)">Создать (500k 🪙)</button>
                     </div>
                 </div>
+
                 <div id="active-syndicate-panel" style="display: none;">
-                    <div class="card" style="border-color: var(--accent-purple); margin-bottom: 12px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <h3 id="corp-name-title" style="color: var(--accent-purple); font-size: 18px;">Имя Синдиката</h3>
-                            <span id="corp-level-badge" style="background: rgba(168, 85, 247, 0.2); padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; color: var(--accent-purple);">Ур. 1</span>
+                    <div class="corp-hq-card">
+                        <div class="corp-hq-overlay"></div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; z-index: 2; position: relative;">
+                            <div>
+                                <span class="corp-tag">HQ СИНДИКАТА</span>
+                                <h3 id="corp-name-title" class="corp-title">Название Синдиката</h3>
+                            </div>
+                            <span id="corp-level-badge" class="corp-lvl-pill">Ур. 1</span>
                         </div>
-                        <p id="corp-role-desc" style="font-size: 12px; color: var(--hint-color); margin-top: 4px;">Ваша должность: Логист</p>
-                        <div style="margin-top: 12px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px;">
-                            <span style="font-size: 12px; font-weight: bold;">Текущие бонусы корпорации:</span>
-                            <ul id="corp-buffs-list" style="font-size: 11px; color: #10B981; margin-top: 4px; padding-left: 16px;">
-                                <li>+0% к прибыли рейсов</li>
-                            </ul>
+                        <div class="corp-hq-stats">
+                            <div><span>Ваша должность:</span> <b id="corp-role-desc" style="color: var(--accent-pink);">Логист</b></div>
+                            <div><span>Казна топлива:</span> <b id="corp-fuel-treasury" style="color: var(--accent-blue);">0 л</b></div>
                         </div>
-                        <button type="button" class="btn btn-outline" style="margin-top: 12px; border-color: var(--accent-pink); color: var(--accent-pink);" onclick="GameLogic.leaveSyndicate()">Покинуть синдикат</button>
+                        <button type="button" class="btn btn-outline" style="border-color: rgba(239, 68, 68, 0.4); color: var(--danger-color); font-size: 12px; padding: 8px; z-index: 2; position: relative; margin-top: 12px;" onclick="GameLogic.leaveSyndicate()">Покинуть корпорацию</button>
                     </div>
-                    <h3 class="subsection-title">Развитие корпорации</h3>
-                    <div class="card" id="coop-panel-content"></div>
+
+                    <div class="card" style="margin-bottom: 12px; border-color: var(--accent-blue); background: rgba(5, 5, 10, 0.85);">
+                        <div class="card-title" style="font-size: 13px; color: var(--accent-blue); margin-bottom: 8px;">
+                            <span>📡 Терминал активности синдиката</span>
+                            <span style="font-size: 10px; color: var(--success-color);">● LIVE</span>
+                        </div>
+                        <div id="corp-activity-feed" class="corp-feed-box">
+                            <div class="feed-item">> Системный лог инициализирован... Ожидание данных сети.</div>
+                        </div>
+                    </div>
+
+                    <h3 class="subsection-title">Древо корпоративных технологий</h3>
+                    <div id="corp-tech-tree" class="card-grid" style="margin-bottom: 16px;"></div>
+
+                    <h3 class="subsection-title">Совет директоров (Участники)</h3>
+                    <div class="card" style="padding: 10px; margin-bottom: 16px;">
+                        <div id="corp-members-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                    </div>
                 </div>
             </section>
 
