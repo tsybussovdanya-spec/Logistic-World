@@ -456,7 +456,10 @@ const AppState = {
             { id: 'q2', title: 'Потратить 500л топлива', target: 500, progress: 0, rewardCoins: 20000, rewardXP: 400, claimed: false },
             { id: 'q3', title: 'Заработать 50,000 🪙', target: 50000, progress: 0, rewardCoins: 30000, rewardXP: 600, claimed: false }
         ],
-        skills: { eco: 0, luck: 0, mechanic: 0 }
+        skills: { eco: 0, luck: 0, mechanic: 0 },
+        total_fuel_burned: 0,
+        playtime_minutes: 0,
+        reg_date: new Date().toISOString()
     },
     syndicateData: {
         target: 10000,
@@ -541,6 +544,9 @@ const DB = {
                 if (!AppState.player.skills) {
                     AppState.player.skills = { eco: 0, luck: 0, mechanic: 0 };
                 }
+                if (AppState.player.total_fuel_burned === undefined) AppState.player.total_fuel_burned = 0;
+                if (AppState.player.playtime_minutes === undefined) AppState.player.playtime_minutes = 0;
+                if (!AppState.player.reg_date) AppState.player.reg_date = new Date().toISOString();
             }
 
             await this.loadGameData();
@@ -582,7 +588,10 @@ const DB = {
             pass_level: 1,
             pass_claimed: [],
             quests: defaultQuests,
-            skills: { eco: 0, luck: 0, mechanic: 0 }
+            skills: { eco: 0, luck: 0, mechanic: 0 },
+            total_fuel_burned: 0,
+            playtime_minutes: 0,
+            reg_date: new Date().toISOString()
         };
 
         let { data: newP, error: insertError } = await supabaseClient
@@ -677,7 +686,10 @@ const DB = {
             total_trips: Number(p.total_trips), syndicate: p.syndicate,
             last_bonus_time: Number(p.last_bonus_time), licenses: p.licenses,
             pass_level: p.pass_level, pass_claimed: p.pass_claimed, quests: p.quests,
-            skills: p.skills
+            skills: p.skills,
+            total_fuel_burned: Number(p.total_fuel_burned || 0),
+            playtime_minutes: Number(p.playtime_minutes || 0),
+            reg_date: p.reg_date || new Date().toISOString()
         };
 
         let { error } = await supabaseClient.from('players').update(updateData).eq('id', p.id);
@@ -829,6 +841,7 @@ const GameLogic = {
         if (error) return UI.showToast("Ошибка запуска рейса: " + error.message, "error");
 
         AppState.player.fuel_stock = Number(AppState.player.fuel_stock) - finalFuel;
+        AppState.player.total_fuel_burned = (Number(AppState.player.total_fuel_burned) || 0) + finalFuel;
         this.updateQuestProgress('fuel', finalFuel);
 
         AppState.activeTrips.push(data);
@@ -1205,6 +1218,37 @@ const UI = {
         if (!p.pass_level) p.pass_level = 1;
         if (!p.pass_claimed) p.pass_claimed = [];
         
+        // --- Обновление нового Профиля ---
+        this.safeUpdate('profile-id-name', p.name);
+        this.safeUpdate('profile-id-role', ReputationSys.getTitle(p.level));
+        this.safeUpdate('profile-id-lvl', `LVL ${p.level}`);
+        
+        const dateObj = new Date(p.reg_date || Date.now());
+        const formattedDate = `${String(dateObj.getDate()).padStart(2, '0')}.${String(dateObj.getMonth() + 1).padStart(2, '0')}.${dateObj.getFullYear()}`;
+        this.safeUpdate('profile-id-date', formattedDate);
+        
+        const idAvatar = document.getElementById('profile-id-avatar');
+        if (idAvatar) idAvatar.src = p.avatar || 'https://via.placeholder.com/80';
+        
+        this.safeUpdate('stat-total-fuel', `${Number(p.total_fuel_burned || 0).toLocaleString()} л`);
+        let hrs = Math.floor((p.playtime_minutes || 0) / 60);
+        let mins = (p.playtime_minutes || 0) % 60;
+        this.safeUpdate('stat-playtime', `${hrs}ч ${mins}м`);
+        
+        let favTruckStr = "Нет тягача";
+        if (AppState.trucks && AppState.trucks.length > 0) {
+            let sortedTrucks = [...AppState.trucks].sort((a, b) => {
+                let tA = TRUCK_SHOP.find(s => s.name === a.name);
+                let tB = TRUCK_SHOP.find(s => s.name === b.name);
+                let priceA = tA ? tA.price : 0;
+                let priceB = tB ? tB.price : 0;
+                return priceB - priceA;
+            });
+            favTruckStr = sortedTrucks[0].name;
+        }
+        this.safeUpdate('stat-fav-truck', favTruckStr);
+        // ---------------------------------
+
         this.safeUpdate('username', p.name);
         this.safeUpdate('user-title', ReputationSys.getTitle(p.level));
         this.safeUpdate('user-money', `🪙 ${Number(p.money).toLocaleString()}`);
@@ -1597,6 +1641,24 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(() => { WorldState.generateWeather(); AIDispatcher.randomAdvice(); }, 180000);
     setInterval(() => { GameLogic.updateMarket(); }, 240000);
     setInterval(() => { WorldState.generateMarketEvent(); }, 600000);
+
+    // Таймер проведенного времени в игре (1 минута = 60000 мс)
+    setInterval(() => {
+        if (AppState.player && AppState.player.id) {
+            AppState.player.playtime_minutes = (AppState.player.playtime_minutes || 0) + 1;
+            
+            const el = document.getElementById('stat-playtime');
+            if (el) {
+                let hrs = Math.floor(AppState.player.playtime_minutes / 60);
+                let mins = AppState.player.playtime_minutes % 60;
+                el.innerText = `${hrs}ч ${mins}м`;
+            }
+            
+            if (AppState.player.playtime_minutes % 5 === 0) {
+                DB.syncPlayer();
+            }
+        }
+    }, 60000);
 });
 
 window.switchTab = (id) => UI.switchTab(id);
