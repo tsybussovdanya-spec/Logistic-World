@@ -231,10 +231,9 @@ const EventSys = {
     checkEventsForTrip(trip) {
         if (this.activeEvent) return;
         
-        // Навык удачи снижает шанс негативного события
         let luckMod = 1.0;
         if (AppState.player.skills && AppState.player.skills.luck) {
-            luckMod -= AppState.player.skills.luck * 0.1; // -10% шанса за каждый уровень удачи
+            luckMod -= AppState.player.skills.luck * 0.1;
         }
 
         const chance = Math.random() / luckMod;
@@ -294,7 +293,7 @@ const EventSys = {
                 break;
 
             case 'customs':
-                eventData.title = `🚨 Таможенный и полицеский контроль`;
+                eventData.title = `🚨 Таможенный и полицейский контроль`;
                 eventData.desc = `Шеф, нас тормозит патруль на посту! Требуют полный досмотр груза.`;
                 eventData.choices = [
                     { id: 1, text: 'Дать взятку инспектору (-25,000 🪙)', action: () => EventSys.resolveEvent('customs_bribe') },
@@ -563,7 +562,6 @@ const DB = {
         let startMoney = 100000;
         let startFuel = 400;
 
-        // Считываем ID пригласившего из параметра Telegram (Реферальная система)
         const refId = tg.initDataUnsafe?.start_param;
         if (refId && String(refId) !== String(telegramId)) {
             startMoney += 50000;
@@ -802,16 +800,14 @@ const GameLogic = {
             reward = Math.floor(reward * WorldState.marketEvent.multiplier);
         }
 
-        // Бонус от синдиката
         if (AppState.player.syndicate && AppState.syndicateData.level) {
-            const synBonus = (AppState.syndicateData.level * 0.02); // 2% за уровень
+            const synBonus = (AppState.syndicateData.level * 0.02);
             reward = Math.floor(reward * (1 + synBonus));
         }
 
-        // Навык эко-вождения снижает расход топлива
         let ecoMod = 1.0;
         if (AppState.player.skills && AppState.player.skills.eco) {
-            ecoMod -= AppState.player.skills.eco * 0.05; // -5% за каждый уровень
+            ecoMod -= AppState.player.skills.eco * 0.05;
         }
 
         let finalFuel = Math.floor(fuel * WorldState.weather.fuelMod * ecoMod);
@@ -862,11 +858,10 @@ const GameLogic = {
 
         const truck = AppState.trucks.find(t => t.id === trip.truck_id);
         
-        // Навык Механика и износ (если это не аренда, аренда не тратит узлы)
         if (truck && trip.title !== 'Аренда: Сдана в прокат') {
             let mechMod = 1.0;
             if (AppState.player.skills && AppState.player.skills.mechanic) {
-                mechMod -= AppState.player.skills.mechanic * 0.1; // Износ меньше на 10% за каждый уровень
+                mechMod -= AppState.player.skills.mechanic * 0.1;
             }
 
             const baseWear = Math.floor(Math.random() * 6) + 5; 
@@ -1097,7 +1092,7 @@ const GameLogic = {
     },
 
     inviteFriend() {
-        const botUsername = 'LogisticWorldBot'; // Замени на юзернейм своего бота (без @)
+        const botUsername = 'LogisticWorldBot';
         const refLink = `https://t.me/${botUsername}/app?startapp=${telegramId}`;
         const shareText = `Присоединяйся к моей логистической империи! Тебя ждет крутой стартовый бонус.`;
         
@@ -1171,7 +1166,6 @@ const GameLogic = {
 // 🎨 УПРАВЛЕНИЕ ИНТЕРФЕЙСОМ
 // ============================================================================
 const UI = {
-    // 👇 ВОТ ЗДЕСЬ ИЗМЕНИЛАСЬ ЛОГИКА ВЫДЕЛЕНИЯ КНОПОК МЕНЮ (.nav-item)
     switchTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active')); 
@@ -1244,7 +1238,6 @@ const UI = {
             }).join(''));
         }
         
-        // --- Логика рендера Синдиката ---
         const noSynPanel = document.getElementById('no-syndicate-panel');
         const activeSynPanel = document.getElementById('active-syndicate-panel');
 
@@ -1255,7 +1248,7 @@ const UI = {
             if (!AppState.syndicateData.level) AppState.syndicateData.level = 1;
             const syn = AppState.syndicateData;
             const pct = Math.min((syn.current / syn.target) * 100, 100).toFixed(1);
-            const bonusMod = (syn.level * 2); // +2% к доходу за каждый уровень
+            const bonusMod = (syn.level * 2);
             
             this.safeUpdate('corp-name-title', p.syndicate);
             this.safeUpdate('corp-level-badge', `Ур. ${syn.level}`);
@@ -1294,7 +1287,6 @@ const UI = {
                 { key: 'brakesLvl', name: '🧯 Торм' }
             ];
 
-            // Подтягиваем картинку для гаража
             const shopTemplate = TRUCK_SHOP.find(shopT => shopT.name === t.name);
             const truckImage = shopTemplate ? shopTemplate.image : '';
 
@@ -1422,7 +1414,6 @@ const UI = {
         const activeTruckIdsArr = AppState.activeTrips.map(trip => trip.truck_id);
         const hasIdleTrucks = AppState.trucks.some(t => !activeTruckIdsArr.includes(t.id) && Number(t.engineLvl) > 0 && Number(t.tiresLvl) > 0 && Number(t.gearLvl) > 0 && Number(t.brakesLvl) > 0);
         
-        // --- ОБНОВЛЕННЫЙ РЕНДЕР КОНТРАКТОВ С КАРТИНКАМИ ---
         this.safeUpdateHTML('contracts-list', AppState.contracts.map(c => {
             const lockedLvl = p.level < c.reqLvl;
             const lockedLic = !p.licenses.includes(c.reqLic);
@@ -1433,7 +1424,6 @@ const UI = {
                 currentReward = Math.floor(currentReward * WorldState.marketEvent.multiplier);
             }
 
-            // Предварительный рендер с баффом синдиката
             if (AppState.player.syndicate && AppState.syndicateData.level) {
                 const synBonus = (AppState.syndicateData.level * 0.02);
                 currentReward = Math.floor(currentReward * (1 + synBonus));
@@ -1453,7 +1443,6 @@ const UI = {
                 btnClass = 'contract-action-btn disabled';
             }
 
-            // Красивое форматирование времени (например "1м 30с" вместо "90с")
             let timeStr = c.duration >= 60 ? `${Math.floor(c.duration/60)}м ${c.duration%60 > 0 ? c.duration%60+'с' : ''}` : `${c.duration}с`;
 
             return `
@@ -1531,7 +1520,6 @@ const UI = {
             </div>`;
         }).join(''));
 
-        // Рендер Навыков
         if (!p.skills) p.skills = { eco: 0, luck: 0, mechanic: 0 };
         const skillsData = [
             { key: 'eco', name: '🍃 Эко-вождение', desc: 'Снижает расход топлива в пути', icon: '⛽' },
