@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -10,7 +9,6 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- Стили для новых карточек контрактов (Можно перенести в style.css) -->
     <style>
         .contract-card {
             background: rgba(255, 255, 255, 0.03);
@@ -44,11 +42,11 @@
         }
 
         /* Цвета редкости контрактов */
-        .badge-ordinary { background: rgba(16, 185, 129, 0.15); color: #10B981; } /* Зеленый */
-        .badge-rare { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }     /* Синий */
-        .badge-epic { background: rgba(168, 85, 247, 0.15); color: #A855F7; }     /* Фиолетовый */
-        .badge-legendary { background: rgba(245, 158, 11, 0.15); color: #F59E0B;} /* Оранжевый */
-        .badge-illegal { background: rgba(239, 68, 68, 0.15); color: #EF4444; }   /* Красный */
+        .badge-ordinary { background: rgba(16, 185, 129, 0.15); color: #10B981; }
+        .badge-rare { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
+        .badge-epic { background: rgba(168, 85, 247, 0.15); color: #A855F7; }
+        .badge-legendary { background: rgba(245, 158, 11, 0.15); color: #F59E0B;}
+        .badge-illegal { background: rgba(239, 68, 68, 0.15); color: #EF4444; }
 
         .contract-name {
             font-size: 15px;
@@ -59,7 +57,7 @@
         .contract-reward {
             font-size: 16px;
             font-weight: 800;
-            color: var(--accent-pink, #EC4899); /* Розовый оттенок из твоей темы */
+            color: var(--accent-pink, #EC4899);
             white-space: nowrap;
         }
 
@@ -72,7 +70,6 @@
             border-radius: 10px;
         }
 
-        /* Средний размер картинок */
         .contract-image {
             flex-shrink: 0;
             width: 80px;
@@ -126,6 +123,48 @@
             background: var(--accent-purple, #A855F7);
             color: white;
             box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
+        }
+
+        /* --- НОВЫЕ СТИЛИ ДЛЯ НАВИГАЦИИ --- */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #0b0813; 
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 12px 0;
+            padding-bottom: calc(12px + env(safe-area-inset-bottom)); 
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            z-index: 1000;
+        }
+
+        .nav-item {
+            background: transparent;
+            border: none;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            opacity: 0.4;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .nav-item img {
+            width: 26px; 
+            height: 26px;
+            object-fit: contain;
+            transition: all 0.3s ease; 
+        }
+
+        .nav-item.active {
+            opacity: 1;
+        }
+
+        .nav-item.active img {
+            transform: scale(1.2);
+            filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.4));
         }
     </style>
 </head>
@@ -255,13 +294,11 @@
                 <div class="licenses-row" id="licenses-list"></div>
 
                 <h3 class="subsection-title" style="margin-top:12px;">Доступные контракты</h3>
-                
-                <!-- Сюда динамически добавятся наши новые визуальные карточки -->
                 <div id="contracts-list" class="card-grid" style="display: flex; flex-direction: column; gap: 12px;"></div>
                 
             </section>
 
-            <!-- Вкладка: Рейтинг (Оставлена без изменений) -->
+            <!-- Вкладка: Рейтинг -->
             <section id="tab-leaderboard" class="tab-content">
                 <div class="section-header">
                     <h2>Рейтинг Логистов</h2>
@@ -270,7 +307,7 @@
                 <div id="leaderboard-list" class="card-grid"></div>
             </section>
 
-            <!-- Вкладка: Сезонный пропуск (Оставлена без изменений) -->
+            <!-- Вкладка: Сезонный пропуск -->
             <section id="tab-pass" class="tab-content">
                 <div class="section-header">
                     <h2>Season Pass: Cyber Tokyo</h2>
@@ -279,7 +316,7 @@
                 <div id="pass-tiers-list" class="card-grid"></div>
             </section>
 
-            <!-- Вкладка: Синдикат (Оставлена без изменений) -->
+            <!-- Вкладка: Синдикат -->
             <section id="tab-syndicate" class="tab-content">
                 <div class="section-header">
                     <h2>Корпорация</h2>
@@ -316,7 +353,7 @@
                 </div>
             </section>
 
-            <!-- Вкладка: Профиль (Оставлена без изменений) -->
+            <!-- Вкладка: Профиль -->
             <section id="tab-profile" class="tab-content">
                 <div class="section-header">
                     <h2>Профиль & Настройки</h2>
@@ -366,18 +403,41 @@
             </section>
         </main>
 
-        <nav class="nav-tabs bottom-nav">
-            <button type="button" class="tab-btn active" onclick="switchTab('fleet')"><span class="icon">🚛</span></button>
-            <button type="button" class="tab-btn" onclick="switchTab('logistics')"><span class="icon">🗺️</span></button>
-            <button type="button" class="tab-btn" onclick="switchTab('leaderboard')"><span class="icon">🏆</span></button>
-            <button type="button" class="tab-btn" onclick="switchTab('pass')"><span class="icon">🎫</span></button>
-            <button type="button" class="tab-btn" onclick="switchTab('syndicate')"><span class="icon">🤝</span></button>
-            <button type="button" class="tab-btn" onclick="switchTab('profile')"><span class="icon">👤</span></button>
+        <!-- --- НОВОЕ КАСТОМНОЕ МЕНЮ --- -->
+        <nav class="bottom-nav">
+            <!-- Вкладка fleet активна по умолчанию, как и было в твоем коде -->
+            <button type="button" class="nav-item active" onclick="switchTab('fleet'); setActiveNav(this)">
+                <img src="https://i.ibb.co.com/ZzVjLmm9/617-BDB5-A-BB5-D-48-C6-979-A-782-F10-A32-D12.png" alt="Грузовик">
+            </button>
+            <button type="button" class="nav-item" onclick="switchTab('logistics'); setActiveNav(this)">
+                <img src="https://i.ibb.co.com/WNvzwmy4/EDCE1-AB1-5-CBB-40-B6-9145-973-CF25-C9866.png" alt="Карта">
+            </button>
+            <button type="button" class="nav-item" onclick="switchTab('leaderboard'); setActiveNav(this)">
+                <img src="https://i.ibb.co.com/3y2JkV6S/163-E5-B98-49-D0-461-D-85-DE-53519885928-B.png" alt="Кубок">
+            </button>
+            <button type="button" class="nav-item" onclick="switchTab('pass'); setActiveNav(this)">
+                <img src="https://i.ibb.co.com/gbKJkbFW/D2-E6-F7-AF-03-A6-496-E-A750-31-BDA7-D0587-A.png" alt="Лицензия">
+            </button>
+            <button type="button" class="nav-item" onclick="switchTab('syndicate'); setActiveNav(this)">
+                <img src="https://i.ibb.co.com/cW7dMWR/1-DC31-D33-86-F1-4-F61-8844-F0-A70-A4-D2-E09.png" alt="Корпорация">
+            </button>
+            <button type="button" class="nav-item" onclick="switchTab('profile'); setActiveNav(this)">
+                <img src="https://i.ibb.co.com/C5QWBNMx/6-A1-CD3-A0-2258-443-C-8705-55-E5-E15-BC85-E.png" alt="Профиль">
+            </button>
         </nav>
     </div>
 
+    <!-- Скрипт для подсветки активной кнопки меню -->
+    <script>
+        function setActiveNav(clickedBtn) {
+            document.querySelectorAll('.bottom-nav .nav-item').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            clickedBtn.classList.add('active');
+        }
+    </script>
+
     <!-- Временный скрипт для рендера картинок контрактов -->
-    <!-- ПОТОМ ТЫ СМОЖЕШЬ ПЕРЕНЕСТИ ЭТОТ МАССИВ В СВОЙ SCRIPT.JS -->
     <script>
         const contractData = [
             { name: "Доски", diff: "Обычный", class: "badge-ordinary", reward: "+5 304 🪙", time: "15с", fuel: "70л", img: "https://i.ibb.co.com/nxzLBSw/0-B0-F3-ED8-68-F9-4-D11-9455-63-CEE59-DEC70.png" },
