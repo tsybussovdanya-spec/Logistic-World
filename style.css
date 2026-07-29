@@ -260,7 +260,6 @@ body {
 /* НОВЫЙ ПРОФИЛЬ: ID-КАРТА, СТАТЫ, VIP БЛОК  */
 /* ========================================= */
 
-/* ID-Карта */
 .id-card {
     position: relative;
     background: linear-gradient(135deg, rgba(20, 20, 30, 0.95), rgba(40, 30, 60, 0.9));
@@ -310,7 +309,6 @@ body {
 }
 .id-reg-date { font-size: 10px; color: rgba(255,255,255,0.5); font-weight: bold; letter-spacing: 1px; }
 
-/* Цвета для новой статы */
 .stat-blue { color: var(--accent-blue) !important; }
 .stat-purple { color: var(--accent-purple) !important; }
 
@@ -324,3 +322,54 @@ body {
 .vip-badge { background: linear-gradient(90deg, #F59E0B, #D97706); color: #000; font-size: 10px; font-weight: 900; padding: 3px 8px; border-radius: 6px; letter-spacing: 1px; box-shadow: 0 0 10px rgba(245, 158, 11, 0.5); }
 .btn-vip { background: linear-gradient(90deg, #F59E0B, #D97706); color: #000; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3); font-weight: 800; border: none; padding: 14px 16px; border-radius: 12px; cursor: pointer; text-align: center; display: inline-flex; justify-content: center; width: 100%; transition: 0.2s;}
 .btn-vip:active { transform: scale(0.96); }
+
+/* ========================================= */
+/* СТИЛИ ДЛЯ МАСШТАБНОЙ КОРПОРАЦИИ           */
+/* ========================================= */
+.corp-hq-card {
+    position: relative;
+    background: linear-gradient(135deg, rgba(15, 15, 25, 0.95), rgba(35, 20, 50, 0.9));
+    border: 1px solid var(--accent-purple);
+    border-radius: 16px;
+    padding: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.2);
+    margin-bottom: 12px;
+}
+.corp-hq-overlay {
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 60%);
+    pointer-events: none;
+}
+.corp-tag { font-size: 9px; font-weight: 900; letter-spacing: 2px; color: var(--hint-color); text-transform: uppercase; }
+.corp-title { font-size: 20px; font-weight: 800; color: #fff; margin-top: 2px; }
+.corp-lvl-pill { background: rgba(139, 92, 246, 0.25); border: 1px solid var(--accent-purple); color: var(--accent-purple); font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 8px; }
+.corp-hq-stats { display: flex; justify-content: space-between; margin-top: 14px; font-size: 12px; color: var(--hint-color); z-index: 2; position: relative; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 8px; }
+
+.corp-feed-box {
+    max-height: 100px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 11px;
+    color: #10B981;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    scrollbar-width: none;
+}
+.corp-feed-box::-webkit-scrollbar { display: none; }
+.feed-item { opacity: 0.85; line-height: 1.3; }
+
+.tech-card {
+    background: rgba(22, 22, 30, 0.85);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.tech-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.tech-name { font-size: 14px; font-weight: 700; color: #fff; }
+.tech-lvl { font-size: 11px; font-weight: bold; color: var(--accent-pink); background: rgba(236,72,153,0.15); padding: 2px 6px; border-radius: 6px; }
+.tech-desc { font-size: 11px; color: var(--hint-color); line-height: 1.3; }
