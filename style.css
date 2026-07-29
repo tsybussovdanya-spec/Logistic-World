@@ -78,7 +78,7 @@ body {
 .xp-bar-fill { height: 100%; width: 0%; background: var(--gradient-primary); transition: width 0.5s ease; }
 .weather-badge { font-size: 11px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 6px 10px; border-radius: 12px; cursor: pointer; text-align: center;}
 
-/* Bottom Nav (Исправлено позиционирование: строго по центру без смещений вбок) */
+/* Bottom Nav: Растянуто на всю ширину экрана с полноценными активными зонами */
 .bottom-nav {
     position: fixed; 
     bottom: 0; 
@@ -89,37 +89,44 @@ body {
     backdrop-filter: blur(20px); 
     -webkit-backdrop-filter: blur(20px);
     display: flex; 
-    justify-content: space-around; 
+    justify-content: space-between; 
     align-items: center;
-    padding: 12px 0; 
-    padding-bottom: calc(12px + env(safe-area-inset-bottom)); 
+    padding: 6px 8px; 
+    padding-bottom: calc(6px + env(safe-area-inset-bottom)); 
     z-index: 1000;
 }
 
 .nav-item {
     background: transparent; 
     border: none; 
-    padding: 8px; 
+    flex: 1;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     transition: all 0.3s ease; 
     opacity: 0.4; 
+    border-radius: 12px;
     -webkit-tap-highlight-color: transparent;
 }
 
 .nav-item img {
-    width: 26px; 
-    height: 26px; 
+    width: 28px; 
+    height: 28px; 
     object-fit: contain; 
     transition: all 0.3s ease; 
 }
 
 .nav-item.active { 
     opacity: 1; 
+    background: rgba(139, 92, 246, 0.15); 
+    border: 1px solid rgba(139, 92, 246, 0.3);
 }
 
 .nav-item.active img {
-    transform: scale(1.2);
-    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.4));
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 8px rgba(236, 72, 153, 0.6));
 }
 
 /* Content Cards */
