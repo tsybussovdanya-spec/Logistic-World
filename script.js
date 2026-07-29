@@ -235,16 +235,19 @@ const EventSys = {
         if (AppState.player.skills && AppState.player.skills.luck) {
             luckMod -= AppState.player.skills.luck * 0.1;
         }
+        if (AppState.player.syndicate && AppState.syndicateData && AppState.syndicateData.techs) {
+            luckMod -= (AppState.syndicateData.techs.security || 0) * 0.05;
+        }
 
-        const chance = Math.random() / luckMod;
+        const chance = Math.random() / Math.max(0.2, luckMod);
         
-        if (chance < 0.15) {
+        if (chance < 0.12) {
             this.triggerEvent(trip, 'customs');
-        } else if (chance < 0.30) {
+        } else if (chance < 0.25) {
             this.triggerEvent(trip, 'breakdown');
-        } else if (chance < 0.45) {
+        } else if (chance < 0.38) {
             this.triggerEvent(trip, 'weather_traffic');
-        } else if (chance < 0.52) {
+        } else if (chance < 0.45) {
             this.triggerEvent(trip, 'accident');
         }
     },
@@ -462,9 +465,11 @@ const AppState = {
         reg_date: new Date().toISOString()
     },
     syndicateData: {
-        target: 10000,
-        current: 0,
-        level: 1
+        name: null,
+        level: 1,
+        treasuryFuel: 0,
+        techs: { security: 0, logistics: 0, mechanic: 0 },
+        feed: ["Системный лог инициализирован..."]
     },
     trucks: [],
     activeTrips: [],
@@ -547,6 +552,10 @@ const DB = {
                 if (AppState.player.total_fuel_burned === undefined) AppState.player.total_fuel_burned = 0;
                 if (AppState.player.playtime_minutes === undefined) AppState.player.playtime_minutes = 0;
                 if (!AppState.player.reg_date) AppState.player.reg_date = new Date().toISOString();
+                
+                if (AppState.player.syndicate_data) {
+                    AppState.syndicateData = { ...AppState.syndicateData, ...AppState.player.syndicate_data };
+                }
             }
 
             await this.loadGameData();
@@ -591,7 +600,8 @@ const DB = {
             skills: { eco: 0, luck: 0, mechanic: 0 },
             total_fuel_burned: 0,
             playtime_minutes: 0,
-            reg_date: new Date().toISOString()
+            reg_date: new Date().toISOString(),
+            syndicate_data: AppState.syndicateData
         };
 
         let { data: newP, error: insertError } = await supabaseClient
@@ -603,6 +613,7 @@ const DB = {
         if (insertError) {
             delete insertPayload.quests;
             delete insertPayload.skills;
+            delete insertPayload.syndicate_data;
             let { data: newPFallback, error: fallbackError } = await supabaseClient
                 .from('players')
                 .insert([insertPayload])
@@ -689,13 +700,15 @@ const DB = {
             skills: p.skills,
             total_fuel_burned: Number(p.total_fuel_burned || 0),
             playtime_minutes: Number(p.playtime_minutes || 0),
-            reg_date: p.reg_date || new Date().toISOString()
+            reg_date: p.reg_date || new Date().toISOString(),
+            syndicate_data: AppState.syndicateData
         };
 
         let { error } = await supabaseClient.from('players').update(updateData).eq('id', p.id);
         if (error) {
             delete updateData.quests;
             delete updateData.skills;
+            delete updateData.syndicate_data;
             await supabaseClient.from('players').update(updateData).eq('id', p.id);
         }
         this.loadLeaderboard();
@@ -812,9 +825,9 @@ const GameLogic = {
             reward = Math.floor(reward * WorldState.marketEvent.multiplier);
         }
 
-        if (AppState.player.syndicate && AppState.syndicateData.level) {
-            const synBonus = (AppState.syndicateData.level * 0.02);
-            reward = Math.floor(reward * (1 + synBonus));
+        if (AppState.player.syndicate && AppState.syndicateData && AppState.syndicateData.techs) {
+            const logisticsBonus = (AppState.syndicateData.techs.logistics || 0) * 0.04;
+            reward = Math.floor(reward * (1 + logisticsBonus));
         }
 
         let ecoMod = 1.0;
@@ -876,10 +889,13 @@ const GameLogic = {
             if (AppState.player.skills && AppState.player.skills.mechanic) {
                 mechMod -= AppState.player.skills.mechanic * 0.1;
             }
+            if (AppState.player.syndicate && AppState.syndicateData && AppState.syndicateData.techs) {
+                mechMod -= (AppState.syndicateData.techs.mechanic || 0) * 0.05;
+            }
 
             const baseWear = Math.floor(Math.random() * 6) + 5; 
             const wMod = WorldState.weather.wearMod;
-            const wear = Math.floor(baseWear * wMod * mechMod);
+            const wear = Math.max(1, Math.floor(baseWear * wMod * mechMod));
 
             truck.engineLvl = Math.max(0, truck.engineLvl - Math.max(1, wear - (truck.engineLvlUpgrade || 0)));
             truck.tiresLvl = Math.max(0, truck.tiresLvl - Math.max(1, Math.floor((wear + 3)) - (truck.tiresLvlUpgrade || 0)));
@@ -1121,7 +1137,13 @@ const GameLogic = {
 
         AppState.player.money -= 500000;
         AppState.player.syndicate = name;
-        AppState.syndicateData = { target: 10000, current: 0, level: 1 };
+        AppState.syndicateData = {
+            name: name,
+            level: 1,
+            treasuryFuel: 0,
+            techs: { security: 0, logistics: 0, mechanic: 0 },
+            feed: [`Создан синдикат "${name}". Основатель: ${AppState.player.name}`]
+        };
         
         await DB.syncPlayer();
         UI.showToast(`Синдикат "${name}" успешно создан!`, 'success');
@@ -1135,7 +1157,9 @@ const GameLogic = {
         if (AppState.player.syndicate) return UI.showToast('Сначала покиньте текущий синдикат', 'error');
 
         AppState.player.syndicate = name;
-        AppState.syndicateData = { target: 10000, current: 0, level: 1 }; 
+        AppState.syndicateData.name = name;
+        if (!AppState.syndicateData.feed) AppState.syndicateData.feed = [];
+        AppState.syndicateData.feed.unshift(`Агент ${AppState.player.name} присоединился к синдикату.`);
         
         await DB.syncPlayer();
         UI.showToast(`Вы вступили в ${name}!`, 'success');
@@ -1145,7 +1169,7 @@ const GameLogic = {
     leaveSyndicate: async function() {
         if (!AppState.player.syndicate) return;
         
-        if (confirm("Вы уверены, что хотите покинуть синдикат? Прогресс будет утерян.")) {
+        if (confirm("Вы уверены, что хотите покинуть синдикат?")) {
             AppState.player.syndicate = null;
             await DB.syncPlayer();
             UI.showToast('Вы покинули корпорацию.', 'info');
@@ -1153,24 +1177,29 @@ const GameLogic = {
         }
     },
 
-    contributeToCoop: async function(fuelAmount) {
-        if (!AppState.player.syndicate) return UI.showToast('Сначала вступите в корпорацию!', 'error');
-        if (AppState.player.fuel_stock < fuelAmount) return UI.showToast(`Нужно ${fuelAmount}л топлива!`, 'error');
+    upgradeTech(techKey) {
+        const techCosts = { security: 1000, logistics: 1500, mechanic: 1200 };
+        const currentLvl = AppState.syndicateData.techs[techKey] || 0;
+        if (currentLvl >= 5) return UI.showToast('Технология максимального уровня!', 'info');
 
-        AppState.player.fuel_stock -= fuelAmount;
-        AppState.syndicateData.current += fuelAmount;
+        const cost = techCosts[techKey] * (currentLvl + 1);
 
-        if (AppState.syndicateData.current >= AppState.syndicateData.target) {
-            AppState.syndicateData.level = (AppState.syndicateData.level || 1) + 1;
-            AppState.syndicateData.current -= AppState.syndicateData.target;
-            AppState.syndicateData.target = Math.floor(AppState.syndicateData.target * 1.5);
-            
-            UI.showToast(`🎉 Синдикат достиг ${AppState.syndicateData.level} уровня!`, 'success');
-            AIDispatcher.showPopup("Корпорация расширяется! Баффы увеличены.");
+        if (AppState.player.fuel_stock < cost) {
+            return UI.showToast(`Недостаточно личного топлива! Нужно ${cost}л`, 'error');
         }
 
-        await DB.syncPlayer();
-        UI.showToast(`Вложено ${fuelAmount}л в развитие!`, 'success');
+        AppState.player.fuel_stock -= cost;
+        AppState.syndicateData.techs[techKey] = currentLvl + 1;
+        AppState.syndicateData.treasuryFuel = (AppState.syndicateData.treasuryFuel || 0) + cost;
+
+        let techNames = { security: 'Безопасность', logistics: 'Тендерный отдел', mechanic: 'Собственная СТО' };
+        if (!AppState.syndicateData.feed) AppState.syndicateData.feed = [];
+        AppState.syndicateData.feed.unshift(`> ${AppState.player.name} улучшил "${techNames[techKey]}" до Ур.${AppState.syndicateData.techs[techKey]}`);
+        
+        if (AppState.syndicateData.feed.length > 10) AppState.syndicateData.feed.pop();
+
+        DB.syncPlayer();
+        UI.showToast('Технология синдиката улучшена!', 'success');
         UI.renderAll();
     }
 };
@@ -1282,6 +1311,7 @@ const UI = {
             }).join(''));
         }
         
+        // --- Рендеринг Масштабного Синдиката ---
         const noSynPanel = document.getElementById('no-syndicate-panel');
         const activeSynPanel = document.getElementById('active-syndicate-panel');
 
@@ -1289,28 +1319,58 @@ const UI = {
             if(noSynPanel) noSynPanel.style.display = 'none';
             if(activeSynPanel) activeSynPanel.style.display = 'block';
 
-            if (!AppState.syndicateData.level) AppState.syndicateData.level = 1;
             const syn = AppState.syndicateData;
-            const pct = Math.min((syn.current / syn.target) * 100, 100).toFixed(1);
-            const bonusMod = (syn.level * 2);
-            
             this.safeUpdate('corp-name-title', p.syndicate);
-            this.safeUpdate('corp-level-badge', `Ур. ${syn.level}`);
-            this.safeUpdateHTML('corp-buffs-list', `<li>💰 +${bonusMod}% к прибыли всех контрактов</li>`);
-            
-            this.safeUpdateHTML('coop-panel-content', `
-                <p style="font-size:12px; color:var(--hint-color); margin: 4px 0;">Опыт до следующего уровня: ${syn.current.toLocaleString()} / ${syn.target.toLocaleString()} л</p>
-                <div class="progress-bar-container" style="margin: 8px 0;">
-                    <div class="progress-bar-fill" style="width: ${pct}%; background: var(--accent-blue); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);"></div>
+            this.safeUpdate('corp-level-badge', `Ур. ${syn.level || 1}`);
+            this.safeUpdate('corp-fuel-treasury', `${(syn.treasuryFuel || 0).toLocaleString()} л`);
+            this.safeUpdate('corp-role-desc', p.name === 'TSYBUSS' ? 'Генеральный Директор' : 'Элитный Логист');
+
+            if (syn.feed && syn.feed.length > 0) {
+                this.safeUpdateHTML('corp-activity-feed', syn.feed.map(item => `<div class="feed-item">${item}</div>`).join(''));
+            }
+
+            const techsConfig = [
+                { key: 'security', name: '🛡️ Отдел Безопасности', desc: 'Снижает шанс форс-мажоров в пути на 5% за уровень.', cost: 1000 },
+                { key: 'logistics', name: '📈 Тендерный Отдел', desc: 'Увеличивает доходность контрактов на +4% за уровень.', cost: 1500 },
+                { key: 'mechanic', name: '🔧 Корпоративная СТО', desc: 'Замедляет износ узлов тягачей на 5% за уровень.', cost: 1200 }
+            ];
+
+            this.safeUpdateHTML('corp-tech-tree', techsConfig.map(t => {
+                const curLvl = syn.techs[t.key] || 0;
+                const nextCost = t.cost * (curLvl + 1);
+                const isMax = curLvl >= 5;
+
+                return `
+                <div class="tech-card">
+                    <div class="tech-header">
+                        <span class="tech-name">${t.name}</span>
+                        <span class="tech-lvl">Ур. ${curLvl}/5</span>
+                    </div>
+                    <p class="tech-desc">${t.desc}</p>
+                    <button class="btn ${isMax ? 'btn-outline' : 'btn-primary'}" style="font-size: 11px; padding: 8px;" ${isMax ? 'disabled' : ''} onclick="GameLogic.upgradeTech('${t.key}')">
+                        ${isMax ? 'МАКСИМУМ' : `Инвестировать (${nextCost}л ⛽)`}
+                    </button>
+                </div>`;
+            }).join(''));
+
+            this.safeUpdateHTML('corp-members-list', `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <img src="${p.avatar || 'https://via.placeholder.com/30'}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">
+                        <div>
+                            <div style="font-size: 12px; font-weight: bold;">${p.name} (Вы)</div>
+                            <div style="font-size: 10px; color: var(--accent-pink);">Участник сети</div>
+                        </div>
+                    </div>
+                    <span style="font-size: 11px; color: var(--success-color);">Активен</span>
                 </div>
-                <button type="button" class="btn btn-primary" style="background: var(--accent-blue);" onclick="GameLogic.contributeToCoop(500)">
-                    Пожертвовать 500л топлива
-                </button>
             `);
+
         } else {
             if(noSynPanel) noSynPanel.style.display = 'block';
             if(activeSynPanel) activeSynPanel.style.display = 'none';
         }
+        // --------------------------------------------------
 
         const xpProg = Math.min((p.xp / GameLogic.getReqXP(p.level)) * 100, 100);
         const xpFill = document.getElementById('xp-bar-fill');
@@ -1468,9 +1528,9 @@ const UI = {
                 currentReward = Math.floor(currentReward * WorldState.marketEvent.multiplier);
             }
 
-            if (AppState.player.syndicate && AppState.syndicateData.level) {
-                const synBonus = (AppState.syndicateData.level * 0.02);
-                currentReward = Math.floor(currentReward * (1 + synBonus));
+            if (AppState.player.syndicate && AppState.syndicateData && AppState.syndicateData.techs) {
+                const logisticsBonus = (AppState.syndicateData.techs.logistics || 0) * 0.04;
+                currentReward = Math.floor(currentReward * (1 + logisticsBonus));
             }
 
             let btnText = 'Начать рейс';
