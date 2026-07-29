@@ -197,48 +197,98 @@
             <!-- Вкладка: Профиль -->
             <section id="tab-profile" class="tab-content">
                 <div class="section-header">
-                    <h2>Профиль & Настройки</h2>
-                    <p class="subtitle">История, Аватар и Музыка</p>
+                    <h2>Личное Дело</h2>
+                    <p class="subtitle">Идентификация и статистика логиста</p>
                 </div>
-                <div class="stats-grid">
-                    <div class="stat-box"><span class="stat-label">Всего заработано</span><span class="stat-value" id="stat-total-profit">0 🪙</span></div>
-                    <div class="stat-box"><span class="stat-label">Выполнено рейсов</span><span class="stat-value" id="stat-total-trips">0</span></div>
+
+                <!-- Голографическая ID-карта -->
+                <div class="id-card">
+                    <div class="id-holo-overlay"></div>
+                    <div class="id-header">
+                        <div class="id-chip"></div>
+                        <div class="id-logo-text">L.W. CORP PERMIT</div>
+                    </div>
+                    <div class="id-body">
+                        <div class="id-avatar-frame">
+                            <img id="profile-id-avatar" src="https://via.placeholder.com/80" alt="Avatar">
+                        </div>
+                        <div class="id-info">
+                            <div class="id-label">ПОЗЫВНОЙ</div>
+                            <div id="profile-id-name" class="id-name premium-name">Логист</div>
+                            <div class="id-label" style="margin-top: 6px;">ДОЛЖНОСТЬ</div>
+                            <div id="profile-id-role" class="id-role">Частник-одиночка</div>
+                            <div class="id-level-box">
+                                <span style="font-size: 10px; color: var(--hint-color);">ДОПУСК</span>
+                                <span id="profile-id-lvl" style="font-weight: 900; color: var(--success-color);">LVL 1</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="id-footer">
+                        <div class="id-barcode"></div>
+                        <div class="id-reg-date">ВЫДАН: <span id="profile-id-date">...</span></div>
+                    </div>
                 </div>
-                <div class="card" style="margin-top: 12px; border-color: var(--accent-blue);">
+
+                <!-- Расширенная статистика -->
+                <h3 class="subsection-title">Экономическая сводка</h3>
+                <div class="stats-grid" style="margin-bottom: 10px;">
+                    <div class="stat-box"><span class="stat-label">Заработано</span><span class="stat-value" id="stat-total-profit">0 🪙</span></div>
+                    <div class="stat-box"><span class="stat-label">Рейсов</span><span class="stat-value" id="stat-total-trips">0</span></div>
+                    <div class="stat-box"><span class="stat-label">Сжёг топлива</span><span class="stat-value stat-blue" id="stat-total-fuel">0 л</span></div>
+                    <div class="stat-box"><span class="stat-label">В игре</span><span class="stat-value stat-purple" id="stat-playtime">0ч 0м</span></div>
+                </div>
+                <div class="card" style="border-color: rgba(59, 130, 246, 0.3); text-align: center; margin-bottom: 12px; padding: 12px;">
+                    <span class="stat-label">Любимый тягач</span>
+                    <h3 id="stat-fav-truck" style="color: var(--accent-blue); margin-top: 4px; font-size: 16px;">Определяется...</h3>
+                </div>
+
+                <!-- Навыки -->
+                <div class="card" style="margin-bottom: 12px; border-color: var(--accent-blue);">
                     <h3>🧠 Навыки Логиста</h3>
                     <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 8px;">Прокачивайте пассивные перки за монеты.</p>
                     <div id="skills-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
                 </div>
-                <div class="card" style="margin-top: 12px; border-color: var(--accent-purple);">
+
+                <!-- Приглашение -->
+                <div class="card" style="margin-bottom: 12px; border-color: var(--accent-purple);">
                     <h3>🤝 Транспортная сеть</h3>
                     <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 8px;">Пригласи партнера в игру! Вы оба получите бонус: <b>+50,000 🪙 и +500л топлива</b>.</p>
                     <button type="button" class="btn btn-primary" style="background: var(--accent-purple);" onclick="GameLogic.inviteFriend()">🔗 Позвать логиста</button>
                 </div>
-                <div class="card" id="admin-panel-card" style="margin-top: 12px; border-color: var(--accent-pink); display: none;">
+
+                <!-- Настройки -->
+                <div class="card" style="margin-bottom: 12px;">
+                    <h3>Настройки профиля</h3>
+                    <div style="display: flex; gap: 8px; margin-top: 12px;">
+                        <input type="file" id="avatar-file-input" accept="image/*" style="display: none;" onchange="GameLogic.handleAvatarUpload(event)">
+                        <button type="button" class="btn btn-outline" style="flex: 1; font-size: 13px;" onclick="document.getElementById('avatar-file-input').click()">🖼 Сменить аватар</button>
+                    </div>
+                    <div class="input-group" style="margin-top: 12px; flex-direction: row; align-items: stretch; gap: 8px;">
+                        <input type="text" id="input-username" class="input-text" placeholder="Новый никнейм" style="flex: 2;">
+                        <button type="button" class="btn btn-save" style="flex: 1; padding: 0;" onclick="GameLogic.saveProfile()">Сохранить</button>
+                    </div>
+                </div>
+
+                <!-- VIP Линия Связи -->
+                <div class="card vip-support-card" style="margin-bottom: 12px;">
+                    <div class="vip-header">
+                        <h3 style="margin: 0; color: #F59E0B; text-transform: uppercase; font-size: 14px;">👑 VIP-Связь с Владельцем</h3>
+                        <span class="vip-badge">ELITE</span>
+                    </div>
+                    <p style="font-size: 12px; color: rgba(255,255,255,0.7); margin: 8px 0 12px 0;">Прямой канал с руководством. Для предложений, баг-репортов и деловых вопросов.</p>
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <button type="button" class="btn btn-vip" onclick="tg.openTelegramLink('https://t.me/TSYBUSS')">Написать @TSYBUSS</button>
+                        <button type="button" class="btn btn-outline" style="border-color: rgba(245, 158, 11, 0.3); color: #F59E0B;" onclick="tg.openTelegramLink('https://t.me/LogisticWorld_news')">📰 Новости проекта</button>
+                    </div>
+                </div>
+
+                <!-- Админка -->
+                <div class="card" id="admin-panel-card" style="margin-bottom: 12px; border-color: var(--accent-pink); display: none;">
                     <h3 style="color: var(--accent-pink);">🛡️ Админ Панель</h3>
                     <div style="display: flex; flex-direction: column; gap: 8px;">
                         <button type="button" class="btn btn-primary" onclick="AdminSys.addMoney(500000)">+500,000 🪙</button>
                         <button type="button" class="btn btn-primary" onclick="AdminSys.addFuel(5000)">+5,000л Топлива</button>
                         <button type="button" class="btn btn-primary" onclick="AdminSys.setLevel(25)">Установить Уровень 25</button>
-                    </div>
-                </div>
-                <div class="card" style="margin-top: 12px;">
-                    <h3>Аватар профиля</h3>
-                    <input type="file" id="avatar-file-input" accept="image/*" style="display: none;" onchange="GameLogic.handleAvatarUpload(event)">
-                    <button type="button" class="btn btn-outline" onclick="document.getElementById('avatar-file-input').click()">Выбрать из галереи 🖼️</button>
-                </div>
-                <div class="card" style="margin-top: 12px;">
-                    <div class="input-group">
-                        <label>Никнейм (введите секретный код для Админки):</label>
-                        <input type="text" id="input-username" class="input-text">
-                    </div>
-                    <button type="button" class="btn btn-save" onclick="GameLogic.saveProfile()">Сохранить профиль</button>
-                </div>
-                <div class="card" style="margin-top: 12px;">
-                    <h3>Обратная связь</h3>
-                    <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
-                        <button type="button" class="btn btn-outline social-btn" onclick="tg.openTelegramLink('https://t.me/TSYBUSS')">👑 Владелец (@TSYBUSS)</button>
-                        <button type="button" class="btn btn-outline social-btn" onclick="tg.openTelegramLink('https://t.me/LogisticWorld_news')">📰 Новости проекта</button>
                     </div>
                 </div>
             </section>
