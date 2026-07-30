@@ -48,26 +48,19 @@ const LICENSES_SHOP = [
 // 🌌 КОЛЛЕКЦИЯ АНИМИРОВАННЫХ ФОНОВ (КЕЙСЫ)
 // ============================================================================
 const BACKGROUNDS_SHOP = [
-    // Редкие (Шанс выпадения суммарно ~55%)
     { id: 'bg_r1', name: 'Неоновый асфальт', rarity: 'rare', chance: 8.0, image: 'https://i.ibb.co.com/9mwvmfZG/IMG-4513.jpg' },
     { id: 'bg_r2', name: 'Ночной траверз', rarity: 'rare', chance: 8.0, image: 'https://i.ibb.co.com/HLhsyRKk/IMG-4514.jpg' },
     { id: 'bg_r3', name: 'Кибер-трасса 01', rarity: 'rare', chance: 8.0, image: 'https://i.ibb.co.com/mVjJzRdV/IMG-4519.jpg' },
     { id: 'bg_r4', name: 'Цифровой горизонт', rarity: 'rare', chance: 8.0, image: 'https://i.ibb.co.com/rKGsR0VC/IMG-4520.jpg' },
     { id: 'bg_r5', name: 'Скоростной пульс', rarity: 'rare', chance: 8.0, image: 'https://i.ibb.co.com/mCRj1msw/IMG-4523.jpg' },
     { id: 'bg_r6', name: 'Лазерный поток', rarity: 'rare', chance: 8.0, image: 'https://i.ibb.co.com/v4Sr1x8s/IMG-4524.jpg' },
-
-    // Эпические (Шанс выпадения суммарно ~28%)
     { id: 'bg_e1', name: 'Глубокий синий неоновый', rarity: 'epic', chance: 7.0, image: 'https://i.ibb.co.com/5CxBvqG/IMG-4527.jpg' },
     { id: 'bg_e2', name: 'Фиолетовый шторм', rarity: 'epic', chance: 7.0, image: 'https://i.ibb.co.com/hSXZxCJ/IMG-4528.jpg' },
     { id: 'bg_e3', name: 'Квантовый варп', rarity: 'epic', chance: 7.0, image: 'https://i.ibb.co.com/PGCmhw0V/IMG-4522.jpg' },
     { id: 'bg_e4', name: 'Глитч-драйв', rarity: 'epic', chance: 7.0, image: 'https://i.ibb.co.com/wkxt4Kd/IMG-4517.jpg' },
-
-    // Мифические (Шанс выпадения суммарно ~12%)
     { id: 'bg_m1', name: 'Астральный тоннель', rarity: 'mythic', chance: 4.0, image: 'https://i.ibb.co.com/kg81Wjdv/IMG-4525.jpg' },
     { id: 'bg_m2', name: 'Сверхсветовой прыжок', rarity: 'mythic', chance: 4.0, image: 'https://i.ibb.co.com/39rfWGkn/IMG-4516.jpg' },
     { id: 'bg_m3', name: 'Матричный пульс', rarity: 'mythic', chance: 4.0, image: 'https://i.ibb.co.com/s9ZnK8ss/IMG-4521.jpg' },
-
-    // Легендарные (Шанс выпадения суммарно ~5%)
     { id: 'bg_l1', name: 'Абсолютный кибернетиз', rarity: 'legendary', chance: 2.0, image: 'https://i.ibb.co.com/KjbxLkzJ/IMG-4529.jpg' },
     { id: 'bg_l2', name: 'Ядро синдиката', rarity: 'legendary', chance: 2.0, image: 'https://i.ibb.co.com/23WZ4t1D/IMG-4526.jpg' },
     { id: 'bg_l3', name: 'Транспортный бог', rarity: 'legendary', chance: 1.0, image: 'https://i.ibb.co.com/mV8CH1jr/IMG-4518.jpg' }
@@ -484,15 +477,23 @@ const EventSys = {
 // 📦 МЕХАНИКА КЕЙСОВ С АНИМИРОВАННЫМИ ФОНАМИ
 // ============================================================================
 const BackgroundCaseSys = {
+    isOpening: false,
+
     openCase() {
+        if (this.isOpening) return;
+        
         const cost = CONFIG.CASE_COST;
         if (AppState.player.money < cost) {
             return UI.showToast(`Недостаточно монет! Нужно ${cost.toLocaleString()} 🪙`, 'error');
         }
 
+        this.isOpening = true;
         AppState.player.money -= cost;
+        DB.syncPlayer();
+        UI.renderAll();
 
-        // Рулетка шансов
+        this.showOpeningAnimation();
+
         let roll = Math.random() * 100;
         let cumulative = 0;
         let selectedBg = BACKGROUNDS_SHOP[0];
@@ -523,29 +524,77 @@ const BackgroundCaseSys = {
         }
 
         DB.syncPlayer();
-        this.showCaseResultModal(selectedBg, isDuplicate, rewardText);
-        UI.renderAll();
+
+        setTimeout(() => {
+            const openingModal = document.getElementById('case-opening-modal');
+            if (openingModal) openingModal.remove();
+
+            document.body.insertAdjacentHTML('beforeend', '<div class="flash-bang" id="flash-bang-effect"></div>');
+            AudioSys.playVibrate('success');
+
+            this.showCaseResultModal(selectedBg, isDuplicate, rewardText);
+            UI.renderAll();
+            this.isOpening = false;
+            
+            setTimeout(() => {
+                const flash = document.getElementById('flash-bang-effect');
+                if (flash) flash.remove();
+            }, 1500);
+
+        }, 2500);
+    },
+
+    showOpeningAnimation() {
+        let existing = document.getElementById('case-opening-modal');
+        if (existing) existing.remove();
+
+        const modalHtml = `
+        <div id="case-opening-modal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(15px);">
+            <h2 style="color: #fff; margin-bottom: 40px; font-weight: 900; letter-spacing: 2px;">РАСПАКОВКА...</h2>
+            <div class="case-opening-anim" style="width: 120px; height: 120px; background: var(--gradient-primary); border-radius: 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(236,72,153,0.5); border: 2px solid rgba(255,255,255,0.2);">
+                <span style="font-size: 60px;">🎁</span>
+            </div>
+            <p style="color: var(--hint-color); margin-top: 50px; font-size: 12px; text-transform: uppercase;">Система дешифрует данные...</p>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        let vCount = 0;
+        const vInterval = setInterval(() => {
+            if (vCount >= 8 || !this.isOpening) {
+                clearInterval(vInterval);
+            } else {
+                AudioSys.playVibrate('click');
+                vCount++;
+            }
+        }, 300);
     },
 
     showCaseResultModal(bg, isDuplicate, text) {
         let existing = document.getElementById('case-modal');
         if (existing) existing.remove();
 
+        let glowColor = 'rgba(236,72,153,0.4)';
+        if (bg.rarity === 'legendary') glowColor = 'rgba(245, 158, 11, 0.6)';
+        if (bg.rarity === 'mythic') glowColor = 'rgba(139, 92, 246, 0.6)';
+        if (bg.rarity === 'rare') glowColor = 'rgba(59, 130, 246, 0.5)';
+
         const modalHtml = `
         <div id="case-modal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(12px);" onclick="this.remove()">
-            <div class="card" style="width: 100%; max-width: 360px; border-color: var(--accent-pink); text-align: center; box-shadow: 0 0 40px rgba(236,72,153,0.4);" onclick="event.stopPropagation()">
-                <h3 style="color: var(--accent-pink); font-size: 18px; margin-bottom: 10px;">📦 Кейс с фоном открыт!</h3>
-                <div style="width: 100%; height: 140px; border-radius: 10px; overflow: hidden; margin-bottom: 12px; border: 2px solid var(--border-color); position: relative;">
+            <div class="card" style="width: 100%; max-width: 360px; border-color: var(--accent-pink); text-align: center; box-shadow: 0 0 50px ${glowColor};" onclick="event.stopPropagation()">
+                <h3 style="color: #fff; font-size: 20px; margin-bottom: 15px; font-weight: 900;">${isDuplicate ? '🔄 ДУБЛИКАТ' : '✨ НОВЫЙ ФОН!'}</h3>
+                
+                <div style="width: 100%; height: 160px; border-radius: 12px; overflow: hidden; margin-bottom: 16px; border: 2px solid rgba(255,255,255,0.1); position: relative;">
                     <img src="${bg.image}" style="width: 100%; height: 100%; object-fit: cover;">
-                    <div style="position: absolute; bottom: 6px; left: 6px; background: rgba(0,0,0,0.7); padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; color: var(--accent-pink);">${bg.rarity}</div>
+                    <div style="position: absolute; bottom: 8px; left: 8px; background: rgba(0,0,0,0.8); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 900; text-transform: uppercase; color: #fff; border-left: 3px solid var(--accent-pink);">${bg.rarity}</div>
                 </div>
-                <h4 style="color: #fff; font-size: 15px; margin-bottom: 6px;">${bg.name}</h4>
-                <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 16px; line-height: 1.4;">${text}</p>
-                <button class="btn btn-primary" onclick="document.getElementById('case-modal').remove()">Забрать</button>
+                
+                <h4 style="color: var(--accent-pink); font-size: 18px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">${bg.name}</h4>
+                <p style="font-size: 13px; color: var(--hint-color); margin-bottom: 20px; line-height: 1.5; padding: 0 10px;">${text}</p>
+                
+                <button class="btn btn-primary" style="padding: 14px; font-size: 14px; text-transform: uppercase;" onclick="document.getElementById('case-modal').remove()">Отлично</button>
             </div>
         </div>`;
         document.body.insertAdjacentHTML('beforeend', modalHtml);
-        AudioSys.playVibrate('success');
     },
 
     setBackground(bgId) {
@@ -1466,7 +1515,6 @@ const UI = {
         const roleTitle = ReputationSys.getTitle(target.level || 1);
         const valStr = AppState.leaderboardCategory === 'trips' ? `${target.total_trips || 0} рейсов` : `${Number(target.total_profit || 0).toLocaleString()} 🪙`;
         
-        // Подтягиваем анимированный фон игрока для карточки
         const bgObj = BACKGROUNDS_SHOP.find(b => b.id === target.current_background) || BACKGROUNDS_SHOP[0];
 
         const modalHtml = `
@@ -1523,7 +1571,6 @@ const UI = {
         const idAvatar = document.getElementById('profile-id-avatar');
         if (idAvatar) idAvatar.src = p.avatar || 'https://via.placeholder.com/80';
         
-        // Установка активного анимированного фона для своей карточки профиля
         const currentBg = BACKGROUNDS_SHOP.find(b => b.id === p.current_background) || BACKGROUNDS_SHOP[0];
         const profileCard = document.getElementById('profile-card-main');
         if (profileCard) {
@@ -1565,7 +1612,6 @@ const UI = {
         this.safeUpdate('stat-total-profit', `${Number(p.total_profit).toLocaleString()} 🪙`);
         this.safeUpdate('stat-total-trips', p.total_trips);
 
-        // Инвентарь фонов (отрисовка)
         const unlockedBgList = p.unlocked_backgrounds || ['bg_r1'];
         this.safeUpdateHTML('backgrounds-inventory-list', BACKGROUNDS_SHOP.map(bg => {
             const isUnlocked = unlockedBgList.includes(bg.id);
@@ -1586,7 +1632,6 @@ const UI = {
             </div>`;
         }).join(''));
 
-        // Баннер покупки кейса с фоном (отобразим в Центре или отдельном блоке, если есть HTML заглушка. Если её нет, скрипт не упадет)
         this.safeUpdateHTML('background-case-section', `
             <div class="card" style="border-color: var(--accent-pink); text-align: center; margin-bottom: 16px;">
                 <div class="card-title"><span>🎁 Кейс с анимированными фонами</span></div>
