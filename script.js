@@ -77,7 +77,6 @@ const AudioSys = {
                 this.bgm.play().then(() => {
                     if (btn) btn.innerText = "Включено 🔊";
                 }).catch(e => {
-                    console.log("Браузер заблокировал автовоспроизведение музыки:", e);
                     this.musicOn = false;
                     if (btn) btn.innerText = "Выключено 🔇";
                     UI.showToast("Кликните еще раз для включения музыки", "info");
@@ -160,6 +159,7 @@ const AdminSys = {
                     capacity: shopT.capacity,
                     fuel_use: shopT.fuel_use,
                     rarity: shopT.rarity,
+                    custom_plate: '456LWO|10',
                     engineLvl: 100, tiresLvl: 100, gearLvl: 100, brakesLvl: 100,
                     engineLvlUpgrade: 0, tiresLvlUpgrade: 0, gearLvlUpgrade: 0, brakesLvlUpgrade: 0
                 });
@@ -417,7 +417,7 @@ const EventSys = {
         if (!ev) return;
 
         const modalHtml = `
-        <div id="event-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(8px);">
+        <div id="event-modal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(8px);">
             <div class="card" style="width: 100%; max-width: 400px; border-color: var(--accent-pink); box-shadow: 0 0 30px rgba(236, 72, 153, 0.3);">
                 <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
                     <span style="color: var(--accent-pink);">${ev.title}</span>
@@ -449,7 +449,7 @@ const EventSys = {
 // ⚙️ ГЛОБАЛЬНОЕ СОСТОЯНИЕ (STATE)
 // ============================================================================
 const AppState = {
-    leaderboardCategory: 'profit', // 'profit' или 'trips'
+    leaderboardCategory: 'profit', 
     player: {
         id: null, name: tgUser?.first_name || 'Логист', avatar: tgUser?.photo_url || '',
         money: 100000, fuel_stock: 400, fuel_price: 12, level: 1, xp: 0,
@@ -500,7 +500,7 @@ const AppState = {
 // ============================================================================
 const AIDispatcher = {
     messages: [
-        "Босс, проверьте износ тормозов перед выездом!",
+        "Босс, следите за износом деталей: критическое состояние увеличивает стоимость ремонта!",
         "Цены на топливо меняются динамически. Закупайте на низах!",
         "Прокачайте узлы тягача, чтобы они изнашивались медленнее.",
         "Выполняйте ежедневные квесты для быстрого получения наград."
@@ -656,6 +656,7 @@ const DB = {
             AppState.trucks = trucksRes.data || [];
             
             AppState.trucks.forEach(t => {
+                if (!t.custom_plate) t.custom_plate = '456LWO|10';
                 if (t.engineLvl === undefined) t.engineLvl = 100;
                 if (t.tiresLvl === undefined) t.tiresLvl = 100;
                 if (t.gearLvl === undefined) t.gearLvl = 100;
@@ -796,6 +797,7 @@ const GameLogic = {
             capacity: template.capacity,
             fuel_use: template.fuel_use,
             rarity: template.rarity,
+            custom_plate: '456LWO|10',
             engineLvl: 100, tiresLvl: 100, gearLvl: 100, brakesLvl: 100,
             engineLvlUpgrade: 0, tiresLvlUpgrade: 0, gearLvlUpgrade: 0, brakesLvlUpgrade: 0
         }]).select().single();
@@ -804,7 +806,157 @@ const GameLogic = {
 
         AppState.trucks.push(data);
         await DB.syncPlayer();
-        UI.showToast(`Куплен новый транспорт: ${template.name}!`, 'success');
+        UI.showToast(`Куплен новый транспорт: ${template.name}! Госномер: 456LWO|10`, 'success');
+        UI.renderAll();
+    },
+
+    openPlateModal(truckId) {
+        const truck = AppState.trucks.find(t => String(t.id) === String(truckId));
+        if (!truck) return;
+
+        let existingModal = document.getElementById('plate-modal');
+        if (existingModal) existingModal.remove();
+
+        const changeCost = 25000;
+
+        const modalHtml = `
+        <div id="plate-modal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(8px);" onclick="this.remove()">
+            <div class="card" style="width: 100%; max-width: 360px; border-color: var(--accent-purple); text-align: center;" onclick="event.stopPropagation()">
+                <h3 style="color: #fff; font-size: 16px; margin-bottom: 8px;">Регистрация госномера</h3>
+                <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 14px;">Введите желаемый текст номера (макс. 10 символов, например: 777AAA|01)</p>
+                
+                <input type="text" id="custom-plate-input" value="${truck.custom_plate || '456LWO|10'}" maxlength="10" style="width: 100%; padding: 10px; background: #000; border: 1px solid var(--border-color); color: #fff; text-align: center; font-size: 16px; font-weight: bold; border-radius: 8px; margin-bottom: 12px; text-transform: uppercase; font-family: monospace;" />
+                
+                <div style="font-size: 11px; color: var(--accent-pink); margin-bottom: 14px;">Стоимость переоформления: ${changeCost.toLocaleString()} 🪙</div>
+
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn btn-outline" style="flex:1; font-size: 12px;" onclick="document.getElementById('plate-modal').remove()">Отмена</button>
+                    <button type="button" class="btn btn-primary" style="flex:1; font-size: 12px;" onclick="GameLogic.saveCustomPlate('${truck.id}', ${changeCost})">Сохранить</button>
+                </div>
+            </div>
+        </div>`;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    },
+
+    async saveCustomPlate(truckId, cost) {
+        const input = document.getElementById('custom-plate-input');
+        if (!input) return;
+
+        const newPlate = input.value.trim().toUpperCase();
+        if (!newPlate || newPlate.length < 3) {
+            return UI.showToast('Слишком короткий номер!', 'error');
+        }
+
+        if (AppState.player.money < cost) {
+            return UI.showToast(`Нужно ${cost.toLocaleString()} 🪙 для смены номера`, 'error');
+        }
+
+        const truck = AppState.trucks.find(t => String(t.id) === String(truckId));
+        if (!truck) return;
+
+        AppState.player.money -= cost;
+        truck.custom_plate = newPlate;
+
+        let { error } = await supabaseClient.from('trucks').update({ custom_plate: newPlate }).eq('id', truck.id);
+        if (error) return UI.showToast("Ошибка сохранения госномера", "error");
+
+        await DB.syncPlayer();
+        const modal = document.getElementById('plate-modal');
+        if (modal) modal.remove();
+
+        UI.showToast(`Госномер успешно изменен на [${newPlate}]!`, 'success');
+        UI.renderAll();
+    },
+
+    getRepairCost(currentVal) {
+        if (currentVal >= 100) return 0;
+        const missing = 100 - currentVal;
+        if (currentVal >= 50) return missing * 150;
+        if (currentVal >= 20) return missing * 250;
+        return (missing * 400);
+    },
+
+    async repairPart(truckId, partName) {
+        const truck = AppState.trucks.find(t => String(t.id) === String(truckId));
+        if (!truck) return;
+
+        const currentVal = Number(truck[partName]) || 0;
+        if (currentVal >= 100) return UI.showToast('Узел в идеальном состоянии!', 'info');
+
+        const repairCost = this.getRepairCost(currentVal);
+
+        if (Number(AppState.player.money) < repairCost) {
+            return UI.showToast(`Нужно ${repairCost.toLocaleString()} 🪙 для починки`, 'error');
+        }
+
+        AppState.player.money = Number(AppState.player.money) - repairCost;
+        truck[partName] = 100;
+
+        let { error } = await supabaseClient.from('trucks').update({ [partName]: 100 }).eq('id', truck.id);
+        if (error) return UI.showToast("Ошибка сохранения ремонта в базе", "error");
+
+        await DB.syncPlayer();
+        UI.showToast(`Узел отремонтирован за ${repairCost.toLocaleString()} 🪙!`, 'success');
+        UI.renderAll();
+    },
+
+    async repairAll(truckId) {
+        const truck = AppState.trucks.find(t => String(t.id) === String(truckId));
+        if (!truck) return;
+
+        const parts = ['engineLvl', 'tiresLvl', 'gearLvl', 'brakesLvl'];
+        let totalCost = 0;
+        let needsRepair = false;
+
+        parts.forEach(p => {
+            const val = Number(truck[p]) || 0;
+            if (val < 100) {
+                needsRepair = true;
+                totalCost += this.getRepairCost(val);
+            }
+        });
+
+        if (!needsRepair) return UI.showToast('Грузовик полностью исправен!', 'info');
+
+        const finalCost = Math.floor(totalCost * 0.9);
+
+        if (Number(AppState.player.money) < finalCost) {
+            return UI.showToast(`Нужно ${finalCost.toLocaleString()} 🪙 на ТО`, 'error');
+        }
+
+        AppState.player.money = Number(AppState.player.money) - finalCost;
+        parts.forEach(p => truck[p] = 100);
+
+        let { error } = await supabaseClient.from('trucks').update({
+            engineLvl: 100, tiresLvl: 100, gearLvl: 100, brakesLvl: 100
+        }).eq('id', truck.id);
+
+        if (error) return UI.showToast("Ошибка сохранения ТО в базе", "error");
+
+        await DB.syncPlayer();
+        UI.showToast(`Комплексное ТО выполнено! Списано ${finalCost.toLocaleString()} 🪙 (Скидка 10%)`, 'success');
+        UI.renderAll();
+    },
+
+    async upgradeTruckPart(truckId, partName) {
+        const truck = AppState.trucks.find(t => String(t.id) === String(truckId));
+        if (!truck) return;
+
+        const upgradeKey = partName + 'Upgrade'; 
+        if (truck[upgradeKey] === undefined) truck[upgradeKey] = 0;
+        if (truck[upgradeKey] >= 5) return UI.showToast('Узел прокачан на максимум!', 'info');
+
+        const cost = 25000 * (truck[upgradeKey] + 1); 
+        if (AppState.player.money < cost) return UI.showToast(`Нужно ${cost.toLocaleString()} 🪙`, 'error');
+
+        AppState.player.money -= cost;
+        truck[upgradeKey] += 1;
+
+        await supabaseClient.from('trucks').update({ [upgradeKey]: truck[upgradeKey] }).eq('id', truck.id);
+        await DB.syncPlayer();
+
+        UI.showToast(`Тюнинг установлен! Уровень: ${truck[upgradeKey]}/5`, 'success');
         UI.renderAll();
     },
 
@@ -922,54 +1074,6 @@ const GameLogic = {
             UI.showToast(`Рейс завершен! +${p} 🪙 | +${earnedXP} XP`, 'success');
         }
         AIDispatcher.randomAdvice();
-        UI.renderAll();
-    },
-
-    async repairPart(truckId, partName) {
-        const truck = AppState.trucks.find(t => String(t.id) === String(truckId));
-        if (!truck) return UI.showToast('Тягач не найден в памяти!', 'error');
-
-        const currentVal = Number(truck[partName]) || 0;
-        if (currentVal >= 100) return UI.showToast('Узел в идеальном состоянии!', 'info');
-
-        const missingPercent = 100 - currentVal;
-        const repairCost = missingPercent * 150; 
-
-        if (Number(AppState.player.money) < repairCost) {
-            return UI.showToast(`Нужно ${repairCost.toLocaleString()} 🪙 для починки`, 'error');
-        }
-
-        AppState.player.money = Number(AppState.player.money) - repairCost;
-        truck[partName] = 100;
-
-        let { error } = await supabaseClient.from('trucks').update({ [partName]: 100 }).eq('id', truck.id);
-        if (error) {
-            return UI.showToast("Ошибка сохранения ремонта в базе", "error");
-        }
-
-        await DB.syncPlayer();
-        UI.showToast(`Узел отремонтирован за ${repairCost.toLocaleString()} 🪙!`, 'success');
-        UI.renderAll();
-    },
-
-    async upgradeTruckPart(truckId, partName) {
-        const truck = AppState.trucks.find(t => String(t.id) === String(truckId));
-        if (!truck) return;
-
-        const upgradeKey = partName + 'Upgrade'; 
-        if (truck[upgradeKey] === undefined) truck[upgradeKey] = 0;
-        if (truck[upgradeKey] >= 5) return UI.showToast('Узел прокачан на максимум!', 'info');
-
-        const cost = 25000 * (truck[upgradeKey] + 1); 
-        if (AppState.player.money < cost) return UI.showToast(`Нужно ${cost.toLocaleString()} 🪙`, 'error');
-
-        AppState.player.money -= cost;
-        truck[upgradeKey] += 1;
-
-        await supabaseClient.from('trucks').update({ [upgradeKey]: truck[upgradeKey] }).eq('id', truck.id);
-        await DB.syncPlayer();
-
-        UI.showToast(`Тюнинг установлен! Уровень: ${truck[upgradeKey]}/5`, 'success');
         UI.renderAll();
     },
 
@@ -1277,18 +1381,11 @@ const UI = {
     safeUpdate(id, text) { const el = document.getElementById(id); if (el) el.innerText = text; },
     safeUpdateHTML(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html; },
 
-    getHealthColor(val) {
-        if (val > 60) return '#10B981'; 
-        if (val > 25) return '#F59E0B'; 
-        return '#EF4444'; 
-    },
-
     renderAll() {
         const p = AppState.player;
         if (!p.pass_level) p.pass_level = 1;
         if (!p.pass_claimed) p.pass_claimed = [];
         
-        // --- Обновление Профиля ---
         this.safeUpdate('profile-id-name', p.name);
         this.safeUpdate('profile-id-role', ReputationSys.getTitle(p.level));
         this.safeUpdate('profile-id-lvl', `LVL ${p.level}`);
@@ -1351,7 +1448,6 @@ const UI = {
             }).join(''));
         }
         
-        // --- Рендеринг Синдиката ---
         const noSynPanel = document.getElementById('no-syndicate-panel');
         const activeSynPanel = document.getElementById('active-syndicate-panel');
 
@@ -1381,13 +1477,13 @@ const UI = {
                 const isMax = curLvl >= 5;
 
                 return `
-                <div class="tech-card">
-                    <div class="tech-header">
-                        <span class="tech-name">${t.name}</span>
-                        <span class="tech-lvl">Ур. ${curLvl}/5</span>
+                <div class="card" style="padding: 10px;">
+                    <div class="card-title" style="font-size: 12px; margin-bottom: 2px;">
+                        <span>${t.name}</span>
+                        <span style="color: var(--accent-purple);">Ур. ${curLvl}/5</span>
                     </div>
-                    <p class="tech-desc">${t.desc}</p>
-                    <button class="btn ${isMax ? 'btn-outline' : 'btn-primary'}" style="font-size: 11px; padding: 8px;" ${isMax ? 'disabled' : ''} onclick="GameLogic.upgradeTech('${t.key}')">
+                    <p style="font-size: 11px; color: var(--hint-color); margin-bottom: 8px;">${t.desc}</p>
+                    <button class="btn ${isMax ? 'btn-outline' : 'btn-primary'}" style="font-size: 11px; padding: 6px;" ${isMax ? 'disabled' : ''} onclick="GameLogic.upgradeTech('${t.key}')">
                         ${isMax ? 'МАКСИМУМ' : `Инвестировать (${nextCost}л ⛽)`}
                     </button>
                 </div>`;
@@ -1411,11 +1507,9 @@ const UI = {
             if(activeSynPanel) activeSynPanel.style.display = 'none';
         }
 
-        // --- РЕНДЕРИНГ ИНТЕРАКТИВНОГО РЕЙТИНГА ---
         const list = AppState.leaderboard || [];
         const isTrips = AppState.leaderboardCategory === 'trips';
 
-        // 1. Пьедестал (Топ 1-3)
         let podiumHtml = '';
         const top3 = list.slice(0, 3);
         const crowns = ['👑', '🥈', '🥉'];
@@ -1424,7 +1518,7 @@ const UI = {
             const rank = idx + 1;
             const val = isTrips ? `${user.total_trips || 0} рейсов` : `${Number(user.total_profit || 0).toLocaleString()} 🪙`;
             podiumHtml += `
-            <div class="podium-card rank-${rank}" onclick="UI.inspectPlayer('${user.id}')">
+            <div class="podium-card rank-${rank}" onclick="UI.inspectPlayer('${user.id}')" style="cursor: pointer;">
                 <span class="podium-crown">${crowns[idx]}</span>
                 <img src="${user.avatar || 'https://via.placeholder.com/80'}" class="podium-avatar" />
                 <span class="podium-name">${user.name}</span>
@@ -1434,7 +1528,6 @@ const UI = {
         });
         this.safeUpdateHTML('leaderboard-podium', podiumHtml);
 
-        // 2. Список от 4 места и ниже
         const restList = list.slice(3);
         this.safeUpdateHTML('leaderboard-list', restList.map((user, idx) => {
             const rank = idx + 4;
@@ -1445,7 +1538,7 @@ const UI = {
             const val = isTrips ? `${user.total_trips || 0} рейсов` : `${Number(user.total_profit || 0).toLocaleString()} 🪙`;
 
             return `
-            <div class="card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; cursor: pointer;" onclick="UI.inspectPlayer('${user.id}')">
+            <div class="card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; cursor: pointer; margin-bottom: 6px;" onclick="UI.inspectPlayer('${user.id}')">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <div style="display:flex; flex-direction:column; align-items:center; width:22px;">
                         <span style="font-weight: 800; font-size: 13px; color: var(--hint-color);">#${rank}</span>
@@ -1461,26 +1554,24 @@ const UI = {
             </div>`;
         }).join(''));
 
-        // 3. Закрепленный плашка меня
         let myRankIndex = list.findIndex(u => String(u.id) === String(p.id));
         let myRankStr = myRankIndex !== -1 ? `#${myRankIndex + 1}` : '#--';
         let myValStr = isTrips ? `${p.total_trips || 0} рейсов` : `${Number(p.total_profit || 0).toLocaleString()} 🪙`;
         
         this.safeUpdate('my-rank-num', myRankStr);
         this.safeUpdate('my-rank-val', myValStr);
-        // ------------------------------------------
-
-        const xpProg = Math.min((p.xp / GameLogic.getReqXP(p.level)) * 100, 100);
-        const xpFill = document.getElementById('xp-bar-fill');
-        if (xpFill) xpFill.style.width = `${xpProg}%`;
 
         const activeTruckIds = AppState.activeTrips.map(trip => trip.truck_id);
         
         let fleetHtml = AppState.trucks.length > 0 ? AppState.trucks.map((t) => {
             const isBusy = activeTruckIds.includes(t.id);
-            const statusHtml = isBusy ? `<span style="font-size:12px; color:#EF4444;">🔴 Занята</span>` : `<span style="font-size:12px; color:#10B981;">🟢 Свободна</span>`;
+            const statusHtml = isBusy ? `<span style="font-size:12px; color:#EF4444;">🔴 В рейсе</span>` : `<span style="font-size:12px; color:#10B981;">🟢 Свободна</span>`;
             
-            const allParts100 = t.engineLvl === 100 && t.tiresLvl === 100 && t.gearLvl === 100 && t.brakesLvl === 100;
+            const shopTemplate = TRUCK_SHOP.find(shopT => shopT.name === t.name);
+            const truckImage = shopTemplate ? shopTemplate.image : '';
+            const cap = shopTemplate ? shopTemplate.capacity : 0;
+            const fuelUse = shopTemplate ? shopTemplate.fuel_use : 0;
+            const currentPlate = t.custom_plate || '456LWO|10';
 
             const parts = [
                 { key: 'engineLvl', name: '🛠 Двс' },
@@ -1489,58 +1580,91 @@ const UI = {
                 { key: 'brakesLvl', name: '🧯 Торм' }
             ];
 
-            const shopTemplate = TRUCK_SHOP.find(shopT => shopT.name === t.name);
-            const truckImage = shopTemplate ? shopTemplate.image : '';
+            let allParts100 = true;
+            let totalRepairCost = 0;
+
+            let partsHtml = parts.map(pt => {
+                const val = t[pt.key] !== undefined ? Number(t[pt.key]) : 100;
+                const upgradeLvl = t[pt.key + 'Upgrade'] || 0;
+                
+                let color = '#10B981';
+                if (val < 75 && val >= 40) color = '#F59E0B';
+                if (val < 40) color = '#EF4444';
+
+                const alertIcon = val < 20 ? `<span class="critical-alert">⚠️</span>` : '';
+                
+                if (val < 100) allParts100 = false;
+                
+                const repairCost = GameLogic.getRepairCost(val);
+                totalRepairCost += repairCost;
+                
+                let dotsHtml = '';
+                for(let i = 0; i < 5; i++) {
+                    dotsHtml += `<div class="upgrade-dot ${i < upgradeLvl ? 'active' : ''}"></div>`;
+                }
+
+                return `
+                <div class="part-card">
+                    <div class="part-header">
+                        <span>${pt.name} ${alertIcon}</span>
+                        <span style="color:${color}; font-weight: 800;">${val}%</span>
+                    </div>
+                    <div class="part-bar">
+                        <div class="part-bar-fill" style="width:${val}%; background-color:${color}; box-shadow: 0 0 8px ${color}40;"></div>
+                    </div>
+                    <div class="upgrade-track">${dotsHtml}</div>
+                    <div style="display:flex; gap:4px; margin-top:6px;">
+                        <button class="btn btn-outline btn-repair" style="flex:1; padding: 4px;" ${isBusy || val === 100 ? 'disabled' : ''} onclick="GameLogic.repairPart('${t.id}', '${pt.key}')">
+                            ${val === 100 ? 'OK' : `${(repairCost/1000).toFixed(1)}k`}
+                        </button>
+                        <button class="btn btn-upgrade" style="flex:1; padding: 4px;" ${isBusy || upgradeLvl >= 5 ? 'disabled' : ''} onclick="GameLogic.upgradeTruckPart('${t.id}', '${pt.key}')">
+                            ${upgradeLvl >= 5 ? 'MAX' : `UP`}
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+
+            const toCost = Math.floor(totalRepairCost * 0.9);
 
             return `
-            <div class="card rarity-${t.rarity || 'common'}" style="margin-bottom: 12px;">
-                <div class="card-title">
+            <div class="card rarity-${t.rarity || 'common'}" style="margin-bottom: 16px; position: relative;">
+                <div class="card-title" style="margin-bottom: 8px;">
                     <span>🚚 ${t.name}</span>
                     ${statusHtml}
                 </div>
-                ${truckImage ? `<div style="text-align: center; margin: 10px 0;"><img src="${truckImage}" alt="${t.name}" style="max-width: 100%; height: 100px; object-fit: contain;"></div>` : ''}
-                <div class="parts-grid">
-                    ${parts.map(pt => {
-                        const val = t[pt.key] !== undefined ? Number(t[pt.key]) : 100;
-                        const upgradeLvl = t[pt.key + 'Upgrade'] || 0;
-                        const color = this.getHealthColor(val);
-                        const repairCost = (100 - val) * 150;
-                        
-                        let dotsHtml = '';
-                        for(let i = 0; i < 5; i++) {
-                            dotsHtml += `<div class="upgrade-dot ${i < upgradeLvl ? 'active' : ''}"></div>`;
-                        }
-
-                        return `
-                        <div class="part-card">
-                            <div class="part-header">
-                                <span>${pt.name}</span>
-                                <span style="color:${color};">${val}%</span>
-                            </div>
-                            <div class="part-bar">
-                                <div class="part-bar-fill" style="width:${val}%; background-color:${color};"></div>
-                            </div>
-                            <div class="upgrade-track">${dotsHtml}</div>
-                            <div style="display:flex; gap:4px; margin-top:6px;">
-                                <button class="btn btn-outline btn-repair" style="flex:1; padding: 4px; pointer-events: auto;" ${isBusy || val === 100 ? 'disabled' : ''} onclick="GameLogic.repairPart('${t.id}', '${pt.key}')">
-                                    ${val === 100 ? 'OK' : `${(repairCost/1000).toFixed(1)}k`}
-                                </button>
-                                <button class="btn btn-upgrade" style="flex:1; padding: 4px; pointer-events: auto;" ${isBusy || upgradeLvl >= 5 ? 'disabled' : ''} onclick="GameLogic.upgradeTruckPart('${t.id}', '${pt.key}')">
-                                    ${upgradeLvl >= 5 ? 'MAX' : `UP`}
-                                </button>
-                            </div>
-                        </div>`;
-                    }).join('')}
+                
+                <div class="truck-specs-badge">
+                    <div>📦 Влезет: <span>${cap} кг</span></div>
+                    <div>⛽ Ест: <span>${fuelUse} л</span></div>
                 </div>
-                <button class="btn ${isBusy || !allParts100 ? 'btn-outline' : 'btn-primary'}" style="width: 100%; margin-top: 8px; font-size: 12px; padding: 6px;" ${isBusy || !allParts100 ? 'disabled' : ''} onclick="GameLogic.rentOutTruck('${t.id}')">
-                    ${isBusy ? 'Машина занята' : (!allParts100 ? 'Нужен ремонт 100%' : 'Сдать в аренду (4ч)')}
-                </button>
+
+                ${truckImage ? `
+                <div style="text-align: center; margin: 10px 0; display: flex; flex-direction: column; align-items: center;">
+                    <img src="${truckImage}" alt="${t.name}" style="max-width: 100%; height: 110px; object-fit: contain; filter: drop-shadow(0 10px 10px rgba(0,0,0,0.5));">
+                    <div class="plate-container">
+                        <div class="license-plate">${currentPlate}</div>
+                        <button class="plate-edit-btn" onclick="GameLogic.openPlateModal('${t.id}')">⚙️ Изменить номер</button>
+                    </div>
+                </div>` : ''}
+
+                <div class="parts-grid" style="margin-top: 16px;">
+                    ${partsHtml}
+                </div>
+
+                <div style="display: flex; gap: 8px; margin-top: 12px;">
+                    <button class="btn btn-outline" style="flex: 1; font-size: 11px; padding: 10px;" ${isBusy || !allParts100 ? 'disabled' : ''} onclick="GameLogic.rentOutTruck('${t.id}')">
+                        ${isBusy ? 'В рейсе' : (!allParts100 ? 'Сначала ТО' : 'Аренда (4ч)')}
+                    </button>
+                    <button class="btn ${allParts100 || isBusy ? 'btn-outline' : 'btn-full-service'}" style="flex: 1; font-size: 11px; padding: 10px;" ${allParts100 || isBusy ? 'disabled' : ''} onclick="GameLogic.repairAll('${t.id}')">
+                        ${allParts100 ? 'Машина исправна' : `ТО: ${toCost.toLocaleString()} 🪙`}
+                    </button>
+                </div>
             </div>`;
-        }).join('') : `<p style="text-align:center; color:var(--hint-color); margin-bottom: 16px;">Ваш гараж пока пуст. Купите тягач в автосалоне ниже!</p>`;
+        }).join('') : `<p style="text-align:center; color:var(--hint-color); margin-bottom: 16px;">Ваш гараж пуст. Выберите первый тягач в автосалоне!</p>`;
 
         let shopHtml = `
-        <h3 class="subsection-title" style="margin-top: 20px;">Автосалон</h3>
-        <div class="card-grid">
+        <h3 class="subsection-title" style="margin: 20px 0 10px 0; font-size: 16px; font-weight: bold;">Автосалон</h3>
+        <div class="card-grid" style="margin-bottom: 70px;">
             ${TRUCK_SHOP.map(shopT => {
                 const alreadyOwned = AppState.trucks.some(t => t.name === shopT.name);
                 return `
@@ -1549,13 +1673,13 @@ const UI = {
                         <span>🚚 ${shopT.name}</span>
                         <span style="color:var(--accent-blue);">${shopT.price.toLocaleString()} 🪙</span>
                     </div>
-                    ${shopT.image ? `<div style="text-align: center; margin: 10px 0;"><img src="${shopT.image}" alt="${shopT.name}" style="max-width: 100%; height: 100px; object-fit: contain;"></div>` : ''}
-                    <div class="specs-grid" style="margin-bottom:8px;">
-                        <div>Вместимость: ${shopT.capacity}</div>
-                        <div>Расход: ${shopT.fuel_use}л</div>
+                    ${shopT.image ? `<div style="text-align: center; margin: 10px 0;"><img src="${shopT.image}" alt="${shopT.name}" style="max-width: 100%; height: 90px; object-fit: contain;"></div>` : ''}
+                    <div class="truck-specs-badge" style="margin-bottom: 10px;">
+                        <div>📦 Вместимость: <span>${shopT.capacity} кг</span></div>
+                        <div>⛽ Расход: <span>${shopT.fuel_use} л</span></div>
                     </div>
                     <button class="btn ${alreadyOwned ? 'btn-outline' : 'btn-primary'}" ${alreadyOwned ? 'disabled' : ''} onclick="GameLogic.buyTruck('${shopT.id}')">
-                        ${alreadyOwned ? 'Куплено' : 'Купить машину'}
+                        ${alreadyOwned ? 'Куплено' : 'Купить машину (номер 456LWO|10)'}
                     </button>
                 </div>`;
             }).join('')}
@@ -1694,13 +1818,13 @@ const UI = {
             const isReached = p.pass_level >= tier.level;
             const isClaimed = p.pass_claimed.includes(tier.level);
             
-            return `<div class="card bp-card" style="display: flex; align-items: center; justify-content: space-between;">
+            return `<div class="card bp-card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px;">
                 <div>
-                    <div class="card-title" style="margin-bottom:4px;"><span>${tier.title}</span></div>
-                    <p style="font-size:12px; color:var(--hint-color);">Награда: +${tier.reward.toLocaleString()} 🪙</p>
+                    <div class="card-title" style="margin-bottom:2px; font-size: 12px;"><span>${tier.title}</span></div>
+                    <p style="font-size:11px; color:var(--hint-color);">Награда: +${tier.reward.toLocaleString()} 🪙</p>
                 </div>
                 <button class="btn ${isClaimed ? 'btn-outline' : 'btn-primary'}" 
-                    style="font-size:12px; padding:8px 12px; width:auto;"
+                    style="font-size:11px; padding:6px 10px; width:auto;"
                     ${!isReached || isClaimed ? 'disabled' : ''}
                     onclick="GameLogic.claimPassReward(${tier.level}, ${tier.reward})">
                     ${isClaimed ? 'Получено' : (isReached ? 'Забрать' : `Нужен ур. ${tier.level}`)}
@@ -1737,14 +1861,6 @@ const UI = {
 // ============================================================================
 // 🎮 ПАРАЛЛАКС И ЗАПУСК ИГРЫ
 // ============================================================================
-document.addEventListener('mousemove', (e) => {
-    const bg = document.getElementById('parallax-bg');
-    if (!bg) return;
-    const x = (window.innerWidth - e.pageX * 2) / 90;
-    const y = (window.innerHeight - e.pageY * 2) / 90;
-    bg.style.transform = `translate(${x}px, ${y}px)`;
-});
-
 document.addEventListener('DOMContentLoaded', () => {
     WorldState.generateWeather();
     WorldState.generateMarketEvent();
@@ -1786,7 +1902,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(() => { GameLogic.updateMarket(); }, 240000);
     setInterval(() => { WorldState.generateMarketEvent(); }, 600000);
 
-    // Таймер проведенного времени в игре (1 минута = 60000 мс)
     setInterval(() => {
         if (AppState.player && AppState.player.id) {
             AppState.player.playtime_minutes = (AppState.player.playtime_minutes || 0) + 1;
