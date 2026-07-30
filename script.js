@@ -377,7 +377,7 @@ const EventSys = {
                 }
                 break;
             case 'accident_insured':
-                UI.showToast('Страховая компания покрыла 80% убытков.', 'success');
+                UI.showToast('Страховая компания покрыла 80% ущерба.', 'success');
                 break;
             case 'accident_raw':
                 AppState.player.money = Math.max(0, AppState.player.money - 50000);
@@ -449,6 +449,7 @@ const EventSys = {
 // ⚙️ ГЛОБАЛЬНОЕ СОСТОЯНИЕ (STATE)
 // ============================================================================
 const AppState = {
+    leaderboardCategory: 'profit', // 'profit' или 'trips'
     player: {
         id: null, name: tgUser?.first_name || 'Логист', avatar: tgUser?.photo_url || '',
         money: 100000, fuel_stock: 400, fuel_price: 12, level: 1, xp: 0,
@@ -673,11 +674,12 @@ const DB = {
 
     async loadLeaderboard() {
         try {
+            const sortField = AppState.leaderboardCategory === 'trips' ? 'total_trips' : 'total_profit';
             const { data, error } = await supabaseClient
                 .from('players')
-                .select('id, name, avatar, total_profit, level')
-                .order('total_profit', { ascending: false })
-                .limit(20);
+                .select('id, name, avatar, total_profit, total_trips, level, syndicate, prev_rank')
+                .order(sortField, { ascending: false })
+                .limit(50);
 
             if (!error && data) AppState.leaderboard = data;
         } catch (e) {
@@ -1223,6 +1225,45 @@ const UI = {
         this.renderAll();
     },
 
+    switchLeaderboardCategory(cat) {
+        AppState.leaderboardCategory = cat;
+        document.getElementById('lb-tab-profit').classList.toggle('active', cat === 'profit');
+        document.getElementById('lb-tab-trips').classList.toggle('active', cat === 'trips');
+        DB.loadLeaderboard().then(() => this.renderAll());
+    },
+
+    inspectPlayer(userId) {
+        const target = AppState.leaderboard.find(u => String(u.id) === String(userId));
+        if (!target) return;
+
+        let existingModal = document.getElementById('inspect-modal');
+        if (existingModal) existingModal.remove();
+
+        const roleTitle = ReputationSys.getTitle(target.level || 1);
+        const valStr = AppState.leaderboardCategory === 'trips' ? `${target.total_trips || 0} рейсов` : `${Number(target.total_profit || 0).toLocaleString()} 🪙`;
+
+        const modalHtml = `
+        <div id="inspect-modal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(8px);" onclick="this.remove()">
+            <div class="card" style="width: 100%; max-width: 360px; border-color: var(--accent-purple); text-align: center; position: relative;" onclick="event.stopPropagation()">
+                <div style="width: 70px; height: 70px; margin: 0 auto 10px auto; border-radius: 50%; padding: 2px; background: var(--gradient-primary);">
+                    <img src="${target.avatar || 'https://via.placeholder.com/80'}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+                </div>
+                <h3 style="color: #fff; font-size: 18px;">${target.name}</h3>
+                <div style="font-size: 12px; color: var(--accent-pink); font-weight: bold; margin-top: 2px;">${roleTitle}</div>
+                <div style="font-size: 11px; color: var(--hint-color); margin-top: 4px;">Синдикат: ${target.syndicate || 'Частник'}</div>
+                
+                <div class="specs-grid" style="margin-top: 14px; text-align: left;">
+                    <div>Уровень: <b>${target.level || 1}</b></div>
+                    <div>Показатель: <b>${valStr}</b></div>
+                </div>
+
+                <button type="button" class="btn btn-outline" style="margin-top: 12px; font-size: 12px;" onclick="document.getElementById('inspect-modal').remove()">Закрыть</button>
+            </div>
+        </div>`;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    },
+
     showToast(msg, type = 'success') {
         const c = document.getElementById('toast-container');
         if (!c) return;
@@ -1247,7 +1288,7 @@ const UI = {
         if (!p.pass_level) p.pass_level = 1;
         if (!p.pass_claimed) p.pass_claimed = [];
         
-        // --- Обновление нового Профиля ---
+        // --- Обновление Профиля ---
         this.safeUpdate('profile-id-name', p.name);
         this.safeUpdate('profile-id-role', ReputationSys.getTitle(p.level));
         this.safeUpdate('profile-id-lvl', `LVL ${p.level}`);
@@ -1276,7 +1317,6 @@ const UI = {
             favTruckStr = sortedTrucks[0].name;
         }
         this.safeUpdate('stat-fav-truck', favTruckStr);
-        // ---------------------------------
 
         this.safeUpdate('username', p.name);
         this.safeUpdate('user-title', ReputationSys.getTitle(p.level));
@@ -1311,7 +1351,7 @@ const UI = {
             }).join(''));
         }
         
-        // --- Рендеринг Масштабного Синдиката ---
+        // --- Рендеринг Синдиката ---
         const noSynPanel = document.getElementById('no-syndicate-panel');
         const activeSynPanel = document.getElementById('active-syndicate-panel');
 
@@ -1370,7 +1410,65 @@ const UI = {
             if(noSynPanel) noSynPanel.style.display = 'block';
             if(activeSynPanel) activeSynPanel.style.display = 'none';
         }
-        // --------------------------------------------------
+
+        // --- РЕНДЕРИНГ ИНТЕРАКТИВНОГО РЕЙТИНГА ---
+        const list = AppState.leaderboard || [];
+        const isTrips = AppState.leaderboardCategory === 'trips';
+
+        // 1. Пьедестал (Топ 1-3)
+        let podiumHtml = '';
+        const top3 = list.slice(0, 3);
+        const crowns = ['👑', '🥈', '🥉'];
+
+        top3.forEach((user, idx) => {
+            const rank = idx + 1;
+            const val = isTrips ? `${user.total_trips || 0} рейсов` : `${Number(user.total_profit || 0).toLocaleString()} 🪙`;
+            podiumHtml += `
+            <div class="podium-card rank-${rank}" onclick="UI.inspectPlayer('${user.id}')">
+                <span class="podium-crown">${crowns[idx]}</span>
+                <img src="${user.avatar || 'https://via.placeholder.com/80'}" class="podium-avatar" />
+                <span class="podium-name">${user.name}</span>
+                <span style="font-size: 10px; color: var(--hint-color);">Ур. ${user.level || 1}</span>
+                <span class="podium-val">${val}</span>
+            </div>`;
+        });
+        this.safeUpdateHTML('leaderboard-podium', podiumHtml);
+
+        // 2. Список от 4 места и ниже
+        const restList = list.slice(3);
+        this.safeUpdateHTML('leaderboard-list', restList.map((user, idx) => {
+            const rank = idx + 4;
+            let trendHtml = `<span class="trend-same">=</span>`;
+            if (user.prev_rank && user.prev_rank > rank) trendHtml = `<span class="trend-up">▲</span>`;
+            if (user.prev_rank && user.prev_rank < rank) trendHtml = `<span class="trend-down">▼</span>`;
+
+            const val = isTrips ? `${user.total_trips || 0} рейсов` : `${Number(user.total_profit || 0).toLocaleString()} 🪙`;
+
+            return `
+            <div class="card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; cursor: pointer;" onclick="UI.inspectPlayer('${user.id}')">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="display:flex; flex-direction:column; align-items:center; width:22px;">
+                        <span style="font-weight: 800; font-size: 13px; color: var(--hint-color);">#${rank}</span>
+                        ${trendHtml}
+                    </div>
+                    <img src="${user.avatar || 'https://via.placeholder.com/40'}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;" />
+                    <div>
+                        <div style="font-weight: 600; font-size: 14px; color: #fff;">${user.name}</div>
+                        <div style="font-size: 11px; color: var(--hint-color);">Уровень: ${user.level || 1}</div>
+                    </div>
+                </div>
+                <div style="font-weight: bold; color: var(--accent-pink); font-size: 13px;">${val}</div>
+            </div>`;
+        }).join(''));
+
+        // 3. Закрепленный плашка меня
+        let myRankIndex = list.findIndex(u => String(u.id) === String(p.id));
+        let myRankStr = myRankIndex !== -1 ? `#${myRankIndex + 1}` : '#--';
+        let myValStr = isTrips ? `${p.total_trips || 0} рейсов` : `${Number(p.total_profit || 0).toLocaleString()} 🪙`;
+        
+        this.safeUpdate('my-rank-num', myRankStr);
+        this.safeUpdate('my-rank-val', myValStr);
+        // ------------------------------------------
 
         const xpProg = Math.min((p.xp / GameLogic.getReqXP(p.level)) * 100, 100);
         const xpFill = document.getElementById('xp-bar-fill');
@@ -1581,20 +1679,6 @@ const UI = {
                 </button>
             </div>`;
         }).join(''));
-
-        this.safeUpdateHTML('leaderboard-list', AppState.leaderboard.map((user, index) => `
-            <div class="card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 15px;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <span style="font-weight: bold; font-size: 16px; color: ${index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : 'var(--hint-color)'};">#${index + 1}</span>
-                    <img src="${user.avatar || 'https://via.placeholder.com/40'}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;" />
-                    <div>
-                        <div style="font-weight: 600; font-size: 14px;">${user.name}</div>
-                        <div style="font-size: 11px; color: var(--hint-color);">Уровень: ${user.level}</div>
-                    </div>
-                </div>
-                <div style="font-weight: bold; color: var(--accent-pink); font-size: 14px;">🪙 ${Number(user.total_profit).toLocaleString()}</div>
-            </div>
-        `).join(''));
 
         const passTiers = Array.from({ length: 30 }, (_, i) => {
             const lvl = i + 1;
