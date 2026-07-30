@@ -139,13 +139,33 @@
                 
             </section>
 
-            <!-- Вкладка: Рейтинг -->
+                      <!-- Вкладка: Рейтинг -->
             <section id="tab-leaderboard" class="tab-content">
                 <div class="section-header">
                     <h2>Рейтинг Логистов</h2>
-                    <p class="subtitle">Топ лучших игроков по заработку</p>
+                    <p class="subtitle">Элита грузоперевозок и статистика лидеров</p>
                 </div>
-                <div id="leaderboard-list" class="card-grid"></div>
+
+                <!-- Фильтры Рейтинга -->
+                <div class="leaderboard-tabs" style="display: flex; gap: 8px; margin-bottom: 12px;">
+                    <button type="button" id="lb-tab-profit" class="btn btn-outline active" style="flex: 1; font-size: 12px; padding: 10px;" onclick="UI.switchLeaderboardCategory('profit')">💰 Капитал</button>
+                    <button type="button" id="lb-tab-trips" class="btn btn-outline" style="flex: 1; font-size: 12px; padding: 10px;" onclick="UI.switchLeaderboardCategory('trips')">🚚 Рейсы</button>
+                </div>
+
+                <!-- Пьедестал Топ-3 -->
+                <div id="leaderboard-podium" class="podium-container"></div>
+
+                <!-- Остальной список (начиная с #4) -->
+                <div id="leaderboard-list" class="card-grid" style="margin-bottom: 70px;"></div>
+
+                <!-- Закрепленная плашка текущего игрока -->
+                <div id="my-rank-sticky" class="my-rank-bar">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span id="my-rank-num" class="my-rank-badge">#--</span>
+                        <span style="font-size: 13px; font-weight: bold; color: #fff;">Ваше место</span>
+                    </div>
+                    <div id="my-rank-val" style="font-weight: 800; color: var(--accent-pink); font-size: 14px;">0 🪙</div>
+                </div>
             </section>
 
             <!-- Вкладка: Сезонный пропуск -->
