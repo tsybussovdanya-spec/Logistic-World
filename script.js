@@ -12,10 +12,14 @@ const CONFIG = {
     DAILY_BONUS_COINS: 15000,
     DAILY_BONUS_FUEL: 200,
     BONUS_COOLDOWN_MS: 86400000, 
+    CASE_COST: 10000000,      // Стоимость кейса с фонами
+    DUPLICATE_COINS: 1000000, // Компенсация за дубликат (монеты)
+    DUPLICATE_XP: 10000,      // Компенсация за дубликат (XP)
     TIPS: [
         "Дождь увеличивает износ шин и тормозов.",
         "Следите за коробкой передач: 0% износа блокирует рейсы!",
-        "Ремонтируйте узлы вовремя, чтобы избежать поломки в пути."
+        "Ремонтируйте узлы вовремя, чтобы избежать поломки в пути.",
+        "Открывайте кейсы с фонами, чтобы кастомизировать свой профиль!"
     ]
 };
 
@@ -38,6 +42,35 @@ const LICENSES_SHOP = [
     { id: 'smuggling', name: 'Контрабанда', type: 'illegal', cost: 300000, reqLvl: 12, col1: 'Риск: 35%', col2: 'Штраф: 120k', col3: 'Бонус: +60%', col4: 'Скрытность: 40%', col5: 'Доступ: Теневой' },
     { id: 'falsified_docs', name: 'Липовые допуски', type: 'illegal', cost: 600000, reqLvl: 15, col1: 'Риск: 55%', col2: 'Штраф: 250k', col3: 'Бонус: +120%', col4: 'Скрытность: 20%', col5: 'Доступ: Синдикат' },
     { id: 'black_market', name: 'Черный коридор', type: 'illegal', cost: 1200000, reqLvl: 20, col1: 'Риск: 80%', col2: 'Штраф: 600k', col3: 'Бонус: +250%', col4: 'Скрытность: 10%', col5: 'Доступ: Элитный черный' }
+];
+
+// ============================================================================
+// 🌌 КОЛЛЕКЦИЯ АНИМИРОВАННЫХ ФОНОВ (КЕЙСЫ)
+// ============================================================================
+const BACKGROUNDS_SHOP = [
+    // Редкие (Шанс выпадения суммарно ~55%)
+    { id: 'bg_r1', name: 'Неоновый асфальт', rarity: 'rare', chance: 8.0, image: 'https://i.ibb.co.com/9mwvmfZG/IMG-4513.jpg' },
+    { id: 'bg_r2', name: 'Ночной траверз', rarity: 'rare', chance: 8.0, image: 'https://i.ibb.co.com/HLhsyRKk/IMG-4514.jpg' },
+    { id: 'bg_r3', name: 'Кибер-трасса 01', rarity: 'rare', chance: 8.0, image: 'https://i.ibb.co.com/mVjJzRdV/IMG-4519.jpg' },
+    { id: 'bg_r4', name: 'Цифровой горизонт', rarity: 'rare', chance: 8.0, image: 'https://i.ibb.co.com/rKGsR0VC/IMG-4520.jpg' },
+    { id: 'bg_r5', name: 'Скоростной пульс', rarity: 'rare', chance: 8.0, image: 'https://i.ibb.co.com/mCRj1msw/IMG-4523.jpg' },
+    { id: 'bg_r6', name: 'Лазерный поток', rarity: 'rare', chance: 8.0, image: 'https://i.ibb.co.com/v4Sr1x8s/IMG-4524.jpg' },
+
+    // Эпические (Шанс выпадения суммарно ~28%)
+    { id: 'bg_e1', name: 'Глубокий синий неоновый', rarity: 'epic', chance: 7.0, image: 'https://i.ibb.co.com/5CxBvqG/IMG-4527.jpg' },
+    { id: 'bg_e2', name: 'Фиолетовый шторм', rarity: 'epic', chance: 7.0, image: 'https://i.ibb.co.com/hSXZxCJ/IMG-4528.jpg' },
+    { id: 'bg_e3', name: 'Квантовый варп', rarity: 'epic', chance: 7.0, image: 'https://i.ibb.co.com/PGCmhw0V/IMG-4522.jpg' },
+    { id: 'bg_e4', name: 'Глитч-драйв', rarity: 'epic', chance: 7.0, image: 'https://i.ibb.co.com/wkxt4Kd/IMG-4517.jpg' },
+
+    // Мифические (Шанс выпадения суммарно ~12%)
+    { id: 'bg_m1', name: 'Астральный тоннель', rarity: 'mythic', chance: 4.0, image: 'https://i.ibb.co.com/kg81Wjdv/IMG-4525.jpg' },
+    { id: 'bg_m2', name: 'Сверхсветовой прыжок', rarity: 'mythic', chance: 4.0, image: 'https://i.ibb.co.com/39rfWGkn/IMG-4516.jpg' },
+    { id: 'bg_m3', name: 'Матричный пульс', rarity: 'mythic', chance: 4.0, image: 'https://i.ibb.co.com/s9ZnK8ss/IMG-4521.jpg' },
+
+    // Легендарные (Шанс выпадения суммарно ~5%)
+    { id: 'bg_l1', name: 'Абсолютный кибернетиз', rarity: 'legendary', chance: 2.0, image: 'https://i.ibb.co.com/KjbxLkzJ/IMG-4529.jpg' },
+    { id: 'bg_l2', name: 'Ядро синдиката', rarity: 'legendary', chance: 2.0, image: 'https://i.ibb.co.com/23WZ4t1D/IMG-4526.jpg' },
+    { id: 'bg_l3', name: 'Транспортный бог', rarity: 'legendary', chance: 1.0, image: 'https://i.ibb.co.com/mV8CH1jr/IMG-4518.jpg' }
 ];
 
 const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -151,6 +184,7 @@ const AdminSys = {
     unlockAll() {
         if (!this.isAdmin()) return;
         AppState.player.licenses = LICENSES_SHOP.map(l => l.id);
+        AppState.player.unlocked_backgrounds = BACKGROUNDS_SHOP.map(b => b.id);
         TRUCK_SHOP.forEach(shopT => {
             if (!AppState.trucks.some(t => t.name === shopT.name)) {
                 AppState.trucks.push({
@@ -167,7 +201,7 @@ const AdminSys = {
             }
         });
         DB.syncPlayer();
-        UI.showToast('[ADMIN] Все лицензии и фуры разблокированы!', 'success');
+        UI.showToast('[ADMIN] Все лицензии, фоны и фуры разблокированы!', 'success');
         UI.renderAll();
     }
 };
@@ -447,6 +481,83 @@ const EventSys = {
 };
 
 // ============================================================================
+// 📦 МЕХАНИКА КЕЙСОВ С АНИМИРОВАННЫМИ ФОНАМИ
+// ============================================================================
+const BackgroundCaseSys = {
+    openCase() {
+        const cost = CONFIG.CASE_COST;
+        if (AppState.player.money < cost) {
+            return UI.showToast(`Недостаточно монет! Нужно ${cost.toLocaleString()} 🪙`, 'error');
+        }
+
+        AppState.player.money -= cost;
+
+        // Рулетка шансов
+        let roll = Math.random() * 100;
+        let cumulative = 0;
+        let selectedBg = BACKGROUNDS_SHOP[0];
+
+        for (let bg of BACKGROUNDS_SHOP) {
+            cumulative += bg.chance;
+            if (roll <= cumulative) {
+                selectedBg = bg;
+                break;
+            }
+        }
+
+        if (!AppState.player.unlocked_backgrounds) {
+            AppState.player.unlocked_backgrounds = ['bg_r1'];
+        }
+
+        let isDuplicate = AppState.player.unlocked_backgrounds.includes(selectedBg.id);
+        let rewardText = '';
+
+        if (isDuplicate) {
+            AppState.player.money += CONFIG.DUPLICATE_COINS;
+            GameLogic.addXP(CONFIG.DUPLICATE_XP);
+            rewardText = `Дубликат! Выпал фон "${selectedBg.name}". Компенсация: +1,000,000 🪙 и +10,000 XP!`;
+        } else {
+            AppState.player.unlocked_backgrounds.push(selectedBg.id);
+            AppState.player.current_background = selectedBg.id;
+            rewardText = `🎉 Поздравляем! Вы выиграли новый фон: "${selectedBg.name}" (${selectedBg.rarity.toUpperCase()})!`;
+        }
+
+        DB.syncPlayer();
+        this.showCaseResultModal(selectedBg, isDuplicate, rewardText);
+        UI.renderAll();
+    },
+
+    showCaseResultModal(bg, isDuplicate, text) {
+        let existing = document.getElementById('case-modal');
+        if (existing) existing.remove();
+
+        const modalHtml = `
+        <div id="case-modal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(12px);" onclick="this.remove()">
+            <div class="card" style="width: 100%; max-width: 360px; border-color: var(--accent-pink); text-align: center; box-shadow: 0 0 40px rgba(236,72,153,0.4);" onclick="event.stopPropagation()">
+                <h3 style="color: var(--accent-pink); font-size: 18px; margin-bottom: 10px;">📦 Кейс с фоном открыт!</h3>
+                <div style="width: 100%; height: 140px; border-radius: 10px; overflow: hidden; margin-bottom: 12px; border: 2px solid var(--border-color); position: relative;">
+                    <img src="${bg.image}" style="width: 100%; height: 100%; object-fit: cover;">
+                    <div style="position: absolute; bottom: 6px; left: 6px; background: rgba(0,0,0,0.7); padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; color: var(--accent-pink);">${bg.rarity}</div>
+                </div>
+                <h4 style="color: #fff; font-size: 15px; margin-bottom: 6px;">${bg.name}</h4>
+                <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 16px; line-height: 1.4;">${text}</p>
+                <button class="btn btn-primary" onclick="document.getElementById('case-modal').remove()">Забрать</button>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        AudioSys.playVibrate('success');
+    },
+
+    setBackground(bgId) {
+        if (!AppState.player.unlocked_backgrounds.includes(bgId)) return;
+        AppState.player.current_background = bgId;
+        DB.syncPlayer();
+        UI.showToast('Фон профиля успешно изменен!', 'success');
+        UI.renderAll();
+    }
+};
+
+// ============================================================================
 // ⚙️ ГЛОБАЛЬНОЕ СОСТОЯНИЕ (STATE)
 // ============================================================================
 const AppState = {
@@ -456,6 +567,7 @@ const AppState = {
         money: 100000, fuel_stock: 400, fuel_price: 12, level: 1, xp: 0,
         total_profit: 0, total_trips: 0, syndicate: null, last_bonus_time: 0,
         licenses: ['basic'], pass_level: 1, pass_claimed: [],
+        current_background: 'bg_r1', unlocked_backgrounds: ['bg_r1'],
         quests: [
             { id: 'q1', title: 'Завершить 3 рейса', target: 3, progress: 0, rewardCoins: 15000, rewardXP: 250, claimed: false },
             { id: 'q2', title: 'Потратить 500л топлива', target: 500, progress: 0, rewardCoins: 20000, rewardXP: 400, claimed: false },
@@ -504,7 +616,8 @@ const AIDispatcher = {
         "Босс, следите за износом деталей: критическое состояние увеличивает стоимость ремонта!",
         "Цены на топливо меняются динамически. Закупайте на низах!",
         "Прокачайте узлы тягача, чтобы они изнашивались медленнее.",
-        "Выполняйте ежедневные квесты для быстрого получения наград."
+        "Выполняйте ежедневные квесты для быстрого получения наград.",
+        "Смените фон профиля, чтобы выделиться в таблице лидеров."
     ],
     showPopup(msg) {
         const el = document.getElementById('ai-dispatcher');
@@ -551,6 +664,8 @@ const DB = {
                 if (!AppState.player.skills) {
                     AppState.player.skills = { eco: 0, luck: 0, mechanic: 0 };
                 }
+                if (!AppState.player.current_background) AppState.player.current_background = 'bg_r1';
+                if (!AppState.player.unlocked_backgrounds) AppState.player.unlocked_backgrounds = ['bg_r1'];
                 if (AppState.player.total_fuel_burned === undefined) AppState.player.total_fuel_burned = 0;
                 if (AppState.player.playtime_minutes === undefined) AppState.player.playtime_minutes = 0;
                 if (!AppState.player.reg_date) AppState.player.reg_date = new Date().toISOString();
@@ -598,6 +713,8 @@ const DB = {
             licenses: ['basic'],
             pass_level: 1,
             pass_claimed: [],
+            current_background: 'bg_r1',
+            unlocked_backgrounds: ['bg_r1'],
             quests: defaultQuests,
             skills: { eco: 0, luck: 0, mechanic: 0 },
             total_fuel_burned: 0,
@@ -679,7 +796,7 @@ const DB = {
             const sortField = AppState.leaderboardCategory === 'trips' ? 'total_trips' : 'total_profit';
             const { data, error } = await supabaseClient
                 .from('players')
-                .select('id, name, avatar, total_profit, total_trips, level, syndicate, prev_rank')
+                .select('id, name, avatar, total_profit, total_trips, level, syndicate, prev_rank, current_background')
                 .order(sortField, { ascending: false })
                 .limit(50);
 
@@ -700,7 +817,9 @@ const DB = {
             level: Number(p.level), xp: Number(p.xp), total_profit: Number(p.total_profit),
             total_trips: Number(p.total_trips), syndicate: p.syndicate,
             last_bonus_time: Number(p.last_bonus_time), licenses: p.licenses,
-            pass_level: p.pass_level, pass_claimed: p.pass_claimed, quests: p.quests,
+            pass_level: p.pass_level, pass_claimed: p.pass_claimed, 
+            current_background: p.current_background, unlocked_backgrounds: p.unlocked_backgrounds,
+            quests: p.quests,
             skills: p.skills,
             total_fuel_burned: Number(p.total_fuel_burned || 0),
             playtime_minutes: Number(p.playtime_minutes || 0),
@@ -1346,23 +1465,29 @@ const UI = {
 
         const roleTitle = ReputationSys.getTitle(target.level || 1);
         const valStr = AppState.leaderboardCategory === 'trips' ? `${target.total_trips || 0} рейсов` : `${Number(target.total_profit || 0).toLocaleString()} 🪙`;
+        
+        // Подтягиваем анимированный фон игрока для карточки
+        const bgObj = BACKGROUNDS_SHOP.find(b => b.id === target.current_background) || BACKGROUNDS_SHOP[0];
 
         const modalHtml = `
         <div id="inspect-modal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(8px);" onclick="this.remove()">
-            <div class="card" style="width: 100%; max-width: 360px; border-color: var(--accent-purple); text-align: center; position: relative;" onclick="event.stopPropagation()">
-                <div style="width: 70px; height: 70px; margin: 0 auto 10px auto; border-radius: 50%; padding: 2px; background: var(--gradient-primary);">
-                    <img src="${target.avatar || 'https://via.placeholder.com/80'}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
-                </div>
-                <h3 style="color: #fff; font-size: 18px;">${target.name}</h3>
-                <div style="font-size: 12px; color: var(--accent-pink); font-weight: bold; margin-top: 2px;">${roleTitle}</div>
-                <div style="font-size: 11px; color: var(--hint-color); margin-top: 4px;">Синдикат: ${target.syndicate || 'Частник'}</div>
-                
-                <div class="specs-grid" style="margin-top: 14px; text-align: left;">
-                    <div>Уровень: <b>${target.level || 1}</b></div>
-                    <div>Показатель: <b>${valStr}</b></div>
-                </div>
+            <div class="card" style="width: 100%; max-width: 360px; border-color: var(--accent-purple); text-align: center; position: relative; overflow: hidden; background-image: url('${bgObj.image}'); background-size: cover; background-position: center;" onclick="event.stopPropagation()">
+                <div style="position: absolute; inset: 0; background: rgba(12, 12, 20, 0.85); z-index: 1;"></div>
+                <div style="position: relative; z-index: 2;">
+                    <div style="width: 70px; height: 70px; margin: 0 auto 10px auto; border-radius: 50%; padding: 2px; background: var(--gradient-primary);">
+                        <img src="${target.avatar || 'https://via.placeholder.com/80'}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+                    </div>
+                    <h3 style="color: #fff; font-size: 18px;">${target.name}</h3>
+                    <div style="font-size: 12px; color: var(--accent-pink); font-weight: bold; margin-top: 2px;">${roleTitle}</div>
+                    <div style="font-size: 11px; color: var(--hint-color); margin-top: 4px;">Синдикат: ${target.syndicate || 'Частник'}</div>
+                    
+                    <div class="specs-grid" style="margin-top: 14px; text-align: left; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px;">
+                        <div>Уровень: <b>${target.level || 1}</b></div>
+                        <div>Показатель: <b>${valStr}</b></div>
+                    </div>
 
-                <button type="button" class="btn btn-outline" style="margin-top: 12px; font-size: 12px;" onclick="document.getElementById('inspect-modal').remove()">Закрыть</button>
+                    <button type="button" class="btn btn-outline" style="margin-top: 12px; font-size: 12px;" onclick="document.getElementById('inspect-modal').remove()">Закрыть</button>
+                </div>
             </div>
         </div>`;
 
@@ -1398,6 +1523,15 @@ const UI = {
         const idAvatar = document.getElementById('profile-id-avatar');
         if (idAvatar) idAvatar.src = p.avatar || 'https://via.placeholder.com/80';
         
+        // Установка активного анимированного фона для своей карточки профиля
+        const currentBg = BACKGROUNDS_SHOP.find(b => b.id === p.current_background) || BACKGROUNDS_SHOP[0];
+        const profileCard = document.getElementById('profile-card-main');
+        if (profileCard) {
+            profileCard.style.backgroundImage = `url('${currentBg.image}')`;
+            profileCard.style.backgroundSize = 'cover';
+            profileCard.style.backgroundPosition = 'center';
+        }
+        
         this.safeUpdate('stat-total-fuel', `${Number(p.total_fuel_burned || 0).toLocaleString()} л`);
         let hrs = Math.floor((p.playtime_minutes || 0) / 60);
         let mins = (p.playtime_minutes || 0) % 60;
@@ -1431,12 +1565,42 @@ const UI = {
         this.safeUpdate('stat-total-profit', `${Number(p.total_profit).toLocaleString()} 🪙`);
         this.safeUpdate('stat-total-trips', p.total_trips);
 
+        // Инвентарь фонов (отрисовка)
+        const unlockedBgList = p.unlocked_backgrounds || ['bg_r1'];
+        this.safeUpdateHTML('backgrounds-inventory-list', BACKGROUNDS_SHOP.map(bg => {
+            const isUnlocked = unlockedBgList.includes(bg.id);
+            const isSelected = p.current_background === bg.id;
+            return `
+            <div class="card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px; opacity: ${isUnlocked ? '1' : '0.5'}; margin-bottom: 8px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <img src="${bg.image}" style="width: 50px; height: 35px; border-radius: 6px; object-fit: cover;">
+                    <div>
+                        <div style="font-size: 12px; font-weight: bold;">${bg.name}</div>
+                        <div style="font-size: 10px; color: var(--accent-pink); text-transform: uppercase;">${bg.rarity}</div>
+                    </div>
+                </div>
+                <button class="btn ${isSelected ? 'btn-outline' : 'btn-primary'}" style="font-size: 11px; padding: 6px 10px; width: auto;" 
+                    ${!isUnlocked || isSelected ? 'disabled' : ''} onclick="BackgroundCaseSys.setBackground('${bg.id}')">
+                    ${isSelected ? 'Активен' : (isUnlocked ? 'Установить' : 'Закрыто')}
+                </button>
+            </div>`;
+        }).join(''));
+
+        // Баннер покупки кейса с фоном (отобразим в Центре или отдельном блоке, если есть HTML заглушка. Если её нет, скрипт не упадет)
+        this.safeUpdateHTML('background-case-section', `
+            <div class="card" style="border-color: var(--accent-pink); text-align: center; margin-bottom: 16px;">
+                <div class="card-title"><span>🎁 Кейс с анимированными фонами</span></div>
+                <p style="font-size: 12px; color: var(--hint-color); margin: 6px 0 12px 0;">Откройте кейс за 10,000,000 🪙, чтобы получить уникальный фон профиля!</p>
+                <button class="btn btn-primary" onclick="BackgroundCaseSys.openCase()">Открыть кейс (10,000,000 🪙)</button>
+            </div>
+        `);
+
         if (p.quests && p.quests.length > 0) {
             this.safeUpdateHTML('quests-list', p.quests.map(q => {
                 const isCompleted = q.progress >= q.target;
                 const btnText = q.claimed ? 'Получено' : (isCompleted ? 'Забрать награду' : `${q.progress} / ${q.target}`);
                 return `
-                <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                     <div>
                         <div style="font-size: 13px; font-weight: 700;">${q.title}</div>
                         <div style="font-size: 11px; color: var(--hint-color); margin-top: 2px;">Награда: +${q.rewardCoins.toLocaleString()} 🪙 | +${q.rewardXP} XP</div>
@@ -1478,7 +1642,7 @@ const UI = {
                 const isMax = curLvl >= 5;
 
                 return `
-                <div class="card" style="padding: 10px;">
+                <div class="card" style="padding: 10px; margin-bottom: 8px;">
                     <div class="card-title" style="font-size: 12px; margin-bottom: 2px;">
                         <span>${t.name}</span>
                         <span style="color: var(--accent-purple);">Ур. ${curLvl}/5</span>
@@ -1518,13 +1682,18 @@ const UI = {
         top3.forEach((user, idx) => {
             const rank = idx + 1;
             const val = isTrips ? `${user.total_trips || 0} рейсов` : `${Number(user.total_profit || 0).toLocaleString()} 🪙`;
+            const userBg = BACKGROUNDS_SHOP.find(b => b.id === user.current_background) || BACKGROUNDS_SHOP[0];
+
             podiumHtml += `
-            <div class="podium-card rank-${rank}" onclick="UI.inspectPlayer('${user.id}')" style="cursor: pointer;">
-                <span class="podium-crown">${crowns[idx]}</span>
-                <img src="${user.avatar || 'https://via.placeholder.com/80'}" class="podium-avatar" />
-                <span class="podium-name">${user.name}</span>
-                <span style="font-size: 10px; color: var(--hint-color);">Ур. ${user.level || 1}</span>
-                <span class="podium-val">${val}</span>
+            <div class="podium-card rank-${rank}" onclick="UI.inspectPlayer('${user.id}')" style="cursor: pointer; background-image: url('${userBg.image}'); background-size: cover; background-position: center;">
+                <div style="position: absolute; inset: 0; background: rgba(22, 22, 32, 0.82); z-index: 1; border-radius: 14px;"></div>
+                <div style="position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; width: 100%;">
+                    <span class="podium-crown">${crowns[idx]}</span>
+                    <img src="${user.avatar || 'https://via.placeholder.com/80'}" class="podium-avatar" />
+                    <span class="podium-name">${user.name}</span>
+                    <span style="font-size: 10px; color: var(--hint-color);">Ур. ${user.level || 1}</span>
+                    <span class="podium-val">${val}</span>
+                </div>
             </div>`;
         });
         this.safeUpdateHTML('leaderboard-podium', podiumHtml);
@@ -1819,7 +1988,7 @@ const UI = {
             const isReached = p.pass_level >= tier.level;
             const isClaimed = p.pass_claimed.includes(tier.level);
             
-            return `<div class="card bp-card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px;">
+            return `<div class="card bp-card" style="display: flex; align-items: center; justify-content: space-between; padding: 10px; margin-bottom: 8px;">
                 <div>
                     <div class="card-title" style="margin-bottom:2px; font-size: 12px;"><span>${tier.title}</span></div>
                     <p style="font-size:11px; color:var(--hint-color);">Награда: +${tier.reward.toLocaleString()} 🪙</p>
@@ -1845,7 +2014,7 @@ const UI = {
             const cost = 50000 * (lvl + 1);
             const isMax = lvl >= 5;
             return `
-            <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <div>
                     <div style="font-size: 13px; font-weight: 700;">${s.name} <span style="color:var(--accent-pink);">[Ур. ${lvl}/5]</span></div>
                     <div style="font-size: 11px; color: var(--hint-color); margin-top: 2px;">${s.desc}</div>
@@ -1926,4 +2095,5 @@ window.AudioSys = AudioSys;
 window.AdminSys = AdminSys;
 window.GameLogic = GameLogic;
 window.EventSys = EventSys;
+window.BackgroundCaseSys = BackgroundCaseSys;
 window.UI = UI;
