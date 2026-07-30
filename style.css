@@ -373,3 +373,86 @@ body {
 .tech-name { font-size: 14px; font-weight: 700; color: #fff; }
 .tech-lvl { font-size: 11px; font-weight: bold; color: var(--accent-pink); background: rgba(236,72,153,0.15); padding: 2px 6px; border-radius: 6px; }
 .tech-desc { font-size: 11px; color: var(--hint-color); line-height: 1.3; }
+/* ========================================= */
+/* ОБНОВЛЕННЫЙ РЕЙТИНГ: ПЬЕДЕСТАЛ И КАРТОЧКА  */
+/* ========================================= */
+
+.leaderboard-tabs .btn.active {
+    background: var(--gradient-primary);
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
+}
+
+/* Пьедестал Топ-3 */
+.podium-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 8px;
+    margin: 16px 0 20px 0;
+    padding: 10px 0;
+}
+.podium-card {
+    flex: 1;
+    background: rgba(22, 22, 30, 0.85);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 12px 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    backdrop-filter: blur(10px);
+    transition: transform 0.2s;
+}
+.podium-card.rank-1 {
+    order: 2;
+    height: 180px;
+    border-color: #F59E0B;
+    box-shadow: 0 0 25px rgba(245, 158, 11, 0.25);
+    background: linear-gradient(180deg, rgba(245, 158, 11, 0.15), rgba(22, 22, 30, 0.95));
+}
+.podium-card.rank-2 {
+    order: 1;
+    height: 160px;
+    border-color: #9CA3AF;
+    box-shadow: 0 0 15px rgba(156, 163, 175, 0.15);
+}
+.podium-card.rank-3 {
+    order: 3;
+    height: 150px;
+    border-color: #CD7F32;
+    box-shadow: 0 0 15px rgba(205, 127, 50, 0.15);
+}
+.podium-crown { position: absolute; top: -14px; font-size: 18px; filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.8)); }
+.podium-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.2); margin-top: 6px; }
+.podium-card.rank-1 .podium-avatar { width: 52px; height: 52px; border-color: #F59E0B; }
+.podium-name { font-size: 11px; font-weight: 700; color: #fff; margin-top: 6px; text-align: center; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.podium-val { font-size: 10px; font-weight: 800; color: var(--accent-pink); margin-top: 2px; }
+
+/* Тренды (Стрелочки) */
+.trend-up { color: #10B981; font-size: 10px; font-weight: bold; }
+.trend-down { color: #EF4444; font-size: 10px; font-weight: bold; }
+.trend-same { color: var(--hint-color); font-size: 10px; }
+
+/* Закрепленная плашка игрока снизу */
+.my-rank-bar {
+    position: fixed;
+    bottom: 65px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+    max-width: 448px;
+    background: rgba(15, 15, 25, 0.95);
+    border: 1px solid var(--accent-purple);
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+    border-radius: 14px;
+    padding: 10px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 900;
+    backdrop-filter: blur(15px);
+}
+.my-rank-badge { background: var(--accent-purple); color: #fff; font-size: 12px; font-weight: 900; padding: 3px 8px; border-radius: 6px; }
