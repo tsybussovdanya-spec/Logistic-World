@@ -12,18 +12,16 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- ========================================== -->
-    <!-- АУДИО И ЗВУКОВЫЕ ЭФФЕКТЫ (SFX)             -->
-    <!-- ========================================== -->
+    <!-- Фоновый аудиофайл -->
     <audio id="bg-music" loop src="https://raw.githubusercontent.com/tsybussovdanya-spec/Logistic-World/refs/heads/Music/bharatt_saurabh_tujh_bin.mp3"></audio>
+
+    <!-- Звуковые эффекты SFX -->
     <audio id="sfx-click" src="https://assets.mixkit.co/sfx/preview/mixkit-modern-technology-select-3124.mp3"></audio>
     <audio id="sfx-success" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3"></audio>
     <audio id="sfx-error" src="https://assets.mixkit.co/sfx/preview/mixkit-software-interface-error-2574.mp3"></audio>
     <audio id="sfx-engine" src="https://assets.mixkit.co/sfx/preview/mixkit-sport-car-engine-rev-115.mp3"></audio>
 
-    <!-- ========================================== -->
-    <!-- ЭКРАН ЗАГРУЗКИ (SPLASH SCREEN)             -->
-    <!-- ========================================== -->
+    <!-- Экран загрузки (Splash Screen) -->
     <div id="loading-screen" class="loading-screen">
         <div class="loader-content">
             <h1 class="loader-title">LOGISTIC WORLD</h1>
@@ -36,15 +34,13 @@
         </div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- ОСНОВНОЙ КОНТЕЙНЕР ПРИЛОЖЕНИЯ              -->
-    <!-- ========================================== -->
+    <!-- Общий контейнер приложения -->
     <div id="app-content" class="app-container" style="opacity: 0; transition: opacity 0.5s ease;">
         
-        <!-- Шапка профиля и баланса -->
+        <!-- Верхняя плашка профиля и баланса -->
         <header class="app-header">
-            <div class="user-info" onclick="switchTab('profile')">
-                <div class="avatar-wrapper">
+            <div class="user-info">
+                <div class="avatar-wrapper" onclick="switchTab('profile')">
                     <img id="user-avatar" src="https://via.placeholder.com/50" alt="Avatar">
                     <div id="user-level-badge" class="level-badge">LVL 1</div>
                 </div>
@@ -60,42 +56,47 @@
             </div>
         </header>
 
-        <!-- Глобальный баннер ивентов -->
+        <!-- Глобальный баннер ивента -->
         <div id="global-event-banner" class="event-banner" style="display: none;">
             <div class="event-title" id="global-event-title">Ивент</div>
             <div class="event-desc" id="global-event-desc">Описание ивента</div>
         </div>
 
-        <!-- Рабочая область (Вкладки) -->
+        <!-- Основная рабочая область (Вкладки) -->
         <main class="main-content">
 
-            <!-- ВКЛАДКА 1: Биржа контрактов и интерактивная карта -->
+            <!-- Вкладка 1: Контракты (Биржа рейсов) -->
             <section id="tab-contracts" class="tab-content active">
                 <div class="section-header">
                     <h2>Глобальная Карта</h2>
                     <p class="subtitle">Выберите сектор для загрузки контрактов</p>
                 </div>
                 
+                <!-- Активные рейсы пользователя -->
                 <div id="active-trip-panel"></div>
 
-                <!-- GIS Карта секторов -->
+                <!-- Интерактивная карта -->
                 <div class="interactive-map">
                     <div class="map-bg"></div>
-                    <div class="map-node node-hub active-node" onclick="MapSys.selectRegion('hub')">
+                    <!-- Сектор 1 -->
+                    <div class="map-node node-hub" onclick="MapSys.selectRegion('hub')">
                         <div class="node-pulse"></div>
                         <div class="node-icon">📦</div>
                         <div class="node-label">Базовый Хаб</div>
                     </div>
+                    <!-- Сектор 2 -->
                     <div class="map-node node-chem" onclick="MapSys.selectRegion('chem')">
                         <div class="node-pulse pulse-danger"></div>
                         <div class="node-icon">☣️</div>
                         <div class="node-label">Хим-Завод</div>
                     </div>
+                    <!-- Сектор 3 -->
                     <div class="map-node node-heavy" onclick="MapSys.selectRegion('heavy')">
                         <div class="node-pulse pulse-epic"></div>
                         <div class="node-icon">🏗️</div>
                         <div class="node-label">Промзона</div>
                     </div>
+                    <!-- Сектор 4 -->
                     <div class="map-node node-shadow" onclick="MapSys.selectRegion('shadow')">
                         <div class="node-pulse pulse-illegal"></div>
                         <div class="node-icon">🥷</div>
@@ -107,10 +108,11 @@
                     <h3 id="selected-region-title" style="font-size: 16px; color: var(--accent-blue);">📍 Все контракты</h3>
                 </div>
 
+                <!-- Список доступных контрактов -->
                 <div id="contracts-list" class="contracts-grid"></div>
             </section>
 
-            <!-- ВКЛАДКА 2: Автопарк и СТО -->
+            <!-- Вкладка 2: Автопарк -->
             <section id="tab-fleet" class="tab-content">
                 <div class="section-header">
                     <h2>Автопарк</h2>
@@ -119,7 +121,7 @@
                 <div id="fleet-list"></div>
             </section>
 
-            <!-- ВКЛАДКА 3: Рейтинг лидеров -->
+            <!-- Вкладка 3: Рейтинг -->
             <section id="tab-leaderboard" class="tab-content">
                 <div class="section-header">
                     <h2>Рейтинг Логистов</h2>
@@ -140,7 +142,7 @@
                 </div>
             </section>
 
-            <!-- ВКЛАДКА 4: Центр (Топливо, Навыки, Лицензии, Кейсы) -->
+            <!-- Вкладка 4: Центр -->
             <section id="tab-center" class="tab-content">
                 <div class="section-header">
                     <h2>Центр Логистики</h2>
@@ -167,7 +169,7 @@
                 <div id="licenses-list"></div>
             </section>
 
-            <!-- ВКЛАДКА 5: Корпоративные синдикаты -->
+            <!-- Вкладка 5: Синдикаты -->
             <section id="tab-syndicate" class="tab-content">
                 <div class="section-header">
                     <h2>Синдикаты</h2>
@@ -203,7 +205,7 @@
                 </div>
             </section>
 
-            <!-- ВКЛАДКА 6: Профиль и настройки -->
+            <!-- Вкладка 6: Профиль -->
             <section id="tab-profile" class="tab-content">
                 <div class="section-header">
                     <h2>Профиль Логиста</h2>
@@ -250,7 +252,7 @@
                 </div>
                 <div class="card" style="margin-bottom: 16px;">
                     <div class="card-title"><span>🎫 Боевой пропуск</span></div>
-                    <p id="pass-subtitle" style="font-size: 12px; color: var(--hint-color); margin: 6px 0 12px 0;">Ваш текущий уровень пропуска: 1</p>
+                    <p id="pass-subtitle" style="font-size: 12px; color: var(--hint-color); margin: 6px 0 12px 0;">Ваш текуровень пропуска: 1</p>
                     <div id="pass-tiers-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
                 </div>
                 <div class="card" style="margin-bottom: 16px;">
@@ -282,7 +284,7 @@
             </section>
         </main>
 
-        <!-- Нижняя навигация -->
+        <!-- Нижняя навигационная панель -->
         <nav class="app-nav">
             <button type="button" class="nav-item active" onclick="switchTab('contracts')">
                 <span class="nav-icon">📦</span>
@@ -315,7 +317,7 @@
             <div class="ai-avatar">🤖</div>
             <div class="ai-bubble">
                 <div class="ai-title">ИИ Диспетчер</div>
-                <div id="ai-message">Системы работают в штатном режиме.</div>
+                <div id="ai-message">Системные системы работают в штатном режиме.</div>
             </div>
         </div>
         <div id="toast-container" class="toast-container"></div>
