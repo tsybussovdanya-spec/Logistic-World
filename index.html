@@ -73,42 +73,20 @@
             <section id="tab-contracts" class="tab-content active">
                 <div class="section-header">
                     <h2>Глобальная Карта</h2>
-                    <p class="subtitle">Выберите сектор для загрузки контрактов</p>
+                    <p class="subtitle">Перетаскивайте карту и выбирайте город для контрактов</p>
                 </div>
                 
                 <!-- Активные рейсы пользователя -->
                 <div id="active-trip-panel"></div>
 
-                <!-- Интерактивная карта -->
-                <div class="interactive-map">
-                    <div class="map-bg"></div>
-                    <!-- Сектор 1 -->
-                    <div class="map-node node-hub" onclick="MapSys.selectRegion('hub')">
-                        <div class="node-pulse"></div>
-                        <div class="node-icon">📦</div>
-                        <div class="node-label">Базовый Хаб</div>
-                    </div>
-                    <!-- Сектор 2 -->
-                    <div class="map-node node-chem" onclick="MapSys.selectRegion('chem')">
-                        <div class="node-pulse pulse-danger"></div>
-                        <div class="node-icon">☣️</div>
-                        <div class="node-label">Хим-Завод</div>
-                    </div>
-                    <!-- Сектор 3 -->
-                    <div class="map-node node-heavy" onclick="MapSys.selectRegion('heavy')">
-                        <div class="node-pulse pulse-epic"></div>
-                        <div class="node-icon">🏗️</div>
-                        <div class="node-label">Промзона</div>
-                    </div>
-                    <!-- Сектор 4 -->
-                    <div class="map-node node-shadow" onclick="MapSys.selectRegion('shadow')">
-                        <div class="node-pulse pulse-illegal"></div>
-                        <div class="node-icon">🥷</div>
-                        <div class="node-label">Теневой Порт</div>
+                <!-- Интерактивная карта с возможностью перетаскивания -->
+                <div class="interactive-map" id="map-scroll-container">
+                    <div class="map-canvas">
+                        <div class="map-bg"></div>
                     </div>
                 </div>
 
-                <div class="section-header" style="margin-top: 20px;">
+                <div class="section-header" style="margin-top: 15px;">
                     <h3 id="selected-region-title" style="font-size: 16px; color: var(--accent-blue);">📍 Все контракты</h3>
                 </div>
 
@@ -120,7 +98,7 @@
             <section id="tab-fleet" class="tab-content">
                 <div class="section-header">
                     <h2>Автопарк</h2>
-                    <p class="subtitle">Управление транспортом, СТО, госномерами и тюнинг</p>
+                    <p class="subtitle">Управление транспортом, СТО и найм водителей</p>
                 </div>
                 <div id="fleet-list"></div>
             </section>
@@ -150,7 +128,7 @@
             <section id="tab-center" class="tab-content">
                 <div class="section-header">
                     <h2>Центр Логистики</h2>
-                    <p class="subtitle">Топливная биржа, лицензии, мотели и кейсы фонов</p>
+                    <p class="subtitle">Топливная биржа, лицензии, мотели и метеостанция</p>
                 </div>
                 
                 <!-- Метеостанция -->
@@ -175,7 +153,7 @@
                 <div class="card" style="margin-bottom: 16px; border-color: #EF4444;">
                     <div class="card-title"><span style="color:#EF4444;">⚖️ Услуги адвоката (ФСБ)</span></div>
                     <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Сбросьте накопленный уровень розыска за контрабанду и нелегальные допуски.</p>
-                    <button type="button" class="btn btn-outline" style="font-size:12px; border-color:#EF4444; color:#EF4444;" onclick="UnderworldSys.hireLawyer()">Очистить досье (150k ⭐)</button>
+                    <button type="button" class="btn btn-outline" style="font-size:12px; border-color:#EF4444; color:#EF4444;" onclick="UnderworldSys.hireLawyer()">Очистить досье (150k 🪙)</button>
                 </div>
 
                 <div id="background-case-section"></div>
@@ -191,12 +169,6 @@
                         <button type="button" class="btn btn-primary" style="flex:1; font-size:11px;" onclick="GameLogic.buyFuel(1000)">Купить 1000л</button>
                     </div>
                 </div>
-                <div class="card" style="margin-bottom: 16px;">
-                    <div class="card-title"><span>🧠 Прокачка навыков</span></div>
-                    <div id="skills-list" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;"></div>
-                </div>
-                <div class="card-title" style="margin: 16px 0 8px 0;"><span>📜 Лицензии и допуски</span></div>
-                <div id="licenses-list"></div>
             </section>
 
             <!-- Вкладка 5: Синдикаты -->
@@ -223,15 +195,11 @@
                         </div>
                         <div style="font-size: 12px; color: var(--hint-color); margin-top: 4px;">Ваша роль: <span id="corp-role-desc" style="color: #fff; font-weight: bold;">Участник</span></div>
                         <div style="font-size: 12px; color: var(--hint-color); margin-top: 2px;">Топливный фонд: <span id="corp-fuel-treasury" style="color: var(--accent-blue); font-weight: bold;">0 л</span></div>
+                        <div style="font-size: 12px; color: var(--hint-color); margin-top: 2px;">Казна монет: <span id="corp-treasury-coins" style="color: var(--success-color); font-weight: bold;">0 🪙</span></div>
                         <button type="button" class="btn btn-outline" style="margin-top: 12px; font-size: 11px; border-color: #EF4444; color: #EF4444;" onclick="GameLogic.leaveSyndicate()">Покинуть корпорацию</button>
                     </div>
                     <div class="card-title" style="margin-bottom: 8px;"><span>🔬 Корпоративные технологии</span></div>
                     <div id="corp-tech-tree" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;"></div>
-                    <div class="card-title" style="margin-bottom: 8px;"><span>📋 Участники и Логи</span></div>
-                    <div class="card" style="margin-bottom: 16px;">
-                        <div id="corp-members-list" style="margin-bottom: 12px;"></div>
-                        <div id="corp-activity-feed" style="font-size: 11px; color: var(--hint-color); display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto;"></div>
-                    </div>
                 </div>
             </section>
 
@@ -262,8 +230,19 @@
                         <div style="display: flex; justify-content: center; gap: 15px; margin-top: 10px; font-size: 12px; color: var(--hint-color);">
                             <div>Уровень: <span id="profile-id-lvl" style="color: #fff; font-weight: bold;">LVL 1</span></div>
                         </div>
+                        <!-- Контейнер для прогресс-бара уровня -->
+                        <div id="user-level-progress-container" style="margin-top: 10px;"></div>
                     </div>
                 </div>
+
+                <!-- Ежедневные награды (Стрики) -->
+                <div class="card" style="margin-bottom: 16px; border-color: var(--accent-blue);">
+                    <div class="card-title"><span>🎁 Ежедневные награды</span></div>
+                    <p style="font-size: 12px; color: var(--hint-color); margin: 6px 0 12px 0;">Заходите каждый день и забирайте ценные призы без пропусков!</p>
+                    <div id="daily-streak-grid"></div>
+                    <button type="button" class="btn btn-primary" style="font-size: 12px; padding: 10px; width: 100%;" onclick="DailySys.claimReward()">Забрать награду за день</button>
+                </div>
+
                 <div class="card" style="margin-bottom: 16px;">
                     <div class="card-title"><span>✏️ Настройки профиля</span></div>
                     <div style="margin-top: 10px;">
@@ -277,11 +256,6 @@
                     <p style="font-size: 12px; color: var(--hint-color); margin: 6px 0 12px 0;">Выбирайте разблокированные анимированные фоны для своего профиля.</p>
                     <div id="backgrounds-inventory-list"></div>
                 </div>
-                <div class="card" style="margin-bottom: 16px; border-color: var(--accent-blue);">
-                    <div class="card-title"><span>🎁 Ежедневный бонус</span></div>
-                    <p style="font-size: 12px; color: var(--hint-color); margin: 6px 0 12px 0;">Забирайте ценные ресурсы каждые 24 часа!</p>
-                    <button type="button" class="btn btn-primary" style="font-size: 12px; padding: 10px;" onclick="GameLogic.claimDailyBonus()">Забрать бонус (+15,000 🪙)</button>
-                </div>
                 <div class="card" style="margin-bottom: 16px;">
                     <div class="card-title"><span>👥 Пригласить друга</span></div>
                     <p style="font-size: 12px; color: var(--hint-color); margin: 6px 0 12px 0;">Приглашайте друзей и получайте бонусные средства за каждого реферала.</p>
@@ -293,17 +267,12 @@
                     <div id="pass-tiers-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
                 </div>
                 
-                <!-- Статистика профиля -->
+                <!-- Детальная статистика профиля -->
                 <div class="card" style="margin-bottom: 16px;">
                     <div class="card-title"><span>📊 Общая статистика</span></div>
-                    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px; font-size: 13px;">
-                        <div style="display: flex; justify-content: space-between;"><span>Всего заработано:</span><strong id="stat-total-profit">0 🪙</strong></div>
-                        <div style="display: flex; justify-content: space-between;"><span>Завершенных рейсов:</span><strong id="stat-total-trips">0</strong></div>
-                        <div style="display: flex; justify-content: space-between;"><span>Сожжено топлива:</span><strong id="stat-total-fuel">0 л</strong></div>
-                        <div style="display: flex; justify-content: space-between;"><span>Время в игре:</span><strong id="stat-playtime">0ч 0м</strong></div>
-                        <div style="display: flex; justify-content: space-between;"><span>Любимый тягач:</span><strong id="stat-fav-truck">Нет</strong></div>
-                    </div>
+                    <div id="profile-detailed-stats"></div>
                 </div>
+
                 <div class="card" style="margin-bottom: 16px;">
                     <div class="card-title"><span>⚙️ Аудио и Звук</span></div>
                     <div style="display: flex; gap: 8px; margin-top: 10px;">
