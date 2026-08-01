@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -9,13 +10,18 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <audio id="bg-music" loop preload="auto" src="https://raw.githubusercontent.com/tsybussovdanya-spec/Logistic-World/refs/heads/Music/bharatt_saurabh_tujh_bin.mp3"></audio>
+    <audio id="sfx-click" preload="auto" src="https://assets.mixkit.co/sfx/preview/mixkit-modern-technology-select-3124.mp3"></audio>
+    <audio id="sfx-success" preload="auto" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3"></audio>
+    <audio id="sfx-engine" preload="auto" src="https://assets.mixkit.co/sfx/preview/mixkit-sport-car-engine-rev-115.mp3"></audio>
+
     <div id="loading-screen" class="loading-screen">
         <div class="loader-content">
             <h1 class="loader-title">LOGISTIC WORLD</h1>
-            <p class="loader-subtitle">Инициализация глобальной корпорации...</p>
+            <p class="loader-subtitle">Синхронизация глобальной сети из 60+ терминалов...</p>
             <div class="loader-bar-container"><div id="loader-progress" class="loader-bar-fill"></div></div>
             <div id="loader-percent" class="loader-percent">0%</div>
-            <div id="loader-tap" class="loader-tap-prompt" style="display: none;">Нажмите, чтобы войти в систему</div>
+            <div id="loader-tap" class="loader-tap-prompt" style="display: none;">Нажмите, чтобы запустить корпорацию</div>
         </div>
     </div>
 
@@ -32,18 +38,18 @@
                 </div>
             </div>
             <div class="balances-container">
-                <div id="user-money" class="balance-badge">🪙 500 000</div>
-                <div id="user-fuel-stock" class="balance-badge fuel">⛽ 2000л</div>
-                <div id="user-reputation" class="balance-badge rep">⭐ 100%</div>
+                <div id="user-money" class="balance-badge">🪙 1 000 000</div>
+                <div id="user-fuel-stock" class="balance-badge fuel">⛽ 5000л</div>
+                <div id="user-fatigue" class="balance-badge fatigue">🔋 100%</div>
             </div>
         </header>
 
         <main class="main-content">
-            <!-- Вкладка 1: Глобальная карта и Биржа контрактов -->
+            <!-- Вкладка 1: Карта и Биржа контрактов -->
             <section id="tab-map" class="tab-content active">
                 <div class="section-header">
-                    <h2>Мировая Сеть</h2>
-                    <p class="subtitle">Управление логистическими хабами планеты</p>
+                    <h2>Глобальная Карта Сети</h2>
+                    <p class="subtitle">Интерактивный узел планеты с уникальными контрактами</p>
                 </div>
                 <div id="active-trip-panel"></div>
                 <div class="interactive-map" id="map-scroll-container">
@@ -52,68 +58,75 @@
                     </div>
                 </div>
                 <div class="section-header" style="margin-top: 15px;">
-                    <h3 id="selected-region-title" style="font-size: 16px; color: var(--accent-blue);">📍 Выберите узел</h3>
+                    <h3 id="selected-region-title" style="font-size: 15px; color: var(--accent-blue);">📍 Узел</h3>
                 </div>
                 <div id="contracts-list" class="contracts-grid"></div>
             </section>
 
-            <!-- Вкладка 2: Автопарк и Тяжелая техника -->
+            <!-- Вкладка 2: Автопарк и Каталог из 60+ машин -->
             <section id="tab-fleet" class="tab-content">
                 <div class="section-header">
-                    <h2>Глобальный Автопарк</h2>
-                    <p class="subtitle">Приобретение элитных тягачей и тюнинг</p>
+                    <h2>Мировой Автосалон (60+ Машин)</h2>
+                    <p class="subtitle">Элитная техника, тяжеловозы, фургоны и киберкары</p>
                 </div>
-                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                    <button class="btn btn-outline active" id="fleet-tab-my" onclick="UI.switchFleetSub('my')">Мои фуры</button>
-                    <button class="btn btn-outline" id="fleet-tab-shop" onclick="UI.switchFleetSub('shop')">Автосалон</button>
+                <div style="display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px;">
+                    <button class="btn btn-outline active" onclick="UI.switchFleetTab('my', this)">Мой гараж</button>
+                    <button class="btn btn-outline" onclick="UI.switchFleetTab('common', this)">Легкие / Средние</button>
+                    <button class="btn btn-outline" onclick="UI.switchFleetTab('rare', this)">Редкие Тягачи</button>
+                    <button class="btn btn-outline" onclick="UI.switchFleetTab('epic', this)">Эпические</button>
+                    <button class="btn btn-outline" onclick="UI.switchFleetTab('legendary', this)">Легендарные</button>
                 </div>
                 <div id="fleet-content-area"></div>
             </section>
 
-            <!-- Вкладка 3: Мировой рынок и Акции -->
+            <!-- Вкладка 3: Финансовый Центр и Рынок -->
             <section id="tab-market" class="tab-content">
                 <div class="section-header">
-                    <h2>Мировая Биржа</h2>
-                    <p class="subtitle">Инвестиции в акции логистических гигантов</p>
+                    <h2>Финансовая Биржа</h2>
+                    <p class="subtitle">Котировки топлива, трейдинг и дивиденды</p>
                 </div>
                 <div class="card" style="border-color: var(--success-color);">
-                    <div class="card-title"><span style="color:var(--success-color);">📈 Индекс Global Freight</span></div>
-                    <p style="font-size: 11px; color: var(--hint-color); margin-bottom: 10px;">Покупайте акции компаний для получения пассивного дивидендного дохода каждый час.</p>
-                    <div id="stock-market-list"></div>
-                </div>
-                <div class="card" style="margin-top: 12px;">
-                    <div class="card-title"><span>⛽ Топливный трейдинг</span></div>
-                    <p style="font-size: 11px; color: var(--hint-color); margin-bottom: 10px;">Спекуляция нефтью и дизелем на мировых рынках.</p>
+                    <div class="card-title"><span style="color:var(--success-color);">⛽ Топливный терминал</span><span id="current-fuel-price" style="color:var(--accent-blue);">12 🪙/л</span></div>
+                    <p style="font-size: 11px; color: var(--hint-color); margin-bottom: 10px;">Закупка дизеля и водорода для автопарка по текущему курсу узла.</p>
                     <div style="display: flex; gap: 8px;">
                         <button class="btn btn-primary" onclick="GameLogic.buyFuel(1000)">Купить 1,000л</button>
                         <button class="btn btn-primary" onclick="GameLogic.buyFuel(5000)">Купить 5,000л</button>
                     </div>
                 </div>
+                <div class="card" style="margin-top: 12px;">
+                    <div class="card-title"><span>📈 Инвестиционный портфель акций</span></div>
+                    <div id="stock-market-list"></div>
+                </div>
             </section>
 
-            <!-- Вкладка 4: Корпорации / Синдикаты -->
+            <!-- Вкладка 4: Синдикаты / Альянсы -->
             <section id="tab-syndicate" class="tab-content">
                 <div class="section-header">
-                    <h2>Транснациональные Корпорации</h2>
-                    <p class="subtitle">Альянсы магнатов и технологии будущего</p>
+                    <h2>Транснациональные Синдикаты</h2>
+                    <p class="subtitle">Альянсы магнатов, казна и корпоративные технологии</p>
                 </div>
                 <div id="syndicate-main-container"></div>
             </section>
 
-            <!-- Вкладка 5: Профиль и Статус -->
+            <!-- Вкладка 5: Кабинет CEO -->
             <section id="tab-profile" class="tab-content">
                 <div class="section-header">
-                    <h2>Кабинет CEO</h2>
-                    <p class="subtitle">Статус, достижения и управление штаб-квартирой</p>
+                    <h2>Кабинет Главного Магната</h2>
+                    <p class="subtitle">Управление профилем, статистика и инсайдерский доступ</p>
                 </div>
                 <div class="card" style="text-align: center; position: relative;">
-                    <img id="profile-avatar-img" src="https://via.placeholder.com/80" style="width: 70px; height: 70px; border-radius: 50%; border: 2px solid var(--accent-purple); margin-bottom: 8px;">
+                    <img id="profile-avatar-img" src="https://via.placeholder.com/80" style="width: 75px; height: 75px; border-radius: 50%; border: 2px solid var(--accent-purple); margin-bottom: 8px; object-fit: cover;">
                     <h3 id="profile-name-text">Магнат</h3>
                     <div style="font-size: 12px; color: var(--accent-pink); font-weight: bold;" id="profile-level-text">Уровень 1</div>
                     <div id="user-level-progress-container" style="margin-top: 10px;"></div>
                 </div>
                 <div class="card" style="margin-top: 12px;">
-                    <div class="card-title"><span>📊 Корпоративный отчет</span></div>
+                    <div class="card-title"><span>✏️ Настройка профиля</span></div>
+                    <input type="text" id="input-username" placeholder="Ваше имя CEO..." style="width:100%; padding:10px; background:#000; border:1px solid var(--border-color); color:#fff; border-radius:8px; margin-bottom:8px; font-size:12px;">
+                    <button class="btn btn-primary" onclick="GameLogic.saveProfile()">Сохранить имя</button>
+                </div>
+                <div class="card" style="margin-top: 12px;">
+                    <div class="card-title"><span>📊 Корпоративная аналитика</span></div>
                     <div id="profile-detailed-stats" style="font-size: 12px; display: flex; flex-direction: column; gap: 6px; margin-top: 8px;"></div>
                 </div>
                 <div class="card" style="margin-top: 12px; border-color: #EF4444;" id="admin-panel-card">
