@@ -2,7 +2,6 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <!-- Исправлено: добавлен viewport-fit=cover для корректного отображения в Telegram на iOS -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Logistic World | Симулятор Логиста</title>
     
@@ -15,7 +14,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Фоновый аудиофайл (добавлены preload и crossorigin для стабильности) -->
+    <!-- Фоновый аудиофайл -->
     <audio id="bg-music" loop preload="auto" crossorigin="anonymous" src="https://raw.githubusercontent.com/tsybussovdanya-spec/Logistic-World/refs/heads/Music/bharatt_saurabh_tujh_bin.mp3"></audio>
 
     <!-- Звуковые эффекты SFX -->
@@ -154,7 +153,7 @@
                     <p class="subtitle">Топливная биржа, лицензии, мотели и кейсы фонов</p>
                 </div>
                 
-                <!-- Новая механика: Метеостанция -->
+                <!-- Метеостанция -->
                 <div class="card" style="margin-bottom: 16px; border-color: #F59E0B;">
                     <div class="card-title"><span style="color:#F59E0B;">📡 Метеостанция</span></div>
                     <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Покупайте прогноз погоды на 2 часа вперед для точного планирования рискованных контрактов.</p>
@@ -162,7 +161,7 @@
                     <div id="forecast-status-div" style="font-size: 11px; color: var(--success-color); margin-top: 8px;"></div>
                 </div>
 
-                <!-- Новая механика: Придорожные отели -->
+                <!-- Придорожные отели -->
                 <div class="card" style="margin-bottom: 16px; border-color: var(--success-color);">
                     <div class="card-title"><span style="color:var(--success-color);">🛏️ Придорожный мотель</span></div>
                     <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Восстановите бодрость водителя до 100% (требуется для избежания штрафов и замедления рейсов).</p>
@@ -172,7 +171,7 @@
                     </div>
                 </div>
 
-                <!-- Новая механика: Юридический офис (Адвокат) -->
+                <!-- Юридический офис (Адвокат) -->
                 <div class="card" style="margin-bottom: 16px; border-color: #EF4444;">
                     <div class="card-title"><span style="color:#EF4444;">⚖️ Услуги адвоката (ФСБ)</span></div>
                     <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Сбросьте накопленный уровень розыска за контрабанду и нелегальные допуски.</p>
@@ -261,8 +260,7 @@
                         <h3 id="profile-id-name" style="color: #fff; font-size: 18px;">Логист</h3>
                         <div id="profile-id-role" style="font-size: 12px; color: var(--accent-pink); font-weight: bold; margin-top: 2px;">Частник-одиночка</div>
                         <div style="display: flex; justify-content: center; gap: 15px; margin-top: 10px; font-size: 12px; color: var(--hint-color);">
-                            <div>Уровень: <span id="profile-id-lvl" style="color: #fff; font-weight: bold;">LVL 3</span></div>
-                            <div>В игре с: <span id="profile-id-date" style="color: #fff; font-weight: bold;">--.--.----</span></div>
+                            <div>Уровень: <span id="profile-id-lvl" style="color: #fff; font-weight: bold;">LVL 1</span></div>
                         </div>
                     </div>
                 </div>
