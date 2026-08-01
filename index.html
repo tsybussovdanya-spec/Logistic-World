@@ -2,24 +2,27 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Исправлено: добавлен viewport-fit=cover для корректного отображения в Telegram на iOS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Logistic World | Симулятор Логиста</title>
+    
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <!-- Supabase Client SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <!-- Подключаем стили -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Фоновый аудиофайл -->
-    <audio id="bg-music" loop src="https://raw.githubusercontent.com/tsybussovdanya-spec/Logistic-World/refs/heads/Music/bharatt_saurabh_tujh_bin.mp3"></audio>
+    <!-- Фоновый аудиофайл (добавлены preload и crossorigin для стабильности) -->
+    <audio id="bg-music" loop preload="auto" crossorigin="anonymous" src="https://raw.githubusercontent.com/tsybussovdanya-spec/Logistic-World/refs/heads/Music/bharatt_saurabh_tujh_bin.mp3"></audio>
 
     <!-- Звуковые эффекты SFX -->
-    <audio id="sfx-click" src="https://assets.mixkit.co/sfx/preview/mixkit-modern-technology-select-3124.mp3"></audio>
-    <audio id="sfx-success" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3"></audio>
-    <audio id="sfx-error" src="https://assets.mixkit.co/sfx/preview/mixkit-software-interface-error-2574.mp3"></audio>
-    <audio id="sfx-engine" src="https://assets.mixkit.co/sfx/preview/mixkit-sport-car-engine-rev-115.mp3"></audio>
+    <audio id="sfx-click" preload="auto" src="https://assets.mixkit.co/sfx/preview/mixkit-modern-technology-select-3124.mp3"></audio>
+    <audio id="sfx-success" preload="auto" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3"></audio>
+    <audio id="sfx-error" preload="auto" src="https://assets.mixkit.co/sfx/preview/mixkit-software-interface-error-2574.mp3"></audio>
+    <audio id="sfx-engine" preload="auto" src="https://assets.mixkit.co/sfx/preview/mixkit-sport-car-engine-rev-115.mp3"></audio>
 
     <!-- Экран загрузки (Splash Screen) -->
     <div id="loading-screen" class="loading-screen">
@@ -288,9 +291,11 @@
                 </div>
                 <div class="card" style="margin-bottom: 16px;">
                     <div class="card-title"><span>🎫 Боевой пропуск</span></div>
-                    <p id="pass-subtitle" style="font-size: 12px; color: var(--hint-color); margin: 6px 0 12px 0;">Ваш текуровень пропуска: 1</p>
+                    <p id="pass-subtitle" style="font-size: 12px; color: var(--hint-color); margin: 6px 0 12px 0;">Ваш текущий уровень пропуска: 1</p>
                     <div id="pass-tiers-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
                 </div>
+                
+                <!-- Статистика профиля -->
                 <div class="card" style="margin-bottom: 16px;">
                     <div class="card-title"><span>📊 Общая статистика</span></div>
                     <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px; font-size: 13px;">
@@ -358,6 +363,7 @@
         </div>
         <div id="toast-container" class="toast-container"></div>
     </div>
+    
     <script src="script.js"></script>
 </body>
 </html>
