@@ -11,7 +11,6 @@ const CONFIG = {
     GARAGE_UPGRADE_COSTS: [0, 250000, 1000000, 5000000]
 };
 
-// 20+ новых и базовых транспортов мирового класса
 const TRUCK_SHOP = [
     { id: 't1', name: 'ГАЗель "Метеор"', capacity: 1500, fuel_use: 20, rarity: 'common', price: 75000, image: 'https://i.ibb.co.com/p6XDM2Rx/44-F0-E8-CE-1-CFA-47-E8-AAB4-8-A3-A6-B1-D0-FFD.png' },
     { id: 't2', name: 'ЗАЗ Карго', capacity: 2800, fuel_use: 30, rarity: 'common', price: 140000, image: 'https://i.ibb.co.com/v63jh8Sw/61-FB1-D82-33-D6-4928-B3-A6-2-B5-D57-A338-FB.png' },
@@ -81,44 +80,43 @@ const ServerTimeSys = {
     now() { return Date.now() + this.offset; }
 };
 
-// 30 городов мира
 const WORLD_MAP = {
     currentCity: 'mow',
     cities: {
-        'ber': { name: 'Берлин', x: '15%', y: '30%', fuelPrice: 22, icon: '🏛️' },
-        'mow': { name: 'Москва', x: '35%', y: '40%', fuelPrice: 12, icon: '🏙️' },
-        'kst': { name: 'Костанай', x: '55%', y: '45%', fuelPrice: 8, icon: '🏭' },
-        'pek': { name: 'Пекин', x: '85%', y: '65%', fuelPrice: 16, icon: '🏯' },
-        'par': { name: 'Париж', x: '18%', y: '35%', fuelPrice: 24, icon: '🗼' },
-        'lon': { name: 'Лондон', x: '14%', y: '26%', fuelPrice: 26, icon: '🎡' },
-        'rom': { name: 'Рим', x: '25%', y: '45%', fuelPrice: 23, icon: '🏛️' },
-        'mad': { name: 'Мадрид', x: '12%', y: '52%', fuelPrice: 21, icon: '🏰' },
-        'war': { name: 'Варшава', x: '28%', y: '32%', fuelPrice: 17, icon: '🏰' },
-        'kie': { name: 'Киев', x: '33%', y: '38%', fuelPrice: 14, icon: '⛪' },
-        'stp': { name: 'Санкт-Петербург', x: '36%', y: '25%', fuelPrice: 13, icon: '⚓' },
-        'kaz': { name: 'Казань', x: '42%', y: '37%', fuelPrice: 11, icon: '🕌' },
-        'ekt': { name: 'Екатеринбург', x: '48%', y: '36%', fuelPrice: 10, icon: '⛰️' },
-        'nsk': { name: 'Новосибирск', x: '58%', y: '38%', fuelPrice: 9, icon: '❄️' },
-        'irk': { name: 'Иркутск', x: '68%', y: '40%', fuelPrice: 9, icon: '🌊' },
-        'vvo': { name: 'Владивосток', x: '88%', y: '45%', fuelPrice: 11, icon: '🚢' },
-        'ura': { name: 'Уральск', x: '47%', y: '44%', fuelPrice: 8, icon: '🌾' },
-        'ala': { name: 'Алматы', x: '60%', y: '52%', fuelPrice: 9, icon: '🍎' },
-        'ast': { name: 'Астана', x: '54%', y: '42%', fuelPrice: 8, icon: '🏙️' },
+        'ber': { name: 'Берлин', x: '18%', y: '35%', fuelPrice: 22, icon: '🏛️' },
+        'mow': { name: 'Москва', x: '35%', y: '28%', fuelPrice: 12, icon: '🏙️' },
+        'kst': { name: 'Костанай', x: '48%', y: '32%', fuelPrice: 8, icon: '🏭' },
+        'pek': { name: 'Пекин', x: '82%', y: '48%', fuelPrice: 16, icon: '🏯' },
+        'par': { name: 'Париж', x: '14%', y: '42%', fuelPrice: 24, icon: '🗼' },
+        'lon': { name: 'Лондон', x: '10%', y: '30%', fuelPrice: 26, icon: '🎡' },
+        'rom': { name: 'Рим', x: '22%', y: '50%', fuelPrice: 23, icon: '🏛️' },
+        'mad': { name: 'Мадрид', x: '8%', y: '58%', fuelPrice: 21, icon: '🏰' },
+        'war': { name: 'Варшава', x: '25%', y: '34%', fuelPrice: 17, icon: '🏰' },
+        'kie': { name: 'Киев', x: '30%', y: '40%', fuelPrice: 14, icon: '⛪' },
+        'stp': { name: 'Санкт-Петербург', x: '36%', y: '18%', fuelPrice: 13, icon: '⚓' },
+        'kaz': { name: 'Казань', x: '42%', y: '25%', fuelPrice: 11, icon: '🕌' },
+        'ekt': { name: 'Екатеринбург', x: '52%', y: '26%', fuelPrice: 10, icon: '⛰️' },
+        'nsk': { name: 'Новосибирск', x: '64%', y: '30%', fuelPrice: 9, icon: '❄️' },
+        'irk': { name: 'Иркутск', x: '73%', y: '35%', fuelPrice: 9, icon: '🌊' },
+        'vvo': { name: 'Владивосток', x: '92%', y: '42%', fuelPrice: 11, icon: '🚢' },
+        'ura': { name: 'Уральск', x: '40%', y: '36%', fuelPrice: 8, icon: '🌾' },
+        'ala': { name: 'Алматы', x: '60%', y: '48%', fuelPrice: 9, icon: '🍎' },
+        'ast': { name: 'Астана', x: '55%', y: '38%', fuelPrice: 8, icon: '🏙️' },
         'tas': { name: 'Ташкент', x: '58%', y: '58%', fuelPrice: 10, icon: '🕌' },
-        'bak': { name: 'Баку', x: '44%', y: '53%', fuelPrice: 12, icon: '🛢️' },
-        'tev': { name: 'Тегеран', x: '48%', y: '60%', fuelPrice: 10, icon: '🕌' },
-        'dub': { name: 'Дубай', x: '52%', y: '72%', fuelPrice: 7, icon: '💎' },
-        'mum': { name: 'Мумбаи', x: '65%', y: '70%', fuelPrice: 13, icon: '🌴' },
-        'del': { name: 'Дели', x: '66%', y: '58%', fuelPrice: 12, icon: '🛕' },
-        'sha': { name: 'Шанхай', x: '82%', y: '58%', fuelPrice: 15, icon: '🌆' },
-        'hkong': { name: 'Гонконг', x: '80%', y: '68%', fuelPrice: 16, icon: '⚡' },
-        'tok': { name: 'Токио', x: '94%', y: '50%', fuelPrice: 20, icon: '🗼' },
-        'sel': { name: 'Сеул', x: '88%', y: '52%', fuelPrice: 17, icon: '🇰🇷' },
-        'sin': { name: 'Сингапур', x: '78%', y: '82%', fuelPrice: 14, icon: '🦁' },
-        'ban': { name: 'Бангкок', x: '75%', y: '72%', fuelPrice: 13, icon: '🛕' },
-        'ist': { name: 'Стамбул', x: '32%', y: '48%', fuelPrice: 16, icon: '🌉' },
-        'cai': { name: 'Каир', x: '35%', y: '62%', fuelPrice: 11, icon: '🏜️' },
-        'ulb': { name: 'Улан-Батор', x: '70%', y: '42%', fuelPrice: 10, icon: '⛺' }
+        'bak': { name: 'Баку', x: '42%', y: '55%', fuelPrice: 12, icon: '🛢️' },
+        'tev': { name: 'Тегеран', x: '46%', y: '65%', fuelPrice: 10, icon: '🕌' },
+        'dub': { name: 'Дубай', x: '52%', y: '78%', fuelPrice: 7, icon: '💎' },
+        'mum': { name: 'Мумбаи', x: '66%', y: '75%', fuelPrice: 13, icon: '🌴' },
+        'del': { name: 'Дели', x: '68%', y: '60%', fuelPrice: 12, icon: '🛕' },
+        'sha': { name: 'Шанхай', x: '85%', y: '58%', fuelPrice: 15, icon: '🌆' },
+        'hkong': { name: 'Гонконг', x: '82%', y: '70%', fuelPrice: 16, icon: '⚡' },
+        'tok': { name: 'Токио', x: '96%', y: '45%', fuelPrice: 20, icon: '🗼' },
+        'sel': { name: 'Сеул', x: '90%', y: '48%', fuelPrice: 17, icon: '🇰🇷' },
+        'sin': { name: 'Сингапур', x: '78%', y: '85%', fuelPrice: 14, icon: '🦁' },
+        'ban': { name: 'Бангкок', x: '76%', y: '76%', fuelPrice: 13, icon: '🛕' },
+        'ist': { name: 'Стамбул', x: '28%', y: '48%', fuelPrice: 16, icon: '🌉' },
+        'cai': { name: 'Каир', x: '32%', y: '68%', fuelPrice: 11, icon: '🏜️' },
+        'ulb': { name: 'Улан-Батор', x: '72%', y: '28%', fuelPrice: 10, icon: '⛺' }
     },
     routes: [
         { id: 'r1', from: 'ber', to: 'mow', dist: 1800, type: 'autobahn', wearMod: 0.5, speedMod: 1.5, name: 'Европейский транзит' },
@@ -128,116 +126,112 @@ const WORLD_MAP = {
         { id: 'r5', from: 'mow', to: 'ast', dist: 2300, type: 'highway', wearMod: 0.9, speedMod: 1.1, name: 'Евразийский коридор' },
         { id: 'r6', from: 'kst', to: 'ala', dist: 1200, type: 'highway', wearMod: 0.8, speedMod: 1.2, name: 'Южный меридиан' }
     ],
-    // 60+ контрактов / типов грузов
     cargoTypes: [
         { name: 'Электроника', lic: 'basic', baseRew: 8, icon: '💻' },
         { name: 'Стройматериалы', lic: 'basic', baseRew: 5, icon: '🧱' },
+        { name: 'Химикаты', lic: 'dangerous', baseRew: 18, icon: '☣️' },
+        { name: 'Турбины', lic: 'oversized', baseRew: 25, icon: '🏗️' },
+        { name: 'Теневой груз', lic: 'smuggling', baseRew: 40, icon: '🥷' },
         { name: 'Продовольствие', lic: 'basic', baseRew: 6, icon: '🍎' },
         { name: 'Медикаменты', lic: 'basic', baseRew: 9, icon: '💊' },
-        { name: 'Текстиль и одежда', lic: 'basic', baseRew: 5.5, icon: '👕' },
-        { name: 'Бумажная продукция', lic: 'basic', baseRew: 4.5, icon: '📦' },
-        { name: 'Мебель', lic: 'basic', baseRew: 6.5, icon: '🪑' },
-        { name: 'Бытовая техника', lic: 'basic', baseRew: 7.5, icon: '📺' },
-        { name: 'Автозапчасти', lic: 'basic', baseRew: 8.5, icon: '⚙️' },
-        { name: 'Игрушки', lic: 'basic', baseRew: 5, icon: '🧸' },
-        { name: 'Спортивный инвентарь', lic: 'basic', baseRew: 6, icon: '⚽' },
-        { name: 'Книги и полиграфия', lic: 'basic', baseRew: 4, icon: '📚' },
-        { name: 'Посуда и стекло', lic: 'basic', baseRew: 7, icon: '🍽️' },
-        { name: 'Обувь', lic: 'basic', baseRew: 6, icon: '👟' },
-        { name: 'Косметика и парфюмерия', lic: 'basic', baseRew: 8, icon: '💄' },
-        { name: 'Инструменты', lic: 'basic', baseRew: 7, icon: '🛠️' },
-        { name: 'Сантехника', lic: 'basic', baseRew: 6, icon: '🚿' },
-        { name: 'Упаковочные материалы', lic: 'basic', baseRew: 4, icon: '📜' },
-        { name: 'Семена и удобрения', lic: 'basic', baseRew: 5.5, icon: '🌱' },
-        { name: 'Корм для животных', lic: 'basic', baseRew: 5, icon: '🐾' },
-
-        { name: 'Химикаты', lic: 'dangerous', baseRew: 18, icon: '☣️' },
-        { name: 'Топливные элементы', lic: 'dangerous', baseRew: 20, icon: '⛽' },
-        { name: 'Промышленные газы', lic: 'dangerous', baseRew: 19, icon: '🧪' },
-        { name: 'Пиротехника', lic: 'dangerous', baseRew: 22, icon: '🎆' },
-        { name: 'Удобрения азотные', lic: 'dangerous', baseRew: 16, icon: '🧪' },
-        { name: 'Краски и растворители', lic: 'dangerous', baseRew: 17, icon: '🎨' },
-        { name: 'Кислоты и щелочи', lic: 'dangerous', baseRew: 21, icon: '⚠️' },
-        { name: 'Нефтепродукты легкие', lic: 'dangerous', baseRew: 23, icon: '🛢️' },
-        { name: 'Синтетические смолы', lic: 'dangerous', baseRew: 17.5, icon: '🧪' },
-        { name: 'Фармацевтические субстанции', lic: 'dangerous', baseRew: 25, icon: '🧬' },
-        { name: 'Лакокрасочные изделия', lic: 'dangerous', baseRew: 16.5, icon: '🖌️' },
-        { name: 'Пестициды', lic: 'dangerous', baseRew: 20.5, icon: '☠️' },
-        { name: 'Ацетон и спирты', lic: 'dangerous', baseRew: 18.5, icon: '🧪' },
-        { name: 'Канистры с реагентами', lic: 'dangerous', baseRew: 19.5, icon: '🧪' },
-        { name: 'Токсичные отходы', lic: 'dangerous', baseRew: 28, icon: '☢️' },
-
-        { name: 'Турбины', lic: 'oversized', baseRew: 25, icon: '🏗️' },
-        { name: 'Спецтехника (Экскаваторы)', lic: 'oversized', baseRew: 30, icon: '🚜' },
-        { name: 'Буровые установки', lic: 'oversized', baseRew: 35, icon: '⛏️' },
-        { name: 'Мостовые балки', lic: 'oversized', baseRew: 27, icon: '🌉' },
-        { name: 'Колодцы и резервуары', lic: 'oversized', baseRew: 24, icon: '🛢️' },
-        { name: 'Ветрогенераторы (Лопасти)', lic: 'oversized', baseRew: 32, icon: '🌬️' },
-        { name: 'Трансформаторы тока', lic: 'oversized', baseRew: 29, icon: '⚡' },
-        { name: 'Корабельные двигатели', lic: 'oversized', baseRew: 36, icon: '⚓' },
-        { name: 'Металлоконструкции', lic: 'oversized', baseRew: 23, icon: '🔩' },
-        { name: 'Промышленные прессы', lic: 'oversized', baseRew: 31, icon: '🏭' },
-        { name: 'Дорожные катки', lic: 'oversized', baseRew: 26, icon: '🛣️' },
-        { name: 'Шахтные комбайны', lic: 'oversized', baseRew: 38, icon: '🚇' },
-        { name: 'Модульные дома', lic: 'oversized', baseRew: 28.5, icon: '🏠' },
-        { name: 'Крановые стрелы', lic: 'oversized', baseRew: 33, icon: '🏗️' },
-        { name: 'Авиационные фюзеляжи', lic: 'oversized', baseRew: 40, icon: '✈️' },
-
-        { name: 'Теневой груз (Реплики)', lic: 'smuggling', baseRew: 40, icon: '🥷' },
-        { name: 'Контрабандный гаджет', lic: 'smuggling', baseRew: 45, icon: '📱' },
-        { name: 'Секретные чипы', lic: 'smuggling', baseRew: 50, icon: '💾' },
-        { name: 'Элитный алкоголь (Антиквариат)', lic: 'smuggling', baseRew: 42, icon: '🍾' },
-        { name: 'Драгоценные камни без пошлин', lic: 'smuggling', baseRew: 55, icon: '💎' },
-        { name: 'Редкие артефакты', lic: 'smuggling', baseRew: 48, icon: '🏺' },
-        { name: 'Зашифрованные серверы', lic: 'smuggling', baseRew: 52, icon: '🖥️' },
-        { name: 'Дипломатическая почта (Черный рынок)', lic: 'smuggling', baseRew: 46, icon: '💼' },
-        { name: 'Редкие медикаменты (Без лицензии)', lic: 'smuggling', baseRew: 43, icon: '💊' },
-        { name: 'Кибернетические импланты', lic: 'smuggling', baseRew: 60, icon: '🦾' },
-        { name: 'Оптические квантовые модули', lic: 'smuggling', baseRew: 58, icon: '🔭' },
-        { name: 'Секретная документация корпораций', lic: 'smuggling', baseRew: 49, icon: '📁' },
-        { name: 'Экзотические биоматериалы', lic: 'smuggling', baseRew: 54, icon: '🧬' },
-        { name: 'Незарегистрированные дроны', lic: 'smuggling', baseRew: 47, icon: '🛸' },
-        { name: 'Черный криптотерминал', lic: 'smuggling', baseRew: 65, icon: '🪙' }
+        { name: 'Спецтехника', lic: 'oversized', baseRew: 30, icon: '🚜' }
     ]
 };
 
 const MapSys = {
     selectCity(cityId) {
-        WORLD_MAP.currentCity = cityId; AudioSys.playSFX('click'); AudioSys.playVibrate('click');
+        WORLD_MAP.currentCity = cityId; 
+        AudioSys.playSFX('click'); 
+        AudioSys.playVibrate('click');
         AppState.player.fuel_price = WORLD_MAP.cities[cityId].fuelPrice;
-        this.renderMapUI(); UI.renderAll();
+        this.renderMapUI(); 
+        UI.renderAll();
     },
     selectRegion(regionKey) {
-        // Поддержка совместимости со старыми секторными вызовами из HTML
         const mapping = { 'hub': 'mow', 'chem': 'kst', 'heavy': 'ekt', 'shadow': 'ber' };
         if (mapping[regionKey]) this.selectCity(mapping[regionKey]);
     },
     generateDynamicContracts() {
-        const contracts = []; const currentId = WORLD_MAP.currentCity;
+        const contracts = []; 
+        const currentId = WORLD_MAP.currentCity;
         WORLD_MAP.routes.forEach(route => {
             if (route.from === currentId || route.to === currentId) {
                 const targetId = route.from === currentId ? route.to : route.from;
                 const targetCity = WORLD_MAP.cities[targetId];
-                for(let i=0; i<3; i++) {
+                for(let i = 0; i < 4; i++) {
                     const cargo = WORLD_MAP.cargoTypes[Math.floor(Math.random() * WORLD_MAP.cargoTypes.length)];
                     const reward = Math.floor(route.dist * cargo.baseRew * (1 + Math.random() * 0.2));
                     const baseFuelReq = Math.floor(route.dist * 0.15); 
                     const durationSec = Math.floor((route.dist / 10) / route.speedMod); 
-                    contracts.push({ id: `dyn_${targetId}_${i}`, title: `В ${targetCity.name} (${route.name})`, name: cargo.name, targetCity: targetId, diff: route.type === 'dirt' ? 'Сложно' : 'Норма', badgeClass: cargo.lic === 'smuggling' ? 'badge-illegal' : 'badge-ordinary', reward: reward, baseFuel: baseFuelReq, duration: durationSec, reqLvl: cargo.lic === 'smuggling' ? 12 : 1, reqLic: cargo.lic, routeId: route.id, icon: cargo.icon });
+                    contracts.push({ 
+                        id: `dyn_${targetId}_${i}`, 
+                        title: `В ${targetCity.name} (${route.name})`, 
+                        name: cargo.name, 
+                        targetCity: targetId, 
+                        diff: route.type === 'dirt' ? 'Сложно' : 'Норма', 
+                        badgeClass: cargo.lic === 'smuggling' ? 'badge-illegal' : cargo.lic === 'dangerous' ? 'badge-epic' : 'badge-ordinary', 
+                        reward: reward, 
+                        baseFuel: baseFuelReq, 
+                        duration: durationSec, 
+                        reqLvl: cargo.lic === 'smuggling' ? 12 : cargo.lic === 'dangerous' ? 5 : 1, 
+                        reqLic: cargo.lic, 
+                        routeId: route.id, 
+                        icon: cargo.icon 
+                    });
                 }
             }
         });
         return contracts;
     },
     renderMapUI() {
-        const mapContainer = document.querySelector('.interactive-map'); if(!mapContainer) return;
+        const mapCanvas = document.querySelector('.map-canvas'); if(!mapCanvas) return;
         let svgHTML = `<svg style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none;">`;
-        WORLD_MAP.routes.forEach(r => { const c1 = WORLD_MAP.cities[r.from]; const c2 = WORLD_MAP.cities[r.to]; if(!c1 || !c2) return; const strokeColor = r.type === 'autobahn' ? '#3B82F6' : r.type === 'dirt' ? '#F59E0B' : '#8B5CF6'; const dash = r.type === 'dirt' ? 'stroke-dasharray="5,5"' : ''; svgHTML += `<line x1="${c1.x}" y1="${c1.y}" x2="${c2.x}" y2="${c2.y}" stroke="${strokeColor}" stroke-width="3" opacity="0.6" ${dash} />`; });
+        WORLD_MAP.routes.forEach(r => { 
+            const c1 = WORLD_MAP.cities[r.from]; const c2 = WORLD_MAP.cities[r.to]; 
+            if(!c1 || !c2) return; 
+            const strokeColor = r.type === 'autobahn' ? '#3B82F6' : r.type === 'dirt' ? '#F59E0B' : '#8B5CF6'; 
+            const dash = r.type === 'dirt' ? 'stroke-dasharray="5,5"' : ''; 
+            svgHTML += `<line x1="${c1.x}" y1="${c1.y}" x2="${c2.x}" y2="${c2.y}" stroke="${strokeColor}" stroke-width="2.5" opacity="0.6" ${dash} />`; 
+        });
         svgHTML += `</svg>`;
+        
         let nodesHTML = '';
-        for(let key in WORLD_MAP.cities) { let c = WORLD_MAP.cities[key]; let isCurrent = (WORLD_MAP.currentCity === key); nodesHTML += `<div class="map-node ${isCurrent ? 'active-node' : ''}" style="position:absolute; top:${c.y}; left:${c.x}; z-index:2; transform:translate(-50%, -50%); cursor:pointer;" onclick="MapSys.selectCity('${key}')"><div class="node-pulse ${isCurrent ? 'pulse-epic' : ''}"></div><div class="node-icon" style="font-size:24px;">${c.icon}</div><div class="node-label" style="background:rgba(0,0,0,0.8); padding:2px 6px; border-radius:4px; font-size:10px; color:#fff;">${c.name}</div></div>`; }
-        mapContainer.innerHTML = svgHTML + nodesHTML;
-        const cityData = WORLD_MAP.cities[WORLD_MAP.currentCity]; UI.safeUpdate('selected-region-title', `📍 ${cityData.name} | Топливо: ${cityData.fuelPrice} 🪙/л`);
+        for(let key in WORLD_MAP.cities) { 
+            let c = WORLD_MAP.cities[key]; 
+            let isCurrent = (WORLD_MAP.currentCity === key); 
+            nodesHTML += `<div class="map-node ${isCurrent ? 'active-node' : ''}" style="top:${c.y}; left:${c.x};" onclick="MapSys.selectCity('${key}')"><div class="node-pulse ${isCurrent ? 'pulse-epic' : ''}"></div><div class="node-icon">${c.icon}</div><div class="node-label">${c.name}</div></div>`; 
+        }
+        
+        mapCanvas.innerHTML = `<div class="map-bg"></div>` + svgHTML + nodesHTML;
+        const cityData = WORLD_MAP.cities[WORLD_MAP.currentCity]; 
+        UI.safeUpdate('selected-region-title', `📍 ${cityData.name} | Топливо: ${cityData.fuelPrice} 🪙/л`);
+    },
+    initDragScroll() {
+        const slider = document.getElementById('map-scroll-container');
+        if(!slider) return;
+        let isDown = false;
+        let startX, startY, scrollLeft, scrollTop;
+
+        slider.addEventListener('mousedown', (e) => {
+            isDown = true;
+            slider.classList.add('active');
+            startX = e.pageX - slider.offsetLeft;
+            startY = e.pageY - slider.offsetTop;
+            scrollLeft = slider.scrollLeft;
+            scrollTop = slider.scrollTop;
+        });
+        slider.addEventListener('mouseleave', () => { isDown = false; });
+        slider.addEventListener('mouseup', () => { isDown = false; });
+        slider.addEventListener('mousemove', (e) => {
+            if(!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - slider.offsetLeft;
+            const y = e.pageY - slider.offsetTop;
+            const walkX = (x - startX) * 1.5;
+            const walkY = (y - startY) * 1.5;
+            slider.scrollLeft = scrollLeft - walkX;
+            slider.scrollTop = scrollTop - walkY;
+        });
     }
 };
 
@@ -281,6 +275,7 @@ const DB = {
             }
             await this.loadGameData(); await this.loadLeaderboard(); 
             MapSys.renderMapUI();
+            MapSys.initDragScroll();
             OfflineProgressSys.process();
             UI.renderAll();
         } catch (err) { UI.showToast("Ошибка соединения: " + err.message, "error"); }
@@ -523,7 +518,6 @@ const GameLogic = {
         await DB.syncPlayer(); UI.showToast(`Комплексное ТО выполнено!`, 'success'); UI.renderAll();
     },
     
-    // Улучшенная отправка рейса с учетом усталости и техсостояния
     async startTrip(reward, baseFuel, duration, title, reqLvl, reqLic, targetCity, routeId) {
         if (AppState.player.level < reqLvl) return UI.showToast(`Требуется уровень ${reqLvl}!`, 'error');
         if (!AppState.player.licenses.includes(reqLic)) return UI.showToast('Отсутствует лицензия!', 'error');
@@ -635,7 +629,6 @@ const GameLogic = {
         await DB.syncPlayer(); UI.showToast(`Куплено ${amt}л топлива`, 'success'); UI.renderAll();
     },
 
-    // Мощные синдикаты с казной и технологиями
     async createSyndicate(nameInput) {
         let name = (nameInput || '').trim();
         if(name.length < 3) return UI.showToast('Название от 3 символов', 'error');
@@ -686,7 +679,6 @@ const GameLogic = {
         UI.renderAll();
     },
 
-    // Боевой пропуск (Season Pass)
     async claimPassReward(tierLevel, rewardAmount) {
         const currentTier = AppState.player.pass_level || 1;
         if (currentTier < tierLevel) return UI.showToast('Этот уровень еще не разблокирован!', 'error');
@@ -819,7 +811,6 @@ const UI = {
         this.safeUpdate('stat-total-fuel', `${p.total_fuel_burned || 0} л`);
         this.safeUpdate('stat-playtime', `${Math.floor((p.playtime_minutes||0)/60)}ч ${(p.playtime_minutes||0)%60}м`);
 
-        // Прогресс-бар уровня в хедере или профиле
         let reqXp = GameLogic.getReqXP(p.level);
         let xpPercent = Math.min(100, Math.floor((p.xp / reqXp) * 100));
         let xpBarHtml = `
@@ -832,13 +823,24 @@ const UI = {
             </div>`;
         this.safeUpdateHTML('user-level-progress-container', xpBarHtml);
 
-        // Синдикаты
+        let detailedStatsHtml = `
+            <div style="display:flex; flex-direction:column; gap:8px; font-size:13px; margin-top:10px;">
+                <div style="display:flex; justify-content:space-between;"><span>Общий капитал:</span><strong style="color:var(--accent-pink);">${Number(p.money).toLocaleString()} 🪙</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>Всего заработано:</span><strong>${Number(p.total_profit || 0).toLocaleString()} 🪙</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>Завершенных рейсов:</span><strong>${p.total_trips || 0}</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>Сожжено топлива:</span><strong>${p.total_fuel_burned || 0} л</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>Синдикатный вклад:</span><strong style="color:var(--success-color);">${Number(p.syndicate_contribution || 0).toLocaleString()} 🪙</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>Время в игре:</span><strong>${Math.floor((p.playtime_minutes||0)/60)}ч ${(p.playtime_minutes||0)%60}м</strong></div>
+            </div>`;
+        this.safeUpdateHTML('profile-detailed-stats', detailedStatsHtml);
+
         const noSyn = document.getElementById('no-syndicate-panel');
         const actSyn = document.getElementById('active-syndicate-panel');
         if (p.syndicate && p.syndicate !== 'null') {
             if (noSyn) noSyn.style.display = 'none';
             if (actSyn) actSyn.style.display = 'block';
             this.safeUpdate('corp-name-title', p.syndicate);
+            this.safeUpdate('corp-treasury-coins', `${(AppState.syndicateData.treasuryCoins || 0).toLocaleString()} 🪙`);
             this.safeUpdate('corp-fuel-treasury', `${(AppState.syndicateData.treasuryFuel || 0).toLocaleString()} л`);
             this.safeUpdate('corp-role-desc', p.syndicate_role === 'leader' ? '👑 Лидер' : '⭐ Участник');
         } else {
@@ -846,7 +848,6 @@ const UI = {
             if (actSyn) actSyn.style.display = 'none';
         }
 
-        // Рендер техдерева синдиката
         let techHtml = '';
         const techsDef = [
             { key: 'security', name: '🛡️ Охрана грузов (Защита от штрафов)' },
@@ -862,7 +863,6 @@ const UI = {
         });
         this.safeUpdateHTML('corp-tech-tree', techHtml);
 
-        // Сезон Пасс (Боевой пропуск)
         this.safeUpdate('pass-subtitle', `Ваш текущий уровень пропуска: ${p.pass_level || 1}`);
         this.safeUpdateHTML('pass-tiers-list', Array.from({ length: 15 }, (_, i) => { 
             const lvl = i + 1, rew = 15000 + i * 20000; 
@@ -874,7 +874,19 @@ const UI = {
             </div>`; 
         }).join(''));
 
-        // Лидерборд
+        let streakHtml = ``;
+        for(let i = 1; i <= 7; i++) {
+            let isCurrent = (p.daily_streak || 0) === i;
+            let isPassed = (p.daily_streak || 0) > i;
+            streakHtml += `
+                <div style="flex:1; background:${isCurrent?'var(--accent-blue)':'rgba(0,0,0,0.3)'}; border:1px solid ${isCurrent?'var(--accent-pink)':'var(--border-color)'}; padding:8px 4px; border-radius:8px; text-align:center;">
+                    <div style="font-size:10px; color:var(--hint-color);">День ${i}</div>
+                    <div style="font-size:12px; font-weight:bold; color:#fff; margin:4px 0;">+${i*15}k</div>
+                    <div style="font-size:9px; color:${isPassed?'var(--success-color)':'var(--hint-color)'};">${isPassed?'Получено':(isCurrent?'Доступно':'Ожидание')}</div>
+                </div>`;
+        }
+        this.safeUpdateHTML('daily-streak-grid', `<div style="display:flex; gap:6px; margin-bottom:12px;">${streakHtml}</div>`);
+
         const l = AppState.leaderboard || [], isT = AppState.leaderboardCategory === 'trips', c = ['👑', '🥈', '🥉']; let pH = '';
         l.slice(0, 3).forEach((u, i) => {
             const v = isT ? `${u.total_trips || 0} рейсов` : `${Number(u.total_profit || 0).toLocaleString()} 🪙`;
@@ -954,8 +966,8 @@ const BackgroundCaseSys = {
 document.addEventListener('DOMContentLoaded', () => {
     let p = 0; const ld = document.getElementById('loading-screen');
     if (ld) {
-        const int = setInterval(() => { p += 20; document.getElementById('loader-progress').style.width = `${p}%`; document.getElementById('loader-percent').innerText = `${p}%`; if(p >= 100) { clearInterval(int); document.getElementById('loader-tap').style.display = 'block'; ld.addEventListener('click', () => { ld.style.opacity = '0'; document.getElementById('app-content').style.opacity = '1'; setTimeout(() => ld.remove(), 500); DB.init(); }); } }, 300);
-    } else DB.init();
+        const int = setInterval(() => { p += 20; document.getElementById('loader-progress').style.width = `${p}%`; document.getElementById('loader-percent').innerText = `${p}%`; if(p >= 100) { clearInterval(int); document.getElementById('loader-tap').style.display = 'block'; ld.addEventListener('click', () => { ld.style.opacity = '0'; document.getElementById('app-content').style.opacity = '1'; setTimeout(() => ld.remove(), 500); DB.init(); MapSys.initDragScroll(); }); } }, 300);
+    } else { DB.init(); MapSys.initDragScroll(); }
 
     setInterval(() => { if (AppState.activeTrips.length > 0) UI.renderAll(); }, 1000);
     setInterval(async () => { 
