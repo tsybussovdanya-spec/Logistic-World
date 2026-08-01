@@ -39,8 +39,8 @@
         
         <!-- Верхняя плашка профиля и баланса -->
         <header class="app-header">
-            <div class="user-info">
-                <div class="avatar-wrapper" onclick="switchTab('profile')">
+            <div class="user-info" onclick="switchTab('profile')">
+                <div class="avatar-wrapper">
                     <img id="user-avatar" src="https://via.placeholder.com/50" alt="Avatar">
                     <div id="user-level-badge" class="level-badge">LVL 1</div>
                 </div>
@@ -52,6 +52,8 @@
             <div class="balances-container">
                 <div id="user-money" class="balance-badge">🪙 100 000</div>
                 <div id="user-fuel-stock" class="balance-badge fuel">⛽ 400л</div>
+                <div id="user-fatigue-bar" class="balance-badge fatigue">🔋 100%</div>
+                <div id="user-wanted-badge" class="balance-badge wanted" style="display: none;">⭐ 0</div>
                 <div id="weather-info" class="balance-badge weather">☀️ Ясно</div>
             </div>
         </header>
@@ -146,8 +148,34 @@
             <section id="tab-center" class="tab-content">
                 <div class="section-header">
                     <h2>Центр Логистики</h2>
-                    <p class="subtitle">Топливная биржа, лицензии и кейсы фонов</p>
+                    <p class="subtitle">Топливная биржа, лицензии, мотели и кейсы фонов</p>
                 </div>
+                
+                <!-- Новая механика: Метеостанция -->
+                <div class="card" style="margin-bottom: 16px; border-color: #F59E0B;">
+                    <div class="card-title"><span style="color:#F59E0B;">📡 Метеостанция</span></div>
+                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Покупайте прогноз погоды на 2 часа вперед для точного планирования рискованных контрактов.</p>
+                    <button type="button" class="btn btn-primary" style="font-size:12px;" onclick="WeatherSys.buyForecast()">Купить прогноз (25,000 🪙)</button>
+                    <div id="forecast-status-div" style="font-size: 11px; color: var(--success-color); margin-top: 8px;"></div>
+                </div>
+
+                <!-- Новая механика: Придорожные отели -->
+                <div class="card" style="margin-bottom: 16px; border-color: var(--success-color);">
+                    <div class="card-title"><span style="color:var(--success-color);">🛏️ Придорожный мотель</span></div>
+                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Восстановите бодрость водителя до 100% (требуется для избежания штрафов и замедления рейсов).</p>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" class="btn btn-outline" style="flex:1; font-size:11px;" onclick="FatigueSys.useEnergyDrink()">⚡ Энергетик (+40%)</button>
+                        <button type="button" class="btn btn-primary" style="flex:1; font-size:11px;" onclick="FatigueSys.restAtMotel()">💤 Ночлег (5,000 🪙)</button>
+                    </div>
+                </div>
+
+                <!-- Новая механика: Юридический офис (Адвокат) -->
+                <div class="card" style="margin-bottom: 16px; border-color: #EF4444;">
+                    <div class="card-title"><span style="color:#EF4444;">⚖️ Услуги адвоката (ФСБ)</span></div>
+                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Сбросьте накопленный уровень розыска за контрабанду и нелегальные допуски.</p>
+                    <button type="button" class="btn btn-outline" style="font-size:12px; border-color:#EF4444; color:#EF4444;" onclick="UnderworldSys.hireLawyer()">Очистить досье (150k ⭐)</button>
+                </div>
+
                 <div id="background-case-section"></div>
                 <div class="card" style="margin-bottom: 16px;">
                     <div class="card-title">
@@ -209,8 +237,16 @@
             <section id="tab-profile" class="tab-content">
                 <div class="section-header">
                     <h2>Профиль Логиста</h2>
-                    <p class="subtitle">Ваша статистика, настройки и достижения</p>
+                    <p class="subtitle">Ваша статистика, гараж-склад и достижения</p>
                 </div>
+                
+                <!-- Личный гараж-склад -->
+                <div class="card" style="margin-bottom: 16px; border-color: var(--accent-purple);">
+                    <div class="card-title"><span style="color: var(--accent-purple);">🏠 Личный гараж-склад</span><span id="garage-lvl-badge">Ур. 1</span></div>
+                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Каждый уровень гаража снижает стоимость комплексного ТО и увеличивает надежность базы.</p>
+                    <button type="button" class="btn btn-primary" style="font-size: 12px;" onclick="GarageSys.upgradeGarage()">Улучшить гараж (250,000 🪙)</button>
+                </div>
+
                 <div id="profile-card-main" class="card" style="margin-bottom: 16px; text-align: center; position: relative; overflow: hidden;">
                     <div style="position: absolute; inset: 0; background: rgba(18, 18, 26, 0.85); z-index: 1;"></div>
                     <div style="position: relative; z-index: 2;">
