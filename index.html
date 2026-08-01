@@ -5,112 +5,143 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Logistic World | Global Empire</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="loading-screen" class="loading-screen">
         <div class="loader-content">
             <h1 class="loader-title">LOGISTIC WORLD</h1>
-            <p class="loader-subtitle">Синхронизация с мировой экономикой...</p>
+            <p class="loader-subtitle">Загрузка 50+ модулей глобальной корпорации...</p>
             <div class="loader-bar-container"><div id="loader-progress" class="loader-bar-fill"></div></div>
             <div id="loader-percent" class="loader-percent">0%</div>
-            <div id="loader-tap" class="loader-tap-prompt" style="display: none;">Нажмите для запуска</div>
+            <div id="loader-tap" class="loader-tap-prompt" style="display: none;">[ Начать империю ]</div>
         </div>
     </div>
 
     <div class="news-ticker-container">
-        <div class="news-ticker-label">LIVE NEWS</div>
-        <div class="news-ticker"><span id="global-news-text">🟢 Загрузка глобальных котировок...</span></div>
+        <div class="news-ticker-label">БИРЖА</div>
+        <div class="news-ticker"><span id="global-news-text">🟢 Корпоративные рынки функционируют в штатном режиме.</span></div>
     </div>
 
     <div id="app-content" class="app-container" style="opacity: 0;">
         <header class="app-header">
-            <div class="user-info" onclick="UI.switchTab('profile')">
+            <div class="user-info" onclick="UI.switchTab('profile'); tgHaptic('light');">
                 <div class="avatar-wrapper">
                     <img id="user-avatar" src="https://via.placeholder.com/50">
                     <div id="user-level-badge" class="level-badge">LVL 1</div>
                 </div>
-                <div>
-                    <div id="username" class="username">Магнат</div>
-                    <div id="user-title" class="user-title" style="color:var(--accent-blue)">Дивизион: Новичок</div>
+                <div class="user-details">
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <div id="username" class="username">TSYBUSS</div>
+                        <div id="user-division" class="division-badge bronze">Бронза</div>
+                    </div>
+                    <div class="xp-bar-container"><div id="xp-bar-fill" class="xp-bar-fill"></div></div>
                 </div>
             </div>
-            <div class="balances-container" style="display:flex; flex-direction:column; align-items:flex-end; gap:2px;">
-                <div id="user-money" class="balance-badge">🪙 10 000 000</div>
-                <div id="user-fuel-stock" class="balance-badge fuel">⛽ 50000л</div>
+            <div class="balances-container">
+                <div id="user-money" class="balance-badge">🪙 0</div>
+                <div id="user-fuel-stock" class="balance-badge fuel">⛽ 0л</div>
             </div>
         </header>
 
         <main class="main-content">
-            <!-- КАРТА И КОНТРАКТЫ -->
+            <!-- 1. КАРТА И КОНТРАКТЫ -->
             <section id="tab-map" class="tab-content active">
-                <div class="section-header"><h2>Глобальная Сеть</h2><p class="subtitle">Динамические рынки и маршруты</p></div>
-                <div id="active-trip-panel"></div>
+                <div class="section-header">
+                    <h2>Диспетчерская сеть</h2>
+                    <div class="weather-badge" id="weather-indicator">☀️ Штиль</div>
+                </div>
+                <div id="active-trip-panel" class="card-grid" style="margin-bottom:10px;"></div>
+                
                 <div class="interactive-map" id="map-scroll-container">
-                    <div class="map-canvas" id="map-canvas"><div class="map-bg"></div></div>
-                </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-                    <h3 id="selected-region-title" style="font-size: 14px; color: var(--accent-blue);">📍 Узел</h3>
-                    <div id="weather-indicator" style="font-size:12px;">☀️ Ясно</div>
-                </div>
-                <div id="contracts-list" class="contracts-grid" style="margin-top:10px;"></div>
-            </section>
-
-            <!-- АВТОПАРК И ТЮНИНГ -->
-            <section id="tab-fleet" class="tab-content">
-                <div class="section-header"><h2>Корпоративный Парк</h2><p class="subtitle">Мультимодальность, износ и тюнинг</p></div>
-                <div class="scroll-tabs">
-                    <button class="btn btn-outline active" onclick="UI.switchFleetTab('my', this)">Гараж</button>
-                    <button class="btn btn-outline" onclick="UI.switchFleetTab('drivers', this)">Персонал</button>
-                    <button class="btn btn-outline" onclick="UI.switchFleetTab('trucks', this)">Тягачи</button>
-                    <button class="btn btn-outline" onclick="UI.switchFleetTab('ships', this)">Суда</button>
-                    <button class="btn btn-outline" onclick="UI.switchFleetTab('planes', this)">Авиация</button>
-                    <button class="btn btn-outline" onclick="UI.switchFleetTab('future', this)">Будущее</button>
-                </div>
-                <div id="fleet-content-area"></div>
-            </section>
-
-            <!-- ЭКОНОМИКА, БИРЖА, БАНК, АЛЬЯНСЫ -->
-            <section id="tab-market" class="tab-content">
-                <div class="section-header"><h2>Мировой Рынок</h2><p class="subtitle">Биржа, Синдикаты, Страхование</p></div>
-                <div class="scroll-tabs">
-                    <button class="btn btn-outline active" onclick="UI.switchMarketTab('exchange', this)">Ресурсы</button>
-                    <button class="btn btn-outline" onclick="UI.switchMarketTab('bank', this)">Банк</button>
-                    <button class="btn btn-outline" onclick="UI.switchMarketTab('syndicate', this)">Синдикаты</button>
-                </div>
-                <div id="market-content-area" style="margin-top:10px;"></div>
-            </section>
-
-            <!-- КИБЕРСПОРТ И РЕЙТИНГИ -->
-            <section id="tab-leaderboard" class="tab-content">
-                <div class="section-header"><h2>Глобальные Лиги</h2><p class="subtitle">Сезоны, дивизионы и турниры</p></div>
-                <div class="leaderboard-tabs" style="display: flex; gap: 8px; margin-bottom: 12px;">
-                    <button type="button" class="btn btn-outline active" style="flex:1;" onclick="LeaderboardSys.switchCategory('profit')">Капитал</button>
-                    <button type="button" class="btn btn-outline" style="flex:1;" onclick="LeaderboardSys.switchCategory('trips')">Рейсы</button>
-                </div>
-                <div id="leaderboard-list" class="card-grid" style="margin-bottom: 70px;"></div>
-            </section>
-
-            <!-- ПРОФИЛЬ, НАСТРОЙКИ, WEB3 -->
-            <section id="tab-profile" class="tab-content">
-                <div class="section-header"><h2>Штаб-квартира</h2><p class="subtitle">Управление, налоги, Telegram Stars</p></div>
-                <div class="card" style="text-align: center;">
-                    <img id="profile-avatar-img" src="https://via.placeholder.com/80" style="width:75px;height:75px;border-radius:50%;border:2px solid var(--accent-purple);object-fit:cover;">
-                    <h3 id="profile-name-text">Магнат</h3>
-                    <div id="daily-quest" style="margin-top:10px; padding:10px; background:rgba(0,223,154,0.1); border:1px solid var(--success-color); border-radius:8px; font-size:11px;">
-                        🎯 <b>Ежедневный квест:</b> Завершить 5 рейсов. (0/5) <button class="btn btn-primary" style="margin-top:5px; padding:5px; font-size:10px;" onclick="QuestsSys.claimDaily()">Забрать 500k 🪙</button>
+                    <div class="map-canvas" id="map-canvas">
+                        <div class="map-bg"></div>
+                        <svg id="map-svg-routes"></svg>
+                        <div id="map-nodes-container"></div>
                     </div>
                 </div>
-                <div class="card" style="margin-top:12px;">
-                    <div class="card-title"><span>💎 Инвестиции (Telegram Stars)</span></div>
-                    <p style="font-size:10px; color:var(--hint-color); margin-bottom:10px;">Поддержи проект и получи легендарный контейнеровоз.</p>
-                    <button class="btn btn-primary" style="background:var(--accent-blue);" onclick="TON_Sys.buyPremium()">Купить Premium-пак (50 ⭐️)</button>
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:15px; margin-bottom: 5px;">
+                    <h3 id="selected-region-title" style="font-size: 14px; color: var(--accent-blue);">📍 Хаб</h3>
                 </div>
-                <div class="card" style="margin-top:12px;">
-                    <div class="card-title"><span>📣 Маркетинг</span></div>
-                    <button class="btn btn-outline" style="margin-bottom:6px;" onclick="TON_Sys.shareToStory()">Поделиться успехом в Stories</button>
-                    <button class="btn btn-outline" onclick="TON_Sys.inviteFriend()">Пригласить партнера (Рефералка)</button>
+                <div class="scroll-tabs">
+                    <button class="btn btn-tab active" onclick="MapSys.filterContracts('all', this)">Все</button>
+                    <button class="btn btn-tab" onclick="MapSys.filterContracts('short', this)">Регион</button>
+                    <button class="btn btn-tab" onclick="MapSys.filterContracts('long', this)">Глобал</button>
+                    <button class="btn btn-tab" onclick="MapSys.filterContracts('heavy', this)">Тяжелые</button>
+                    <button class="btn btn-tab" onclick="MapSys.filterContracts('smuggle', this)" style="border-color:var(--error-color); color:var(--error-color);">🏴‍☠️ Контрабанда</button>
+                </div>
+                <div id="contracts-list" class="contracts-grid"></div>
+            </section>
+
+            <!-- 2. АВТОПАРК, ИЗНОС И ЛИЗИНГ -->
+            <section id="tab-fleet" class="tab-content">
+                <div class="section-header"><h2>Ангар & Лизинг</h2><p class="subtitle">Техника, страхование КАСКО и автопилоты</p></div>
+                <div class="scroll-tabs">
+                    <button class="btn btn-tab active" onclick="UI.switchFleetTab('my', this)">Мой Парк</button>
+                    <button class="btn btn-tab" onclick="UI.switchFleetTab('trucks', this)">Авто</button>
+                    <button class="btn btn-tab" onclick="UI.switchFleetTab('trains', this)">Поезда</button>
+                    <button class="btn btn-tab" onclick="UI.switchFleetTab('ships', this)">Суда</button>
+                    <button class="btn btn-tab" onclick="UI.switchFleetTab('planes', this)">Авиа</button>
+                    <button class="btn btn-tab" onclick="UI.switchFleetTab('leasing', this)" style="color:var(--warning-color)">💼 Лизинг</button>
+                </div>
+                <div id="fleet-content-area" class="card-grid"></div>
+            </section>
+
+            <!-- 3. МЕНЕДЖМЕНТ ПЕРСОНАЛА (HR) -->
+            <section id="tab-staff" class="tab-content">
+                <div class="section-header"><h2>Кадровый Департамент</h2><p class="subtitle">Найм водителей, зарплаты и квалификация</p></div>
+                <div class="scroll-tabs">
+                    <button class="btn btn-tab active" onclick="UI.switchStaffTab('hired', this)">Штат (${HrdSys.hired.length})</button>
+                    <button class="btn btn-tab" onclick="UI.switchStaffTab('market', this)">Биржа труда</button>
+                </div>
+                <div id="staff-content-area" class="card-grid"></div>
+            </section>
+
+            <!-- 4. СКЛАДЫ И БИРЖА РЕСУРСОВ -->
+            <section id="tab-market" class="tab-content">
+                <div class="section-header"><h2>Склады и Биржа</h2><p class="subtitle">Логистические хабы, акции и сырье</p></div>
+                <div class="scroll-tabs">
+                    <button class="btn btn-tab active" onclick="UI.switchMarketTab('exchange', this)">Сырье</button>
+                    <button class="btn btn-tab" onclick="UI.switchMarketTab('warehouses', this)">Склады</button>
+                    <button class="btn btn-tab" onclick="UI.switchMarketTab('stocks', this)">Акции</button>
+                    <button class="btn btn-tab" onclick="UI.switchMarketTab('bank', this)">Банк</button>
+                </div>
+                <div id="market-content-area" class="card-grid" style="margin-top:10px;"></div>
+            </section>
+
+            <!-- 5. ШТАБ-КВАРТИРА И НАВЫКИ -->
+            <section id="tab-profile" class="tab-content">
+                <div class="section-header"><h2>Штаб-Квартира</h2><p class="subtitle">Управление корпорацией и перки</p></div>
+                <div class="card profile-hero">
+                    <img id="profile-avatar-img" src="https://via.placeholder.com/80">
+                    <h3 id="profile-name-text">TSYBUSS</h3>
+                    <div id="profile-stats-grid" class="stats-grid">
+                        <div class="stat-box"><span class="stat-lbl">Грузов (Т)</span><strong id="stat-tons">0</strong></div>
+                        <div class="stat-box"><span class="stat-lbl">Доход</span><strong id="stat-profit" style="color:var(--success-color)">0</strong></div>
+                        <div class="stat-box"><span class="stat-lbl">Репутация</span><strong id="stat-rep" style="color:var(--accent-blue)">100%</strong></div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title"><span>🧠 Корпоративные технологии</span><span>Очки: <b id="skill-pts" style="color:var(--accent-pink)">0</b></span></div>
+                    <div class="skills-grid">
+                        <div class="skill-item" onclick="SkillSys.upgrade('logistics')">
+                            <div class="s-icon">🗺️</div><div class="s-info"><b>Логистика LVL <span id="skl-log">0</span></b><br>+5% доход</div>
+                        </div>
+                        <div class="skill-item" onclick="SkillSys.upgrade('eco')">
+                            <div class="s-icon">🌿</div><div class="s-info"><b>Эко-Драйв LVL <span id="skl-eco">0</span></b><br>-5% топлива</div>
+                        </div>
+                        <div class="skill-item" onclick="SkillSys.upgrade('security')">
+                            <div class="s-icon">🛡️</div><div class="s-info"><b>Безопасность LVL <span id="skl-sec">0</span></b><br>Защита от контрабанды</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card quest-card">
+                    <div class="card-title"><span>🎯 Глобальный тендер</span></div>
+                    <div class="prog-container"><div id="quest-prog-fill" class="prog-fill" style="width:0%; background:var(--accent-blue);"></div></div>
+                    <button id="quest-btn" class="btn btn-primary" style="margin-top:10px;" onclick="QuestsSys.claimDaily()">Доставить 2,000 тонн (0/2000)</button>
                 </div>
             </section>
         </main>
@@ -118,24 +149,20 @@
         <nav class="app-nav">
             <button class="nav-item active" onclick="UI.switchTab('map')"><span class="nav-icon">🌍</span><span class="nav-label">Сеть</span></button>
             <button class="nav-item" onclick="UI.switchTab('fleet')"><span class="nav-icon">🚛</span><span class="nav-label">Парк</span></button>
+            <button class="nav-item" onclick="UI.switchTab('staff')"><span class="nav-icon">👨‍✈️</span><span class="nav-label">HR</span></button>
             <button class="nav-item" onclick="UI.switchTab('market')"><span class="nav-icon">📈</span><span class="nav-label">Рынок</span></button>
-            <button class="nav-item" onclick="UI.switchTab('leaderboard')"><span class="nav-icon">🏆</span><span class="nav-label">Лиги</span></button>
             <button class="nav-item" onclick="UI.switchTab('profile')"><span class="nav-icon">🏢</span><span class="nav-label">Штаб</span></button>
         </nav>
         <div id="toast-container" class="toast-container"></div>
     </div>
 
-    <!-- Модальное окно тюнинга -->
-    <div id="tuning-modal" class="modal-overlay" style="display:none;">
+    <!-- Модалка выбора транспорта -->
+    <div id="dispatch-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) TripSys.closeDispatch()">
         <div class="modal-content">
-            <h3>Тюнинг и Экология</h3>
-            <p id="tuning-truck-name" style="font-size:11px; color:var(--hint-color); margin-bottom:10px;"></p>
-            <div class="tuning-grid">
-                <button class="btn btn-outline" onclick="FleetSys.applyTuning('aero')">Аэродинамика (-10% топлива)<br><span style="color:var(--accent-pink)">50,000 🪙</span></button>
-                <button class="btn btn-outline" onclick="FleetSys.applyTuning('engine')">Чип-тюнинг (+15% скорость)<br><span style="color:var(--accent-pink)">75,000 🪙</span></button>
-                <button class="btn btn-outline" onclick="FleetSys.applyTuning('eco')">Эко-фильтры (Льготы налогов)<br><span style="color:var(--accent-pink)">100,000 🪙</span></button>
-            </div>
-            <button class="btn btn-primary" style="margin-top:15px; background:#EF4444;" onclick="document.getElementById('tuning-modal').style.display='none'">Закрыть</button>
+            <h3 style="margin-bottom: 5px;">Диспетчерский узел</h3>
+            <p id="dispatch-info" style="font-size:11px; color:var(--hint-color); margin-bottom:15px;"></p>
+            <div id="dispatch-fleet-list" class="card-grid" style="max-height: 50vh; overflow-y: auto;"></div>
+            <button class="btn btn-outline" style="margin-top:15px; border-color:var(--error-color); color:var(--error-color);" onclick="TripSys.closeDispatch()">Отмена</button>
         </div>
     </div>
 
