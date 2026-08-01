@@ -1,3 +1,4 @@
+
 const tg = window.Telegram.WebApp;
 tg.expand();
 tg.ready();
@@ -397,7 +398,7 @@ const GameLogic = {
     },
 
     async upgradeSyndicateTech(techKey) {
-        const cost = 1500; // литры топлива в казну синдиката
+        const cost = 1500;
         if(AppState.player.fuel_stock < cost) return UI.showToast(`Нужно ${cost}л топлива на улучшение`, 'error');
         AppState.player.fuel_stock -= cost;
         if(!AppState.syndicateData.techs[techKey]) AppState.syndicateData.techs[techKey] = 0;
@@ -450,7 +451,6 @@ const UI = {
         this.safeUpdate('stat-total-profit', `${Number(p.total_profit || 0).toLocaleString()} 🪙`);
         this.safeUpdate('stat-total-trips', `${p.total_trips || 0}`);
         
-        // Синдикаты вкладка
         const noSyn = document.getElementById('no-syndicate-panel');
         const actSyn = document.getElementById('active-syndicate-panel');
         if (p.syndicate && p.syndicate !== 'null') {
@@ -462,7 +462,6 @@ const UI = {
             if (actSyn) actSyn.style.display = 'none';
         }
 
-        // Рендер лидерборда
         const l = AppState.leaderboard || [], isT = AppState.leaderboardCategory === 'trips', c = ['👑', '🥈', '🥉']; let pH = '';
         l.slice(0, 3).forEach((u, i) => {
             const v = isT ? `${u.total_trips || 0} рейсов` : `${Number(u.total_profit || 0).toLocaleString()} 🪙`;
@@ -473,7 +472,6 @@ const UI = {
         this.safeUpdateHTML('leaderboard-list', l.slice(3).map((u, i) => `<div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;margin-bottom:6px;" onclick="UI.inspectPlayer('${u.id}')"><div style="display:flex;align-items:center;gap:10px;"><div style="display:flex;flex-direction:column;align-items:center;width:22px;"><span style="font-weight:800;font-size:13px;color:var(--hint-color);">#${i+4}</span></div><img src="${u.avatar || 'https://via.placeholder.com/40'}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" /><div><div style="font-weight:600;font-size:14px;color:#fff;">${u.name}</div><div style="font-size:11px;color:var(--hint-color);">Ур: ${u.level || 1}</div></div></div><div style="font-weight:bold;color:var(--accent-pink);font-size:13px;">${isT ? `${u.total_trips || 0} рейсов` : `${Number(u.total_profit || 0).toLocaleString()} 🪙`}</div></div>`).join(''));
         let mI = l.findIndex(u => String(u.id) === String(p.id)); this.safeUpdate('my-rank-num', mI !== -1 ? `#${mI + 1}` : '#--'); this.safeUpdate('my-rank-val', isT ? `${p.total_trips || 0} рейсов` : `${Number(p.total_profit || 0).toLocaleString()} 🪙`);
 
-        // Рендер фонов в профиле
         this.safeUpdateHTML('backgrounds-inventory-list', BACKGROUNDS_SHOP.map(bg => {
             const u = (p.unlocked_backgrounds || ['bg_r1']).includes(bg.id), s = p.current_background === bg.id;
             return `<div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:10px;opacity:${u?'1':'0.5'};margin-bottom:8px;"><div style="display:flex;align-items:center;gap:10px;"><img src="${bg.image}" style="width:50px;height:35px;border-radius:6px;object-fit:cover;"><div><div style="font-size:12px;font-weight:bold;">${bg.name}</div><div style="font-size:10px;color:var(--accent-pink);text-transform:uppercase;">${bg.rarity}</div></div></div><button class="btn ${s?'btn-outline':'btn-primary'}" style="font-size:11px;padding:6px 10px;width:auto;" ${!u||s?'disabled':''} onclick="BackgroundCaseSys.setBackground('${bg.id}')">${s?'Активен':(u?'Установить':'Закрыто')}</button></div>`;
@@ -497,7 +495,6 @@ const UI = {
             return `<div class="contract-card" style="${iL ? 'opacity:0.6' : ''}"><div class="contract-header"><div class="contract-title-group"><span class="contract-badge ${c.badgeClass}">${c.diff}</span><span class="contract-name">${c.icon} ${c.name}</span></div><div class="contract-reward">+${c.reward.toLocaleString()} 🪙</div></div><div class="contract-body" style="padding-top:10px;"><div style="font-size:12px; color:var(--hint-color); margin-bottom:8px;">Маршрут: <span style="color:#fff;font-weight:bold;">${c.title}</span></div><div class="contract-specs"><div class="spec-item"><span>⏱ Время:</span><span style="color:#fff;font-weight:bold;">${c.duration}с</span></div><div class="spec-item"><span>⛽ Б. Топл:</span><span style="color:#fff;font-weight:bold;">${c.baseFuel}л</span></div></div></div><button class="contract-action-btn ${!hI || iL ? 'disabled' : 'active'}" ${!hI || iL ? 'disabled' : ''} onclick="GameLogic.startTrip(${c.reward}, ${c.baseFuel}, ${c.duration}, '${c.title}', ${c.reqLvl}, '${c.reqLic}', '${c.targetCity}', '${c.routeId}')">${bt}</button></div>`;
         }).join(''));
 
-        // Автопарк с физикой и водителями
         let fH = AppState.trucks.length > 0 ? AppState.trucks.map(t => {
             const isB = aTI.includes(t.id);
             const driverInfo = p.hired_drivers.find(d => d.truck_id === t.id);
