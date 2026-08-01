@@ -1,4 +1,3 @@
-
 const tg = window.Telegram.WebApp;
 tg.expand();
 tg.ready();
@@ -127,8 +126,15 @@ const AudioSys = {
 
 const AppState = {
     leaderboardCategory: 'profit', 
-    player: { id: null, name: tgUser?.first_name || 'Логист', avatar: tgUser?.photo_url || '', money: 100000, fuel_stock: 400, fuel_price: 12, level: 1, xp: 0, total_profit: 0, total_trips: 0, syndicate: null, last_bonus_time: 0, licenses: ['basic'], pass_level: 1, pass_claimed: [], current_background: 'bg_r1', unlocked_backgrounds: ['bg_r1'], fatigue: 100, wanted_level: 0, garage_level: 1, skills: { eco: 0, luck: 0, mechanic: 0 }, total_fuel_burned: 0, playtime_minutes: 0, hired_drivers: [], last_passive_collect: 0 },
-    syndicateData: { name: null, level: 1, treasuryFuel: 0, techs: { security: 0, logistics: 0, mechanic: 0 }, feed: [] },
+    player: { 
+        id: null, name: tgUser?.first_name || 'Логист', avatar: tgUser?.photo_url || '', money: 100000, 
+        fuel_stock: 400, fuel_price: 12, level: 1, xp: 0, total_profit: 0, total_trips: 0, syndicate: null, 
+        last_bonus_time: 0, licenses: ['basic'], pass_level: 1, pass_claimed: [], current_background: 'bg_r1', 
+        unlocked_backgrounds: ['bg_r1'], fatigue: 100, wanted_level: 0, garage_level: 1, skills: { eco: 0, luck: 0, mechanic: 0 }, 
+        total_fuel_burned: 0, playtime_minutes: 0, hired_drivers: [], last_passive_collect: 0,
+        daily_streak: 0, last_daily_claim: 0, syndicate_role: 'member', syndicate_contribution: 0
+    },
+    syndicateData: { name: null, level: 1, treasuryFuel: 0, treasuryCoins: 0, techs: { security: 0, logistics: 0, mechanic: 0 }, feed: [], membersCount: 1 },
     worldExtra: { lockedCategories: [], sectorDemand: {} },
     trucks: [], activeTrips: [], leaderboard: []
 };
@@ -144,6 +150,8 @@ const DB = {
                 AppState.player = { ...AppState.player, ...existingPlayer }; 
                 if(!AppState.player.hired_drivers) AppState.player.hired_drivers = [];
                 if(!AppState.player.last_passive_collect) AppState.player.last_passive_collect = ServerTimeSys.now();
+                if(!AppState.player.daily_streak) AppState.player.daily_streak = 0;
+                if(!AppState.player.last_daily_claim) AppState.player.last_daily_claim = 0;
             }
             await this.loadGameData(); await this.loadLeaderboard(); 
             MapSys.renderMapUI();
@@ -152,7 +160,13 @@ const DB = {
         } catch (err) { UI.showToast("Ошибка соединения: " + err.message, "error"); }
     },
     async createNewPlayer() {
-        let pay = { telegram_id: telegramId, name: AppState.player.name, avatar: AppState.player.avatar, money: 100000, fuel_stock: 400, level: 1, xp: 0, total_trips: 0, licenses: ['basic'], pass_level: 1, pass_claimed: [], current_background: 'bg_r1', unlocked_backgrounds: ['bg_r1'], fatigue: 100, wanted_level: 0, garage_level: 1, skills: { eco: 0, luck: 0, mechanic: 0 }, total_profit: 0, total_fuel_burned: 0, playtime_minutes: 0, hired_drivers: [], last_passive_collect: ServerTimeSys.now() };
+        let pay = { 
+            telegram_id: telegramId, name: AppState.player.name, avatar: AppState.player.avatar, money: 100000, 
+            fuel_stock: 400, level: 1, xp: 0, total_trips: 0, licenses: ['basic'], pass_level: 1, pass_claimed: [], 
+            current_background: 'bg_r1', unlocked_backgrounds: ['bg_r1'], fatigue: 100, wanted_level: 0, garage_level: 1, 
+            skills: { eco: 0, luck: 0, mechanic: 0 }, total_profit: 0, total_fuel_burned: 0, playtime_minutes: 0, 
+            hired_drivers: [], last_passive_collect: ServerTimeSys.now(), daily_streak: 0, last_daily_claim: 0 
+        };
         let { data: newP, error } = await supabaseClient.from('players').insert([pay]).select().single();
         if (!error && newP) AppState.player = { ...AppState.player, ...newP };
     },
@@ -167,9 +181,50 @@ const DB = {
     },
     async syncPlayer() {
         const p = AppState.player; if (!p.id) return;
-        let uD = { name: p.name, avatar: p.avatar, money: Number(p.money), fuel_stock: Number(p.fuel_stock), fuel_price: Number(p.fuel_price), level: Number(p.level), xp: Number(p.xp), total_profit: Number(p.total_profit), total_trips: Number(p.total_trips), fatigue: Number(p.fatigue), wanted_level: Number(p.wanted_level), garage_level: Number(p.garage_level), licenses: p.licenses, current_background: p.current_background, unlocked_backgrounds: p.unlocked_backgrounds, pass_level: p.pass_level, pass_claimed: p.pass_claimed, skills: p.skills, total_fuel_burned: Number(p.total_fuel_burned), playtime_minutes: Number(p.playtime_minutes), hired_drivers: p.hired_drivers, last_passive_collect: p.last_passive_collect, syndicate: p.syndicate === 'null' ? null : p.syndicate };
+        let uD = { 
+            name: p.name, avatar: p.avatar, money: Number(p.money), fuel_stock: Number(p.fuel_stock), fuel_price: Number(p.fuel_price), 
+            level: Number(p.level), xp: Number(p.xp), total_profit: Number(p.total_profit), total_trips: Number(p.total_trips), 
+            fatigue: Number(p.fatigue), wanted_level: Number(p.wanted_level), garage_level: Number(p.garage_level), licenses: p.licenses, 
+            current_background: p.current_background, unlocked_backgrounds: p.unlocked_backgrounds, pass_level: p.pass_level, 
+            pass_claimed: p.pass_claimed, skills: p.skills, total_fuel_burned: Number(p.total_fuel_burned), playtime_minutes: Number(p.playtime_minutes), 
+            hired_drivers: p.hired_drivers, last_passive_collect: p.last_passive_collect, daily_streak: p.daily_streak, 
+            last_daily_claim: p.last_daily_claim, syndicate: p.syndicate === 'null' ? null : p.syndicate, syndicate_role: p.syndicate_role, syndicate_contribution: p.syndicate_contribution 
+        };
         await supabaseClient.from('players').update(uD).eq('id', p.id);
         this.loadLeaderboard();
+    }
+};
+
+/* МЕХАНИКА 4: ЕЖЕДНЕВНЫЕ НАГРАДЫ И СТРИК */
+const DailySys = {
+    async claimReward() {
+        const now = ServerTimeSys.now();
+        const oneDay = 86400000;
+        const lastClaim = AppState.player.last_daily_claim || 0;
+        
+        if (now - lastClaim < oneDay) {
+            if (now - lastClaim > oneDay * 2) {
+                AppState.player.daily_streak = 0;
+            } else {
+                return UI.showToast("Награда уже получена сегодня! Ждите сброса таймера.", "error");
+            }
+        }
+
+        AppState.player.daily_streak = (AppState.player.daily_streak || 0) + 1;
+        if(AppState.player.daily_streak > 7) AppState.player.daily_streak = 1;
+
+        const day = AppState.player.daily_streak;
+        const rewardCoins = day * 10000;
+        const rewardFuel = day * 100;
+
+        AppState.player.money += rewardCoins;
+        AppState.player.fuel_stock += rewardFuel;
+        AppState.player.last_daily_claim = now;
+
+        await DB.syncPlayer();
+        UI.showToast(`🎁 Награда за День ${day} получена! +${rewardCoins.toLocaleString()} 🪙, +${rewardFuel}л`, 'success');
+        AudioSys.playSFX('success');
+        UI.renderAll();
     }
 };
 
@@ -302,9 +357,14 @@ const GameLogic = {
         await DB.syncPlayer(); UI.showToast(`Комплексное ТО выполнено!`, 'success'); UI.renderAll();
     },
     
+    /* МЕХАНИКА 6 & 7: УЛУЧШЕННАЯ ОТПРАВКА РЕЙСА С УЧЕТОМ УСТАЛОСТИ И СОСТОЯНИЯ */
     async startTrip(reward, baseFuel, duration, title, reqLvl, reqLic, targetCity, routeId) {
         if (AppState.player.level < reqLvl) return UI.showToast(`Требуется уровень ${reqLvl}!`, 'error');
         if (!AppState.player.licenses.includes(reqLic)) return UI.showToast('Отсутствует лицензия!', 'error');
+
+        if (AppState.player.fatigue <= 10) {
+            return UI.showToast('🛑 Водитель полностью истощен! Отдохните в мотеле или выпейте энергетик.', 'error');
+        }
 
         const actIds = AppState.activeTrips.map(t => t.truck_id);
         const autopilotIds = AppState.player.hired_drivers.map(d => d.truck_id);
@@ -312,21 +372,51 @@ const GameLogic = {
         if (idleTrucks.length === 0) return UI.showToast('Нет свободных тягачей (без водителей)!', 'error');
         
         const idleTruck = idleTrucks[0];
+
+        const avgCondition = ((idleTruck.engineLvl + idleTruck.tiresLvl + idleTruck.gearLvl + idleTruck.brakesLvl) / 4);
+        if (avgCondition < 30) {
+            return UI.showToast(`⚠️ Тягач "${idleTruck.name}" слишком изношен (состояние <30%). Требуется срочное ТО!`, 'error');
+        }
+
         const shopTruckData = TRUCK_SHOP.find(x => x.name === idleTruck.name);
 
-        let timeMod = 1.0; if (AppState.player.fatigue < 20) timeMod *= 1.3;
+        let timeMod = 1.0; 
+        let rewardBonusMod = 1.0;
+        if (AppState.player.fatigue < 40) {
+            timeMod *= 1.4;
+            UI.showToast('⚠️ Внимание: Низкая бодрость увеличивает время в пути!', 'info');
+        }
+
+        if(AppState.player.syndicate) {
+            const logTech = AppState.syndicateData.techs.logistics || 0;
+            rewardBonusMod += logTech * 0.05;
+        }
+
         let fuelMod = (shopTruckData ? shopTruckData.fuel_use : 50) / 30; 
         let fFuel = Math.floor(baseFuel * fuelMod);
         let fDur = Math.floor(duration * timeMod);
+        let finalReward = Math.floor(reward * rewardBonusMod);
 
         if (AppState.player.fuel_stock < fFuel) return UI.showToast(`Нужно ${fFuel}л топлива!`, 'error');
+        
+        AppState.player.fatigue = Math.max(0, AppState.player.fatigue - 15);
+
         let endTime = ServerTimeSys.now() + (fDur * 1000);
 
-        let { data, error } = await supabaseClient.from('active_trips').insert([{ player_id: AppState.player.id, truck_id: idleTruck.id, title: title, reward: reward, fuel_req: fFuel, end_time: endTime, route_id: routeId }]).select().single();
+        let { data, error } = await supabaseClient.from('active_trips').insert([{ 
+            player_id: AppState.player.id, truck_id: idleTruck.id, title: title, 
+            reward: finalReward, fuel_req: fFuel, end_time: endTime, route_id: routeId 
+        }]).select().single();
+        
         if (error) return UI.showToast("Ошибка запуска рейса", "error");
 
-        AppState.player.fuel_stock -= fFuel; AppState.activeTrips.push(data); await DB.syncPlayer();
-        UI.showToast(`Рейс начат на ${idleTruck.name}!`, 'success'); AudioSys.playSFX('engine'); UI.renderAll();
+        AppState.player.fuel_stock -= fFuel; 
+        AppState.activeTrips.push(data); 
+        await DB.syncPlayer();
+
+        UI.showToast(`Рейс успешно отправлен на ${idleTruck.name}!`, 'success'); 
+        AudioSys.playSFX('engine'); 
+        UI.renderAll();
     },
     
     async finishTrip(tripId) {
@@ -342,10 +432,23 @@ const GameLogic = {
         AppState.player.total_fuel_burned = (AppState.player.total_fuel_burned || 0) + trip.fuel_req;
         AppState.player.money += p; AppState.player.total_profit += p; AppState.player.total_trips += 1;
 
+        if(AppState.player.syndicate) {
+            let syndTax = Math.floor(p * 0.02);
+            AppState.syndicateData.treasuryCoins = (AppState.syndicateData.treasuryCoins || 0) + syndTax;
+            AppState.player.syndicate_contribution = (AppState.player.syndicate_contribution || 0) + syndTax;
+        }
+
         const t = AppState.trucks.find(x => x.id === trip.truck_id);
         if (t) {
             const rData = WORLD_MAP.routes.find(r => r.id === trip.route_id) || { wearMod: 1.0 };
-            const w = Math.floor(8 * rData.wearMod); 
+            
+            let mechMod = 1.0;
+            if(AppState.player.syndicate) {
+                let mechTech = AppState.syndicateData.techs.mechanic || 0;
+                mechMod -= mechTech * 0.08;
+            }
+
+            const w = Math.floor(8 * rData.wearMod * Math.max(0.2, mechMod)); 
             t.engineLvl = Math.max(0, t.engineLvl - w); t.tiresLvl = Math.max(0, t.tiresLvl - Math.floor(w * 1.2));
             t.gearLvl = Math.max(0, t.gearLvl - w); t.brakesLvl = Math.max(0, t.brakesLvl - Math.floor(w * 1.3));
             await supabaseClient.from('trucks').update({ engineLvl: t.engineLvl, tiresLvl: t.tiresLvl, gearLvl: t.gearLvl, brakesLvl: t.brakesLvl }).eq('id', t.id);
@@ -366,15 +469,19 @@ const GameLogic = {
         await DB.syncPlayer(); UI.showToast(`Куплено ${amt}л топлива`, 'success'); UI.renderAll();
     },
 
+    /* МЕХАНИКА 1: МОЩНЫЕ СИНДИКАТЫ С КАЗНОЙ И ТЕХНОЛОГИЯМИ */
     async createSyndicate(nameInput) {
         let name = nameInput.trim();
         if(name.length < 3) return UI.showToast('Название от 3 символов', 'error');
-        if(AppState.player.money < 500000) return UI.showToast('Нужно 500,000 🪙 для создания', 'error');
+        if(AppState.player.money < 500000) return UI.showToast('Нужно 500,000 🪙 для создания синдиката', 'error');
         AppState.player.money -= 500000;
         AppState.player.syndicate = name;
+        AppState.player.syndicate_role = 'leader';
         AppState.syndicateData.name = name;
+        AppState.syndicateData.treasuryCoins = 0;
+        AppState.syndicateData.treasuryFuel = 0;
         await DB.syncPlayer();
-        UI.showToast(`Синдикат "${name}" успешно создан!`, 'success');
+        UI.showToast(`Синдикат "${name}" успешно создан! Вы лидер.`, 'success');
         UI.renderAll();
     },
 
@@ -382,6 +489,7 @@ const GameLogic = {
         let name = nameInput.trim();
         if(!name) return UI.showToast('Введите название синдиката', 'error');
         AppState.player.syndicate = name;
+        AppState.player.syndicate_role = 'member';
         AppState.syndicateData.name = name;
         await DB.syncPlayer();
         UI.showToast(`Вы присоединились к "${name}"!`, 'success');
@@ -389,22 +497,62 @@ const GameLogic = {
     },
 
     async leaveSyndicate() {
-        if(!confirm('Покинуть синдикат?')) return;
+        if(!confirm('Покинуть синдикат? Вы потеряете накопленный вклад.')) return;
         AppState.player.syndicate = null;
+        AppState.player.syndicate_role = 'member';
+        AppState.player.syndicate_contribution = 0;
         AppState.syndicateData.name = null;
         await DB.syncPlayer();
         UI.showToast('Вы покинули синдикат.', 'info');
         UI.renderAll();
     },
 
+    async donateToTreasury(type, amount) {
+        amount = Number(amount);
+        if(isNaN(amount) || amount <= 0) return UI.showToast('Введите корректное число', 'error');
+        
+        if(type === 'coins') {
+            if(AppState.player.money < amount) return UI.showToast('Недостаточно монет', 'error');
+            AppState.player.money -= amount;
+            AppState.syndicateData.treasuryCoins = (AppState.syndicateData.treasuryCoins || 0) + amount;
+        } else if(type === 'fuel') {
+            if(AppState.player.fuel_stock < amount) return UI.showToast('Недостаточно топлива', 'error');
+            AppState.player.fuel_stock -= amount;
+            AppState.syndicateData.treasuryFuel = (AppState.syndicateData.treasuryFuel || 0) + amount;
+        }
+        
+        AppState.player.syndicate_contribution = (AppState.player.syndicate_contribution || 0) + amount;
+        await DB.syncPlayer();
+        UI.showToast(`В кассу синдиката внесено: ${amount.toLocaleString()} ${type === 'coins' ? '🪙' : 'л'}`, 'success');
+        UI.renderAll();
+    },
+
     async upgradeSyndicateTech(techKey) {
-        const cost = 1500;
-        if(AppState.player.fuel_stock < cost) return UI.showToast(`Нужно ${cost}л топлива на улучшение`, 'error');
-        AppState.player.fuel_stock -= cost;
+        const cost = 50000;
+        let treasury = AppState.syndicateData.treasuryCoins || 0;
+        if(treasury < cost) return UI.showToast(`В кассе синдиката недостаточно монет (нужно ${cost.toLocaleString()} 🪙)`, 'error');
+        
+        AppState.syndicateData.treasuryCoins -= cost;
         if(!AppState.syndicateData.techs[techKey]) AppState.syndicateData.techs[techKey] = 0;
         AppState.syndicateData.techs[techKey]++;
         await DB.syncPlayer();
-        UI.showToast('Технология синдикатов улучшена!', 'success');
+        UI.showToast('Корпоративная технология успешно улучшена!', 'success');
+        UI.renderAll();
+    },
+
+    /* МЕХАНИКА 3: БОЕВОЙ ПРОПУСК (СЕЗОН ПАСС) */
+    async claimPassReward(tierLevel, rewardAmount) {
+        const currentTier = AppState.player.pass_level || 1;
+        if (currentTier < tierLevel) return UI.showToast('Этот уровень еще не разблокирован!', 'error');
+        
+        if (!AppState.player.pass_claimed) AppState.player.pass_claimed = [];
+        if (AppState.player.pass_claimed.includes(tierLevel)) return UI.showToast('Награда уже получена!', 'error');
+
+        AppState.player.pass_claimed.push(tierLevel);
+        AppState.player.money += rewardAmount;
+        await DB.syncPlayer();
+        UI.showToast(`🎁 Получена награда Season Pass Ур. ${tierLevel}: +${rewardAmount.toLocaleString()} 🪙`, 'success');
+        AudioSys.playSFX('success');
         UI.renderAll();
     }
 };
@@ -445,22 +593,79 @@ const UI = {
         const headerAvatar = document.getElementById('user-avatar'); if (headerAvatar && p.avatar) headerAvatar.src = p.avatar;
         const profileAvatar = document.getElementById('profile-id-avatar'); if (profileAvatar && p.avatar) profileAvatar.src = p.avatar;
 
-        this.safeUpdate('profile-id-name', p.name); this.safeUpdate('profile-id-lvl', `LVL ${p.level}`);
-        this.safeUpdate('user-money', `🪙 ${Number(p.money).toLocaleString()}`); this.safeUpdate('user-fuel-stock', `⛽ ${Number(p.fuel_stock)}л`); 
+        this.safeUpdate('profile-id-name', p.name); 
+        this.safeUpdate('profile-id-lvl', `LVL ${p.level}`);
+        this.safeUpdate('user-money', `🪙 ${Number(p.money).toLocaleString()}`); 
+        this.safeUpdate('user-fuel-stock', `⛽ ${Number(p.fuel_stock)}л`); 
         this.safeUpdate('current-fuel-price', `${p.fuel_price || 12} 🪙 / л`);
         this.safeUpdate('stat-total-profit', `${Number(p.total_profit || 0).toLocaleString()} 🪙`);
         this.safeUpdate('stat-total-trips', `${p.total_trips || 0}`);
-        
+
+        /* МЕХАНИКА 5: ПРОГРЕСС-БАР УРОВНЯ В ХЕДЕРЕ И ПРОФИЛЕ */
+        let reqXp = GameLogic.getReqXP(p.level);
+        let xpPercent = Math.min(100, Math.floor((p.xp / reqXp) * 100));
+        let xpBarHtml = `
+            <div style="width:100%; background:rgba(255,255,255,0.1); border-radius:6px; height:8px; overflow:hidden; margin-top:6px;">
+                <div style="width:${xpPercent}%; background:var(--gradient-primary); height:100%; transition:width 0.3s ease;"></div>
+            </div>
+            <div style="font-size:10px; color:var(--hint-color); display:flex; justify-content:space-between; margin-top:2px;">
+                <span>XP: ${p.xp} / ${reqXp}</span>
+                <span>${xpPercent}%</span>
+            </div>`;
+        this.safeUpdateHTML('user-level-progress-container', xpBarHtml);
+
+        /* МЕХАНИКА 2: УЛУЧШЕННЫЙ ПРОФИЛЬ И ДЕТАЛЬНАЯ СТАТИСТИКА */
+        let detailedStatsHtml = `
+            <div style="display:flex; flex-direction:column; gap:8px; font-size:13px; margin-top:10px;">
+                <div style="display:flex; justify-content:space-between;"><span>Общий капитал:</span><strong style="color:var(--accent-pink);">${Number(p.money).toLocaleString()} 🪙</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>Всего заработано:</span><strong>${Number(p.total_profit || 0).toLocaleString()} 🪙</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>Завершенных рейсов:</span><strong>${p.total_trips || 0}</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>Сожжено топлива:</span><strong>${p.total_fuel_burned || 0} л</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>Синдикатный вклад:</span><strong style="color:var(--success-color);">${Number(p.syndicate_contribution || 0).toLocaleString()} 🪙</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>Время в игре:</span><strong>${Math.floor((p.playtime_minutes||0)/60)}ч ${(p.playtime_minutes||0)%60}м</strong></div>
+            </div>`;
+        this.safeUpdateHTML('profile-detailed-stats', detailedStatsHtml);
+
+        /* МЕХАНИКА 1: УЛУЧШЕННЫЕ СИНДИКАТЫ */
         const noSyn = document.getElementById('no-syndicate-panel');
         const actSyn = document.getElementById('active-syndicate-panel');
         if (p.syndicate && p.syndicate !== 'null') {
             if (noSyn) noSyn.style.display = 'none';
             if (actSyn) actSyn.style.display = 'block';
             this.safeUpdate('corp-name-title', p.syndicate);
+            this.safeUpdate('corp-treasury-coins', `${(AppState.syndicateData.treasuryCoins || 0).toLocaleString()} 🪙`);
+            this.safeUpdate('corp-treasury-fuel', `${(AppState.syndicateData.treasuryFuel || 0).toLocaleString()} л`);
+            this.safeUpdate('corp-my-role', p.syndicate_role === 'leader' ? '👑 Лидер' : '⭐ Участник');
         } else {
             if (noSyn) noSyn.style.display = 'block';
             if (actSyn) actSyn.style.display = 'none';
         }
+
+        /* МЕХАНИКА 3: СЕЗОН ПАСС (БОЕВОЙ ПРОПУСК) */
+        this.safeUpdate('pass-subtitle', `Ваш текущий уровень пропуска: ${p.pass_level || 1}`);
+        this.safeUpdateHTML('pass-tiers-list', Array.from({ length: 15 }, (_, i) => { 
+            const lvl = i + 1, rew = 15000 + i * 20000; 
+            const isUnlocked = (p.pass_level || 1) >= lvl; 
+            const isClaimed = (p.pass_claimed || []).includes(lvl); 
+            return `<div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:10px;margin-bottom:8px;">
+                <div><div class="card-title" style="font-size:12px;"><span>Уровень ${lvl}</span></div><p style="font-size:11px;color:var(--hint-color);">+${rew.toLocaleString()} 🪙</p></div>
+                <button class="btn ${isClaimed ? 'btn-outline' : 'btn-primary'}" style="font-size:11px;padding:6px 10px;width:auto;" ${!isUnlocked || isClaimed ? 'disabled' : ''} onclick="GameLogic.claimPassReward(${lvl}, ${rew})">${isClaimed ? 'Получено' : (isUnlocked ? 'Забрать' : `Ур. ${lvl}`)}</button>
+            </div>`; 
+        }).join(''));
+
+        /* МЕХАНИКА 4: ЕЖЕДНЕВНЫЕ НАГРАДЫ */
+        let streakHtml = ``;
+        for(let i=1; i<=7; i++) {
+            let isCurrent = (p.daily_streak || 0) === i;
+            let isPassed = (p.daily_streak || 0) > i;
+            streakHtml += `
+                <div style="flex:1; background:${isCurrent?'var(--accent-blue)':'rgba(0,0,0,0.3)'}; border:1px solid ${isCurrent?'var(--accent-pink)':'var(--border-color)'}; padding:8px 4px; border-radius:8px; text-align:center;">
+                    <div style="font-size:10px; color:var(--hint-color);">День ${i}</div>
+                    <div style="font-size:12px; font-weight:bold; color:#fff; margin:4px 0;">+${i*10}k</div>
+                    <div style="font-size:9px; color:${isPassed?'var(--success-color)':'var(--hint-color)'};">${isPassed?'Получено':(isCurrent?'Доступно':'Ожидание')}</div>
+                </div>`;
+        }
+        this.safeUpdateHTML('daily-streak-grid', `<div style="display:flex; gap:6px; margin-bottom:12px;">${streakHtml}</div>`);
 
         const l = AppState.leaderboard || [], isT = AppState.leaderboardCategory === 'trips', c = ['👑', '🥈', '🥉']; let pH = '';
         l.slice(0, 3).forEach((u, i) => {
@@ -558,5 +763,6 @@ window.AudioSys = AudioSys;
 window.GameLogic = GameLogic; 
 window.MapSys = MapSys; 
 window.DriverSys = DriverSys; 
+window.DailySys = DailySys;
 window.UI = UI;
 window.BackgroundCaseSys = BackgroundCaseSys;
