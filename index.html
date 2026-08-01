@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -10,18 +9,13 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <audio id="bg-music" loop preload="auto" src="https://raw.githubusercontent.com/tsybussovdanya-spec/Logistic-World/refs/heads/Music/bharatt_saurabh_tujh_bin.mp3"></audio>
-    <audio id="sfx-click" preload="auto" src="https://assets.mixkit.co/sfx/preview/mixkit-modern-technology-select-3124.mp3"></audio>
-    <audio id="sfx-success" preload="auto" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3"></audio>
-    <audio id="sfx-engine" preload="auto" src="https://assets.mixkit.co/sfx/preview/mixkit-sport-car-engine-rev-115.mp3"></audio>
-
     <div id="loading-screen" class="loading-screen">
         <div class="loader-content">
             <h1 class="loader-title">LOGISTIC WORLD</h1>
-            <p class="loader-subtitle">Синхронизация глобальной сети из 60+ терминалов...</p>
+            <p class="loader-subtitle">Синхронизация глобальной транснациональной сети...</p>
             <div class="loader-bar-container"><div id="loader-progress" class="loader-bar-fill"></div></div>
             <div id="loader-percent" class="loader-percent">0%</div>
-            <div id="loader-tap" class="loader-tap-prompt" style="display: none;">Нажмите, чтобы запустить корпорацию</div>
+            <div id="loader-tap" class="loader-tap-prompt" style="display: none;">Нажмите в любое место для старта</div>
         </div>
     </div>
 
@@ -38,18 +32,17 @@
                 </div>
             </div>
             <div class="balances-container">
-                <div id="user-money" class="balance-badge">🪙 1 000 000</div>
-                <div id="user-fuel-stock" class="balance-badge fuel">⛽ 5000л</div>
-                <div id="user-fatigue" class="balance-badge fatigue">🔋 100%</div>
+                <div id="user-money" class="balance-badge">🪙 2 500 000</div>
+                <div id="user-fuel-stock" class="balance-badge fuel">⛽ 12000л</div>
             </div>
         </header>
 
         <main class="main-content">
-            <!-- Вкладка 1: Карта и Биржа контрактов -->
+            <!-- Вкладка 1: Карта и спот-контракты -->
             <section id="tab-map" class="tab-content active">
                 <div class="section-header">
-                    <h2>Глобальная Карта Сети</h2>
-                    <p class="subtitle">Интерактивный узел планеты с уникальными контрактами</p>
+                    <h2>Мировая Сеть Хабов</h2>
+                    <p class="subtitle">Интерактивная карта планеты и спот-контракты</p>
                 </div>
                 <div id="active-trip-panel"></div>
                 <div class="interactive-map" id="map-scroll-container">
@@ -63,34 +56,46 @@
                 <div id="contracts-list" class="contracts-grid"></div>
             </section>
 
-            <!-- Вкладка 2: Автопарк и Каталог из 60+ машин -->
+            <!-- Вкладка 2: Автопарк, износ и автопилоты -->
             <section id="tab-fleet" class="tab-content">
                 <div class="section-header">
-                    <h2>Мировой Автосалон (60+ Машин)</h2>
-                    <p class="subtitle">Элитная техника, тяжеловозы, фургоны и киберкары</p>
+                    <h2>Корпоративный Автопарк</h2>
+                    <p class="subtitle">Управление техникой, СТО и водителями-автопилотами</p>
                 </div>
-                <div style="display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px;">
-                    <button class="btn btn-outline active" onclick="UI.switchFleetTab('my', this)">Мой гараж</button>
-                    <button class="btn btn-outline" onclick="UI.switchFleetTab('common', this)">Легкие / Средние</button>
-                    <button class="btn btn-outline" onclick="UI.switchFleetTab('rare', this)">Редкие Тягачи</button>
-                    <button class="btn btn-outline" onclick="UI.switchFleetTab('epic', this)">Эпические</button>
-                    <button class="btn btn-outline" onclick="UI.switchFleetTab('legendary', this)">Легендарные</button>
+                <div style="display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px;">
+                    <button class="btn btn-outline active" onclick="UI.switchFleetTab('my', this)">Гараж & СТО</button>
+                    <button class="btn btn-outline" onclick="UI.switchFleetTab('common', this)">Легкие</button>
+                    <button class="btn btn-outline" onclick="UI.switchFleetTab('rare', this)">Редкие</button>
+                    <button class="btn btn-outline" onclick="UI.switchFleetTab('epic', this)">Эпик</button>
+                    <button class="btn btn-outline" onclick="UI.switchFleetTab('legendary', this)">Легенды</button>
                 </div>
                 <div id="fleet-content-area"></div>
             </section>
 
-            <!-- Вкладка 3: Финансовый Центр и Рынок -->
+            <!-- Вкладка 3: Мировой Рейтинг -->
+            <section id="tab-leaderboard" class="tab-content">
+                <div class="section-header">
+                    <h2>Мировой Рейтинг Магнатов</h2>
+                    <p class="subtitle">Элита мировой логистической индустрии</p>
+                </div>
+                <div class="leaderboard-tabs" style="display: flex; gap: 8px; margin-bottom: 12px;">
+                    <button type="button" id="lb-tab-profit" class="btn btn-outline active" style="flex: 1; font-size: 12px; padding: 10px;" onclick="LeaderboardSys.switchCategory('profit')">💰 Капитал</button>
+                    <button type="button" id="lb-tab-trips" class="btn btn-outline" style="flex: 1; font-size: 12px; padding: 10px;" onclick="LeaderboardSys.switchCategory('trips')">🚚 Рейсы</button>
+                </div>
+                <div id="leaderboard-list" class="card-grid" style="margin-bottom: 70px;"></div>
+            </section>
+
+            <!-- Вкладка 4: Финансовая Биржа -->
             <section id="tab-market" class="tab-content">
                 <div class="section-header">
                     <h2>Финансовая Биржа</h2>
-                    <p class="subtitle">Котировки топлива, трейдинг и дивиденды</p>
+                    <p class="subtitle">Трейдинг топливом и дивидендный портфель акций</p>
                 </div>
                 <div class="card" style="border-color: var(--success-color);">
-                    <div class="card-title"><span style="color:var(--success-color);">⛽ Топливный терминал</span><span id="current-fuel-price" style="color:var(--accent-blue);">12 🪙/л</span></div>
-                    <p style="font-size: 11px; color: var(--hint-color); margin-bottom: 10px;">Закупка дизеля и водорода для автопарка по текущему курсу узла.</p>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="btn btn-primary" onclick="GameLogic.buyFuel(1000)">Купить 1,000л</button>
+                    <div class="card-title"><span style="color:var(--success-color);">⛽ Спот-рынок топлива</span><span id="current-fuel-price" style="color:var(--accent-blue);">12 🪙/л</span></div>
+                    <div style="display: flex; gap: 8px; margin-top: 10px;">
                         <button class="btn btn-primary" onclick="GameLogic.buyFuel(5000)">Купить 5,000л</button>
+                        <button class="btn btn-primary" onclick="GameLogic.buyFuel(20000)">Купить 20,000л</button>
                     </div>
                 </div>
                 <div class="card" style="margin-top: 12px;">
@@ -99,26 +104,16 @@
                 </div>
             </section>
 
-            <!-- Вкладка 4: Синдикаты / Альянсы -->
-            <section id="tab-syndicate" class="tab-content">
-                <div class="section-header">
-                    <h2>Транснациональные Синдикаты</h2>
-                    <p class="subtitle">Альянсы магнатов, казна и корпоративные технологии</p>
-                </div>
-                <div id="syndicate-main-container"></div>
-            </section>
-
             <!-- Вкладка 5: Кабинет CEO -->
             <section id="tab-profile" class="tab-content">
                 <div class="section-header">
                     <h2>Кабинет Главного Магната</h2>
-                    <p class="subtitle">Управление профилем, статистика и инсайдерский доступ</p>
+                    <p class="subtitle">Управление корпорацией, аватар и аналитика</p>
                 </div>
                 <div class="card" style="text-align: center; position: relative;">
                     <img id="profile-avatar-img" src="https://via.placeholder.com/80" style="width: 75px; height: 75px; border-radius: 50%; border: 2px solid var(--accent-purple); margin-bottom: 8px; object-fit: cover;">
                     <h3 id="profile-name-text">Магнат</h3>
                     <div style="font-size: 12px; color: var(--accent-pink); font-weight: bold;" id="profile-level-text">Уровень 1</div>
-                    <div id="user-level-progress-container" style="margin-top: 10px;"></div>
                 </div>
                 <div class="card" style="margin-top: 12px;">
                     <div class="card-title"><span>✏️ Настройка профиля</span></div>
@@ -132,8 +127,8 @@
                 <div class="card" style="margin-top: 12px; border-color: #EF4444;" id="admin-panel-card">
                     <div class="card-title"><span style="color:#EF4444;">🛡️ Панель Инсайдера (Админ)</span></div>
                     <div style="display: flex; gap: 8px; margin-top: 8px;">
-                        <button class="btn btn-outline" style="border-color:#EF4444; color:#EF4444; font-size:11px;" onclick="AdminSys.addMoney(10000000)">+10 млн 🪙</button>
-                        <button class="btn btn-outline" style="border-color:#EF4444; color:#EF4444; font-size:11px;" onclick="AdminSys.addFuel(50000)">+50k л</button>
+                        <button class="btn btn-outline" style="border-color:#EF4444; color:#EF4444; font-size:11px;" onclick="AdminSys.addMoney(50000000)">+50 млн 🪙</button>
+                        <button class="btn btn-outline" style="border-color:#EF4444; color:#EF4444; font-size:11px;" onclick="AdminSys.addFuel(200000)">+200k л</button>
                     </div>
                 </div>
             </section>
@@ -142,8 +137,8 @@
         <nav class="app-nav">
             <button class="nav-item active" onclick="UI.switchTab('map')"><span class="nav-icon">🌍</span><span class="nav-label">Сеть</span></button>
             <button class="nav-item" onclick="UI.switchTab('fleet')"><span class="nav-icon">🚛</span><span class="nav-label">Автопарк</span></button>
+            <button class="nav-item" onclick="UI.switchTab('leaderboard')"><span class="nav-icon">🏆</span><span class="nav-label">Рейтинг</span></button>
             <button class="nav-item" onclick="UI.switchTab('market')"><span class="nav-icon">📈</span><span class="nav-label">Биржа</span></button>
-            <button class="nav-item" onclick="UI.switchTab('syndicate')"><span class="nav-icon">🏢</span><span class="nav-label">Альянс</span></button>
             <button class="nav-item" onclick="UI.switchTab('profile')"><span class="nav-icon">👤</span><span class="nav-label">CEO</span></button>
         </nav>
         <div id="toast-container" class="toast-container"></div>
