@@ -36,7 +36,6 @@ const BACKGROUNDS_SHOP = [
     { id: 'bg_l3', name: 'Транспортный бог', rarity: 'legendary', chance: 1.0, image: 'https://i.ibb.co.com/mV8CH1jr/IMG-4518.jpg' }
 ];
 
-/* МЕХАНИКА 3: БИРЖА ВОДИТЕЛЕЙ (Пассивный доход) */
 const DRIVERS_SHOP = [
     { id: 'rookie', name: 'Стажер', cost: 75000, incomePerHr: 15000, color: '#3B82F6' },
     { id: 'pro', name: 'Профи', cost: 250000, incomePerHr: 45000, color: '#F59E0B' },
@@ -47,7 +46,6 @@ const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABAS
 const tgUser = tg.initDataUnsafe?.user;
 const telegramId = tgUser?.id ? Number(tgUser.id) : 123456789;
 
-/* МЕХАНИКА 1: СЕРВЕРНОЕ ВРЕМЯ (Античит) */
 const ServerTimeSys = {
     offset: 0,
     async init() {
@@ -60,14 +58,13 @@ const ServerTimeSys = {
     now() { return Date.now() + this.offset; }
 };
 
-/* МЕХАНИКА 2: ГЛОБАЛЬНАЯ КАРТА МИРА */
 const WORLD_MAP = {
     currentCity: 'mow',
     cities: {
-        'ber': { name: 'Берлин', x: '15%', y: '30%', fuelPrice: 22, icon: '🏛️', type: 'hub' },
-        'mow': { name: 'Москва', x: '35%', y: '40%', fuelPrice: 12, icon: '🏙️', type: 'hub' },
-        'kst': { name: 'Костанай', x: '55%', y: '45%', fuelPrice: 8, icon: '🏭', type: 'hub' },
-        'pek': { name: 'Пекин', x: '85%', y: '65%', fuelPrice: 16, icon: '🏯', type: 'hub' }
+        'ber': { name: 'Берлин', x: '15%', y: '30%', fuelPrice: 22, icon: '🏛️' },
+        'mow': { name: 'Москва', x: '35%', y: '40%', fuelPrice: 12, icon: '🏙️' },
+        'kst': { name: 'Костанай', x: '55%', y: '45%', fuelPrice: 8, icon: '🏭' },
+        'pek': { name: 'Пекин', x: '85%', y: '65%', fuelPrice: 16, icon: '🏯' }
     },
     routes: [
         { id: 'r1', from: 'ber', to: 'mow', dist: 1800, type: 'autobahn', wearMod: 0.5, speedMod: 1.5, name: 'Европейский транзит' },
@@ -148,7 +145,6 @@ const DB = {
                 if(!AppState.player.last_passive_collect) AppState.player.last_passive_collect = ServerTimeSys.now();
             }
             await this.loadGameData(); await this.loadLeaderboard(); 
-            
             MapSys.renderMapUI();
             OfflineProgressSys.process();
             UI.renderAll();
@@ -182,13 +178,10 @@ const DriverSys = {
         if (AppState.player.money < d.cost) return UI.showToast(`Нужно ${d.cost.toLocaleString()} 🪙`, 'error');
         if (AppState.player.hired_drivers.some(x => x.truck_id === truckId)) return UI.showToast('Для этой фуры уже нанят водитель!', 'error');
 
-        // Важно: Собираем пассивку до того, как наймем нового, чтобы не было абуза времени
         await this.collectPassive(ServerTimeSys.now());
-
         AppState.player.money -= d.cost;
         AppState.player.hired_drivers.push({ truck_id: truckId, driver_id: driverId });
         await DB.syncPlayer();
-        
         UI.showToast(`Водитель "${d.name}" успешно нанят!`, 'success'); AudioSys.playSFX('success');
         UI.renderAll();
     },
@@ -203,9 +196,8 @@ const DriverSys = {
     calculatePassiveIncome(now) {
         if(!AppState.player.hired_drivers || AppState.player.hired_drivers.length === 0) return 0;
         let last = AppState.player.last_passive_collect || now;
-        let hrs = (now - last) / 3600000; // Часы, прошедшие с последнего сбора
+        let hrs = (now - last) / 3600000;
         if (hrs < 0) hrs = 0;
-        
         let income = 0;
         AppState.player.hired_drivers.forEach(hd => {
             const d = DRIVERS_SHOP.find(x => x.id === hd.driver_id);
@@ -229,18 +221,15 @@ const OfflineProgressSys = {
         const now = ServerTimeSys.now();
         let offlineEarnings = 0; let offlineTripsCompleted = 0; const tripsToDelete = [];
 
-        // 1. Собираем пассивный доход от NPC-водителей
         let passiveIncome = await DriverSys.collectPassive(now);
         offlineEarnings += passiveIncome;
 
-        // 2. Обрабатываем вручную запущенные рейсы
         for (let i = AppState.activeTrips.length - 1; i >= 0; i--) {
             const trip = AppState.activeTrips[i];
             if (trip.end_time <= now) {
                 let p = Number(trip.reward); let exp = Math.floor(p * CONFIG.XP_MULTIPLIER);
                 offlineEarnings += p; offlineTripsCompleted += 1;
                 AppState.player.money += p; AppState.player.total_profit += p; AppState.player.total_trips += 1; AppState.player.total_fuel_burned += trip.fuel_req;
-                
                 GameLogic.addXP_silent(exp); 
                 
                 const t = AppState.trucks.find(x => x.id === trip.truck_id);
@@ -316,10 +305,8 @@ const GameLogic = {
         if (AppState.player.level < reqLvl) return UI.showToast(`Требуется уровень ${reqLvl}!`, 'error');
         if (!AppState.player.licenses.includes(reqLic)) return UI.showToast('Отсутствует лицензия!', 'error');
 
-        // Нельзя использовать фуры, на которых работают наемные водители
         const actIds = AppState.activeTrips.map(t => t.truck_id);
         const autopilotIds = AppState.player.hired_drivers.map(d => d.truck_id);
-        
         const idleTrucks = AppState.trucks.filter(t => !actIds.includes(t.id) && !autopilotIds.includes(t.id));
         if (idleTrucks.length === 0) return UI.showToast('Нет свободных тягачей (без водителей)!', 'error');
         
@@ -376,6 +363,48 @@ const GameLogic = {
         if (AppState.player.money < c) return UI.showToast('Недостаточно монет!', 'error');
         AppState.player.money -= c; AppState.player.fuel_stock += Number(amt);
         await DB.syncPlayer(); UI.showToast(`Куплено ${amt}л топлива`, 'success'); UI.renderAll();
+    },
+
+    async createSyndicate(nameInput) {
+        let name = nameInput.trim();
+        if(name.length < 3) return UI.showToast('Название от 3 символов', 'error');
+        if(AppState.player.money < 500000) return UI.showToast('Нужно 500,000 🪙 для создания', 'error');
+        AppState.player.money -= 500000;
+        AppState.player.syndicate = name;
+        AppState.syndicateData.name = name;
+        await DB.syncPlayer();
+        UI.showToast(`Синдикат "${name}" успешно создан!`, 'success');
+        UI.renderAll();
+    },
+
+    async joinSyndicate(nameInput) {
+        let name = nameInput.trim();
+        if(!name) return UI.showToast('Введите название синдиката', 'error');
+        AppState.player.syndicate = name;
+        AppState.syndicateData.name = name;
+        await DB.syncPlayer();
+        UI.showToast(`Вы присоединились к "${name}"!`, 'success');
+        UI.renderAll();
+    },
+
+    async leaveSyndicate() {
+        if(!confirm('Покинуть синдикат?')) return;
+        AppState.player.syndicate = null;
+        AppState.syndicateData.name = null;
+        await DB.syncPlayer();
+        UI.showToast('Вы покинули синдикат.', 'info');
+        UI.renderAll();
+    },
+
+    async upgradeSyndicateTech(techKey) {
+        const cost = 1500; // литры топлива в казну синдиката
+        if(AppState.player.fuel_stock < cost) return UI.showToast(`Нужно ${cost}л топлива на улучшение`, 'error');
+        AppState.player.fuel_stock -= cost;
+        if(!AppState.syndicateData.techs[techKey]) AppState.syndicateData.techs[techKey] = 0;
+        AppState.syndicateData.techs[techKey]++;
+        await DB.syncPlayer();
+        UI.showToast('Технология синдикатов улучшена!', 'success');
+        UI.renderAll();
     }
 };
 
@@ -386,6 +415,19 @@ const UI = {
         const t = document.getElementById(`tab-${tId}`); if (t) t.classList.add('active');
         document.querySelectorAll('.nav-item').forEach(b => { if(b.getAttribute('onclick')?.includes(tId)) b.classList.add('active'); });
         AudioSys.playVibrate('click'); AudioSys.playSFX('click'); this.renderAll();
+    },
+    switchLeaderboardCategory(cat) {
+        AppState.leaderboardCategory = cat;
+        document.getElementById('lb-tab-profit').classList.toggle('active', cat === 'profit');
+        document.getElementById('lb-tab-trips').classList.toggle('active', cat === 'trips');
+        DB.loadLeaderboard().then(() => this.renderAll());
+    },
+    inspectPlayer(uId) {
+        const u = AppState.leaderboard.find(x => String(x.id) === String(uId)); if (!u) return;
+        let ex = document.getElementById('inspect-modal'); if (ex) ex.remove();
+        const bO = BACKGROUNDS_SHOP.find(b => b.id === u.current_background) || BACKGROUNDS_SHOP[0];
+        const m = `<div id="inspect-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(8px);" onclick="this.remove()"><div class="card" style="width:100%;max-width:360px;border-color:var(--accent-purple);text-align:center;position:relative;overflow:hidden;background-image:url('${bO.image}');background-size:cover;background-position:center;" onclick="event.stopPropagation()"><div style="position:absolute;inset:0;background:rgba(12,12,20,0.85);z-index:1;"></div><div style="position:relative;z-index:2;"><div style="width:70px;height:70px;margin:0 auto 10px auto;border-radius:50%;padding:2px;background:var(--gradient-primary);"><img src="${u.avatar || 'https://via.placeholder.com/80'}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"></div><h3 style="color:#fff;font-size:18px;">${u.name}</h3><div style="font-size:12px;color:var(--accent-pink);font-weight:bold;margin-top:2px;">Уровень ${u.level || 1}</div><div style="font-size:11px;color:var(--hint-color);margin-top:4px;">Синдикат: ${u.syndicate || 'Частник'}</div><button type="button" class="btn btn-outline" style="margin-top:12px;font-size:12px;" onclick="document.getElementById('inspect-modal').remove()">Закрыть</button></div></div></div>`;
+        document.body.insertAdjacentHTML('beforeend', m);
     },
     showToast(msg, type = 'success') {
         const c = document.getElementById('toast-container'); if (!c) return;
@@ -408,6 +450,35 @@ const UI = {
         this.safeUpdate('stat-total-profit', `${Number(p.total_profit || 0).toLocaleString()} 🪙`);
         this.safeUpdate('stat-total-trips', `${p.total_trips || 0}`);
         
+        // Синдикаты вкладка
+        const noSyn = document.getElementById('no-syndicate-panel');
+        const actSyn = document.getElementById('active-syndicate-panel');
+        if (p.syndicate && p.syndicate !== 'null') {
+            if (noSyn) noSyn.style.display = 'none';
+            if (actSyn) actSyn.style.display = 'block';
+            this.safeUpdate('corp-name-title', p.syndicate);
+        } else {
+            if (noSyn) noSyn.style.display = 'block';
+            if (actSyn) actSyn.style.display = 'none';
+        }
+
+        // Рендер лидерборда
+        const l = AppState.leaderboard || [], isT = AppState.leaderboardCategory === 'trips', c = ['👑', '🥈', '🥉']; let pH = '';
+        l.slice(0, 3).forEach((u, i) => {
+            const v = isT ? `${u.total_trips || 0} рейсов` : `${Number(u.total_profit || 0).toLocaleString()} 🪙`;
+            const bG = BACKGROUNDS_SHOP.find(b => b.id === u.current_background) || BACKGROUNDS_SHOP[0];
+            pH += `<div class="podium-card rank-${i+1}" onclick="UI.inspectPlayer('${u.id}')" style="cursor:pointer;background-image:url('${bG.image}');background-size:cover;background-position:center;"><div style="position:absolute;inset:0;background:rgba(22,22,32,0.82);z-index:1;border-radius:14px;"></div><div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;width:100%;"><span class="podium-crown">${c[i]}</span><img src="${u.avatar || 'https://via.placeholder.com/80'}" class="podium-avatar" /><span class="podium-name">${u.name}</span><span style="font-size:10px;color:var(--hint-color);">Ур. ${u.level || 1}</span><span class="podium-val">${v}</span></div></div>`;
+        });
+        this.safeUpdateHTML('leaderboard-podium', pH);
+        this.safeUpdateHTML('leaderboard-list', l.slice(3).map((u, i) => `<div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;margin-bottom:6px;" onclick="UI.inspectPlayer('${u.id}')"><div style="display:flex;align-items:center;gap:10px;"><div style="display:flex;flex-direction:column;align-items:center;width:22px;"><span style="font-weight:800;font-size:13px;color:var(--hint-color);">#${i+4}</span></div><img src="${u.avatar || 'https://via.placeholder.com/40'}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" /><div><div style="font-weight:600;font-size:14px;color:#fff;">${u.name}</div><div style="font-size:11px;color:var(--hint-color);">Ур: ${u.level || 1}</div></div></div><div style="font-weight:bold;color:var(--accent-pink);font-size:13px;">${isT ? `${u.total_trips || 0} рейсов` : `${Number(u.total_profit || 0).toLocaleString()} 🪙`}</div></div>`).join(''));
+        let mI = l.findIndex(u => String(u.id) === String(p.id)); this.safeUpdate('my-rank-num', mI !== -1 ? `#${mI + 1}` : '#--'); this.safeUpdate('my-rank-val', isT ? `${p.total_trips || 0} рейсов` : `${Number(p.total_profit || 0).toLocaleString()} 🪙`);
+
+        // Рендер фонов в профиле
+        this.safeUpdateHTML('backgrounds-inventory-list', BACKGROUNDS_SHOP.map(bg => {
+            const u = (p.unlocked_backgrounds || ['bg_r1']).includes(bg.id), s = p.current_background === bg.id;
+            return `<div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:10px;opacity:${u?'1':'0.5'};margin-bottom:8px;"><div style="display:flex;align-items:center;gap:10px;"><img src="${bg.image}" style="width:50px;height:35px;border-radius:6px;object-fit:cover;"><div><div style="font-size:12px;font-weight:bold;">${bg.name}</div><div style="font-size:10px;color:var(--accent-pink);text-transform:uppercase;">${bg.rarity}</div></div></div><button class="btn ${s?'btn-outline':'btn-primary'}" style="font-size:11px;padding:6px 10px;width:auto;" ${!u||s?'disabled':''} onclick="BackgroundCaseSys.setBackground('${bg.id}')">${s?'Активен':(u?'Установить':'Закрыто')}</button></div>`;
+        }).join(''));
+
         const aTI = AppState.activeTrips.map(t => t.truck_id);
         const autopilotIds = p.hired_drivers.map(d => d.truck_id);
         
@@ -426,20 +497,12 @@ const UI = {
             return `<div class="contract-card" style="${iL ? 'opacity:0.6' : ''}"><div class="contract-header"><div class="contract-title-group"><span class="contract-badge ${c.badgeClass}">${c.diff}</span><span class="contract-name">${c.icon} ${c.name}</span></div><div class="contract-reward">+${c.reward.toLocaleString()} 🪙</div></div><div class="contract-body" style="padding-top:10px;"><div style="font-size:12px; color:var(--hint-color); margin-bottom:8px;">Маршрут: <span style="color:#fff;font-weight:bold;">${c.title}</span></div><div class="contract-specs"><div class="spec-item"><span>⏱ Время:</span><span style="color:#fff;font-weight:bold;">${c.duration}с</span></div><div class="spec-item"><span>⛽ Б. Топл:</span><span style="color:#fff;font-weight:bold;">${c.baseFuel}л</span></div></div></div><button class="contract-action-btn ${!hI || iL ? 'disabled' : 'active'}" ${!hI || iL ? 'disabled' : ''} onclick="GameLogic.startTrip(${c.reward}, ${c.baseFuel}, ${c.duration}, '${c.title}', ${c.reqLvl}, '${c.reqLic}', '${c.targetCity}', '${c.routeId}')">${bt}</button></div>`;
         }).join(''));
 
-        // Отрисовка автопарка с кнопками найма
+        // Автопарк с физикой и водителями
         let fH = AppState.trucks.length > 0 ? AppState.trucks.map(t => {
             const isB = aTI.includes(t.id);
             const driverInfo = p.hired_drivers.find(d => d.truck_id === t.id);
             
-            let sH = '';
-            if (driverInfo) {
-                sH = `<span style="font-size:12px;color:#10B981;font-weight:bold;">🟢 Автопилот</span>`;
-            } else if (isB) {
-                sH = `<span style="font-size:12px;color:#EF4444;">🔴 В рейсе</span>`;
-            } else {
-                sH = `<span style="font-size:12px;color:var(--hint-color);">⚪ Свободна</span>`;
-            }
-
+            let sH = driverInfo ? `<span style="font-size:12px;color:#10B981;font-weight:bold;">🟢 Автопилот</span>` : (isB ? `<span style="font-size:12px;color:#EF4444;">🔴 В рейсе</span>` : `<span style="font-size:12px;color:var(--hint-color);">⚪ Свободна</span>`);
             const sT = TRUCK_SHOP.find(x => x.name === t.name);
             let a100 = true, tRC = 0, pts = [{ k: 'engineLvl', n: '🛠 Двс' }, { k: 'tiresLvl', n: '🛞 Шины' }, { k: 'gearLvl', n: '⚙️ КПП' }, { k: 'brakesLvl', n: '🧯 Торм' }];
             let ptH = pts.map(pt => {
@@ -448,30 +511,33 @@ const UI = {
                 return `<div class="part-card"><div class="part-header"><span>${pt.n}</span><span style="color:${cl};font-weight:800;">${v}%</span></div><div class="part-bar"><div class="part-bar-fill" style="width:${v}%;background-color:${cl};"></div></div></div>`;
             }).join('');
             
-            let driverUI = '';
-            if (driverInfo) {
-                const dData = DRIVERS_SHOP.find(x => x.id === driverInfo.driver_id);
-                driverUI = `
+            let driverUI = driverInfo ? `
                 <div style="margin-top:10px; padding:10px; background:rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius:8px; text-align:center;">
-                    <div style="font-size:13px; color:#10B981; font-weight:bold; margin-bottom:4px;">👤 Водитель: ${dData.name}</div>
-                    <div style="font-size:11px; color:var(--hint-color); margin-bottom:8px;">Доход: +${(dData.incomePerHr/60).toFixed(0)} 🪙/мин</div>
+                    <div style="font-size:13px; color:#10B981; font-weight:bold; margin-bottom:4px;">👤 Водитель: ${DRIVERS_SHOP.find(x=>x.id===driverInfo.driver_id)?.name}</div>
                     <button class="btn btn-outline" style="width:100%; font-size:11px; padding:6px; border-color:#EF4444; color:#EF4444;" onclick="DriverSys.fireDriver('${t.id}')">Уволить</button>
-                </div>`;
-            } else if (!isB) {
-                driverUI = `
+                </div>` : (!isB ? `
                 <div style="margin-top:10px; padding:10px; background:rgba(255,255,255,0.05); border-radius:8px;">
-                    <div style="font-size:11px; margin-bottom:8px; color:var(--hint-color);">👤 Нанять водителя (Автопилот):</div>
+                    <div style="font-size:11px; margin-bottom:8px; color:var(--hint-color);">👤 Нанять водителя:</div>
                     <div style="display:flex; gap:6px;">
                         ${DRIVERS_SHOP.map(d => `<button class="btn btn-outline" style="flex:1; font-size:10px; padding:6px; color:${d.color}; border-color:${d.color};" onclick="DriverSys.hireDriver('${t.id}', '${d.id}')">${d.name}<br>${(d.cost/1000).toFixed(0)}k</button>`).join('')}
                     </div>
-                </div>`;
-            }
+                </div>` : '');
 
             return `<div class="card" style="margin-bottom:16px;"><div class="card-title" style="margin-bottom:8px;"><span>🚚 ${t.name}</span>${sH}</div><div class="truck-specs-badge"><div>📦 <span>${sT?.capacity||0} кг</span></div><div>⛽ <span>${sT?.fuel_use||0} л</span></div></div><div class="parts-grid" style="margin-top:16px;">${ptH}</div><button class="btn ${a100 || isB ? 'btn-outline' : 'btn-full-service'}" style="width:100%;margin-top:10px;font-size:11px;padding:10px;" ${a100 || isB ? 'disabled' : ''} onclick="GameLogic.repairAll('${t.id}')">${a100 ? 'Исправна' : `ТО: ${Math.floor(tRC * 0.9).toLocaleString()} 🪙`}</button>${driverUI}</div>`;
         }).join('') : `<p style="text-align:center;color:var(--hint-color);margin-bottom:16px;">Гараж пуст!</p>`;
         
         const fleetList = document.getElementById('fleet-list');
         if(fleetList) fleetList.innerHTML = fH;
+    }
+};
+
+const BackgroundCaseSys = {
+    setBackground(bgId) {
+        if (!AppState.player.unlocked_backgrounds.includes(bgId)) return;
+        AppState.player.current_background = bgId;
+        DB.syncPlayer();
+        UI.showToast('Фон профиля успешно изменен!', 'success');
+        UI.renderAll();
     }
 };
 
@@ -482,19 +548,18 @@ document.addEventListener('DOMContentLoaded', () => {
     } else DB.init();
 
     setInterval(() => { if (AppState.activeTrips.length > 0) UI.renderAll(); }, 1000);
-    
-    // Каждые 60 секунд: Учет времени в игре + Сбор пассивного дохода от водителей
     setInterval(async () => { 
         AppState.player.playtime_minutes = (AppState.player.playtime_minutes || 0) + 1; 
-        
         let passiveIncome = await DriverSys.collectPassive(ServerTimeSys.now());
-        if(passiveIncome > 0) {
-            UI.showToast(`Автопилот заработал +${passiveIncome.toLocaleString()} 🪙`, 'success');
-        }
-        
-        DB.syncPlayer(); 
-        UI.renderAll();
+        if(passiveIncome > 0) UI.showToast(`Автопилот заработал +${passiveIncome.toLocaleString()} 🪙`, 'success');
+        DB.syncPlayer(); UI.renderAll();
     }, 60000);
 });
 
-window.switchTab = (id) => UI.switchTab(id); window.AudioSys = AudioSys; window.GameLogic = GameLogic; window.MapSys = MapSys; window.DriverSys = DriverSys; window.UI = UI;
+window.switchTab = (id) => UI.switchTab(id); 
+window.AudioSys = AudioSys; 
+window.GameLogic = GameLogic; 
+window.MapSys = MapSys; 
+window.DriverSys = DriverSys; 
+window.UI = UI;
+window.BackgroundCaseSys = BackgroundCaseSys;
