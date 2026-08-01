@@ -1,4 +1,4 @@
-const tg = window.Telegram.WebApp;
+const tg = window.Telegram.WebApp; // Исправлено: const с маленькой буквы
 tg.expand();
 tg.ready();
 
@@ -507,7 +507,14 @@ const DB = {
     },
     async createNewPlayer() {
         let stM = 100000, stF = 400;
-        let pay = { telegram_id: telegramId, name: AppState.player.name, avatar: AppState.player.avatar, money: stM, fuel_stock: stF, level: AppState.player.level, xp: AppState.player.xp, total_trips: 0, licenses: ['basic'], pass_level: 1, pass_claimed: [], current_background: 'bg_r1', unlocked_backgrounds: ['bg_r1'], fatigue: 100, wanted_level: 0, garage_level: 1 };
+        // Добавлены поля, которые нужно сохранять с самого начала
+        let pay = { 
+            telegram_id: telegramId, name: AppState.player.name, avatar: AppState.player.avatar, 
+            money: stM, fuel_stock: stF, level: AppState.player.level, xp: AppState.player.xp, 
+            total_trips: 0, licenses: ['basic'], pass_level: 1, pass_claimed: [], 
+            current_background: 'bg_r1', unlocked_backgrounds: ['bg_r1'], fatigue: 100, 
+            wanted_level: 0, garage_level: 1, skills: { eco: 0, luck: 0, mechanic: 0 }
+        };
         let { data: newP, error } = await supabaseClient.from('players').insert([pay]).select().single();
         if (!error && newP) AppState.player = { ...AppState.player, ...newP };
     },
@@ -522,7 +529,17 @@ const DB = {
     },
     async syncPlayer() {
         const p = AppState.player; if (!p.id) return;
-        let uD = { name: p.name, avatar: p.avatar, money: Number(p.money), fuel_stock: Number(p.fuel_stock), fuel_price: Number(p.fuel_price), level: Number(p.level), xp: Number(p.xp), total_profit: Number(p.total_profit), total_trips: Number(p.total_trips), fatigue: Number(p.fatigue), wanted_level: Number(p.wanted_level), garage_level: Number(p.garage_level) };
+        // Исправлено: Добавлены недостающие массивы и объекты, чтобы данные не терялись при перезагрузке
+        let uD = { 
+            name: p.name, avatar: p.avatar, money: Number(p.money), fuel_stock: Number(p.fuel_stock), 
+            fuel_price: Number(p.fuel_price), level: Number(p.level), xp: Number(p.xp), 
+            total_profit: Number(p.total_profit), total_trips: Number(p.total_trips), 
+            fatigue: Number(p.fatigue), wanted_level: Number(p.wanted_level), 
+            garage_level: Number(p.garage_level),
+            licenses: p.licenses, current_background: p.current_background,
+            unlocked_backgrounds: p.unlocked_backgrounds, pass_level: p.pass_level,
+            pass_claimed: p.pass_claimed, skills: p.skills
+        };
         await supabaseClient.from('players').update(uD).eq('id', p.id);
         this.loadLeaderboard();
     }
@@ -530,6 +547,24 @@ const DB = {
 
 const GameLogic = {
     isFinishing: false,
+    
+    // Исправлено: Добавлена отсутствующая функция прокачки навыков!
+    async upgradeSkill(skillKey) {
+        const currentLvl = AppState.player.skills[skillKey] || 0;
+        if (currentLvl >= 5) return UI.showToast('Навык достиг максимального уровня!', 'info');
+        
+        const cost = 25000 * (currentLvl + 1); // Формула цены прокачки (можешь настроить сам)
+        if (AppState.player.money < cost) return UI.showToast(`Нужно ${cost.toLocaleString()} 🪙 для улучшения`, 'error');
+        
+        AppState.player.money -= cost;
+        AppState.player.skills[skillKey] = currentLvl + 1;
+        await DB.syncPlayer();
+        
+        UI.showToast('Навык успешно улучшен!', 'success');
+        AudioSys.playSFX('success');
+        UI.renderAll();
+    },
+
     getReqXP(lvl) { return Math.floor(1000 * Math.pow(1.5, lvl - 1)); },
     async addXP(amount) {
         AppState.player.xp = Number(AppState.player.xp) + Number(amount); let req = this.getReqXP(AppState.player.level), lu = false;
@@ -784,7 +819,12 @@ const UI = {
 
         this.safeUpdateHTML('licenses-list', LICENSES_SHOP.map(l => { const h = p.licenses.includes(l.id), i = l.type === 'illegal', b = i ? 'var(--accent-pink)' : 'var(--accent-blue)'; return `<div class="card" style="border-color:${b};margin-bottom:10px;"><div class="card-title"><span>${i ? '🥷' : '📜'} ${l.name}</span><span style="color:${h ? '#10B981' : 'var(--accent-pink)'};">${h ? 'Куплено' : `${l.cost.toLocaleString()} 🪙`}</span></div><button class="btn ${h ? 'btn-outline' : 'btn-primary'}" ${h ? 'disabled' : ''} onclick="GameLogic.buyLicense('${l.id}')">${h ? 'Активировано' : 'Приобрести'}</button></div>`; }).join(''));
 
-        this.safeUpdateHTML('active-trip-panel', AppState.activeTrips.map(tr => { let l = Math.floor((tr.end_time - Date.now()) / 1000); if (l <= 0) { GameLogic.finishTrip(tr.id); return ''; } if (Math.random() < 0.005) EventSys.checkEventsForTrip(tr); return `<div class="card" style="margin-bottom:12px;border-color:var(--accent-blue);"><div class="card-title"><span>🚚 Рейс в пути</span><span style="color:var(--accent-blue);">⏳ ${l} сек</span></div><p style="font-size:12px;color:var(--hint-color);">${tr.title}</p></div>`; }).join(''));
+        // Исправлено: Убрал вызов игровой логики событий отсюда, оставил только рендер
+        this.safeUpdateHTML('active-trip-panel', AppState.activeTrips.map(tr => { 
+            let l = Math.floor((tr.end_time - Date.now()) / 1000); 
+            if (l <= 0) { GameLogic.finishTrip(tr.id); return ''; } 
+            return `<div class="card" style="margin-bottom:12px;border-color:var(--accent-blue);"><div class="card-title"><span>🚚 Рейс в пути</span><span style="color:var(--accent-blue);">⏳ ${l} сек</span></div><p style="font-size:12px;color:var(--hint-color);">${tr.title}</p></div>`; 
+        }).join(''));
         
         const hI = AppState.trucks.some(t => !aTI.includes(t.id));
         this.safeUpdateHTML('contracts-list', MapSys.getFilteredContracts().map(c => {
@@ -808,7 +848,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ld) {
         const int = setInterval(() => { p += 20; document.getElementById('loader-progress').style.width = `${p}%`; document.getElementById('loader-percent').innerText = `${p}%`; if(p >= 100) { clearInterval(int); document.getElementById('loader-tap').style.display = 'block'; ld.addEventListener('click', () => { ld.style.opacity = '0'; document.getElementById('app-content').style.opacity = '1'; setTimeout(() => ld.remove(), 500); DB.init().then(() => { setTimeout(() => AIDispatcher.showPopup("Добро пожаловать в Logistic World!"), 1500); }); }); } }, 300);
     } else DB.init();
-    setInterval(() => { if (AppState.activeTrips.length > 0) UI.renderAll(); }, 1000);
+
+    // Исправлено: Добавлена проверка ивентов в общий таймер, чтобы она не зависела от рендера UI
+    setInterval(() => { 
+        if (AppState.activeTrips.length > 0) {
+            AppState.activeTrips.forEach(tr => {
+                if (Math.random() < 0.005) EventSys.checkEventsForTrip(tr);
+            });
+            UI.renderAll(); 
+        }
+    }, 1000);
+    
     setInterval(() => { WorldState.generateWeather(); MarketSys.rotateDemand(); AIDispatcher.randomAdvice(); }, 180000);
 });
 window.switchTab = (id) => UI.switchTab(id); window.AudioSys = AudioSys; window.AdminSys = AdminSys; window.GameLogic = GameLogic; window.EventSys = EventSys; window.BackgroundCaseSys = BackgroundCaseSys; window.MapSys = MapSys; window.WeatherSys = WeatherSys; window.FatigueSys = FatigueSys; window.UnderworldSys = UnderworldSys; window.QTEEventSys = QTEEventSys; window.GarageSys = GarageSys; window.UI = UI;
