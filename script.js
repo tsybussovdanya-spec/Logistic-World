@@ -9,10 +9,10 @@ const CONFIG = {
 
 const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 const tgUser = tg.initDataUnsafe?.user;
-const telegramId = tgUser?.id ? Number(tgUser.id) : 55555555;
+const telegramId = tgUser?.id ? Number(tgUser.id) : 44444444;
 const defaultAvatar = tgUser?.photo_url || 'https://via.placeholder.com/80';
 
-// Каталог из 60+ единиц транспорта с детализированными классами
+// Полный каталог из 60+ единиц транспорта мировой элиты
 const TRUCK_CATALOG = [
     { id: 't1', name: 'ГАЗель Метеор', category: 'common', capacity: 1500, fuelUse: 15, price: 50000 },
     { id: 't2', name: 'ЗАЗ Карго Про', category: 'common', capacity: 2200, fuelUse: 20, price: 85000 },
@@ -113,7 +113,7 @@ const WorldMapSys = {
     renderMap() {
         const canvas = document.getElementById('map-canvas');
         if(!canvas) return;
-        let svg = `<svg style="position:absolute;top:0;left:0;width:2200px;height:1500px;z-index:1;pointer-events:none;">`;
+        let svg = `<svg style="position:absolute;top:0;left:0;width:2400px;height:1600px;z-index:1;pointer-events:none;">`;
         this.getRoutes().forEach(r => {
             let c1 = this.cities[r.from], c2 = this.cities[r.to];
             if(c1 && c2) svg += `<line x1="${c1.x}" y1="${c1.y}" x2="${c2.x}" y2="${c2.y}" stroke="#0070F3" stroke-width="2.5" opacity="0.5"/>`;
@@ -151,7 +151,7 @@ const WorldMapSys = {
 };
 
 const AppState = {
-    player: { id: null, name: tgUser?.first_name || 'Магнат', avatar: defaultAvatar, money: 2500000, fuel_stock: 12000, fuel_price: 12, level: 1, xp: 0, total_profit: 0, total_trips: 0 },
+    player: { id: null, name: tgUser?.first_name || 'Магнат', avatar: defaultAvatar, money: 5000000, fuel_stock: 20000, fuel_price: 12, level: 1, xp: 0, total_profit: 0, total_trips: 0 },
     stocks: [
         { id: 'st1', name: 'Global Trans Inc.', price: 1200, owned: 0, div: 45 },
         { id: 'st2', name: 'EuroFreight Group', price: 3400, owned: 0, div: 130 },
@@ -159,10 +159,12 @@ const AppState = {
     ],
     activeTrips: [],
     fleet: [
-        { id: 't1', name: 'ГАЗель Метеор', capacity: 1500, wear: 100, driver: 'Свободен' }
+        { id: 't1', name: 'ГАЗель Метеор', capacity: 1500, engineWear: 100, tiresWear: 100, gearboxWear: 100, brakesWear: 100 }
     ],
-    drivers: [
-        { id: 'd1', name: 'Алексей "Ас" Смирнов', skill: 'Профи', salary: 15000, status: в_рейсе }
+    driversPool: [
+        { id: 'd1', name: 'Алексей Смирнов', skill: 'Ас логистики', salary: 25000, hired: true },
+        { id: 'd2', name: 'Дмитрий Васильев', skill: 'Профи', salary: 12000, hired: false },
+        { id: 'd3', name: 'Иван Петров', skill: 'Стажер', salary: 5000, hired: false }
     ],
     fleetFilter: 'my',
     leaderboardCategory: 'profit',
@@ -174,7 +176,7 @@ const DB = {
         try {
             let { data, error } = await supabaseClient.from('players').select('*').eq('telegram_id', telegramId).maybeSingle();
             if(!data) {
-                let { data: newP } = await supabaseClient.from('players').insert([{ telegram_id: telegramId, name: AppState.player.name, avatar: defaultAvatar, money: 2500000, fuel_stock: 12000, level: 1 }]).select().single();
+                let { data: newP } = await supabaseClient.from('players').insert([{ telegram_id: telegramId, name: AppState.player.name, avatar: defaultAvatar, money: 5000000, fuel_stock: 20000, level: 1 }]).select().single();
                 if(newP) AppState.player = { ...AppState.player, ...newP };
             } else {
                 AppState.player = { ...AppState.player, ...data };
@@ -206,7 +208,7 @@ const LeaderboardSys = {
     async load() {
         try {
             const sortField = AppState.leaderboardCategory === 'trips' ? 'total_trips' : 'total_profit';
-            let { data, error } = await supabaseClient.from('players').select('id, name, avatar, total_profit, total_trips, level').order(sortField, { ascending: false }).limit(40);
+            let { data, error } = await supabaseClient.from('players').select('id, name, avatar, total_profit, total_trips, level').order(sortField, { ascending: false }).limit(50);
             if(!error && data) {
                 AppState.leaderboardData = data;
                 UI.renderLeaderboard();
@@ -228,7 +230,13 @@ const GameLogic = {
         AppState.player.money -= cost;
         AppState.player.fuel_stock += amt;
         DB.sync();
-        UI.showToast(`Приобретено ${amt}л топлива по спот-цене!`, "success");
+        UI.showToast(`Приобретено ${amt}л топлива!`, "success");
+        UI.renderAll();
+    },
+    takeLoan() {
+        AppState.player.money += 1000000;
+        DB.sync();
+        UI.showToast("Кредит в 1,000,000 🪙 зачислен на счет!", "success");
         UI.renderAll();
     },
     buyTruck(truckId) {
@@ -236,20 +244,41 @@ const GameLogic = {
         if(!truck) return;
         if(AppState.player.money < truck.price) return UI.showToast("Недостаточно средств в казне", "error");
         AppState.player.money -= truck.price;
-        AppState.fleet.push({ id: truck.id + '_' + Date.now(), name: truck.name, capacity: truck.capacity, wear: 100, driver: 'Свободен' });
+        AppState.fleet.push({ 
+            id: truck.id + '_' + Date.now(), 
+            name: truck.name, 
+            capacity: truck.capacity, 
+            engineWear: 100, 
+            tiresWear: 100, 
+            gearboxWear: 100, 
+            brakesWear: 100 
+        });
         DB.sync();
         UI.showToast(`Приобретен тягач: ${truck.name}!`, "success");
         UI.renderAll();
     },
-    repairTruck(truckId) {
+    repairNode(truckId, nodeType) {
         let t = AppState.fleet.find(x => x.id === truckId);
         if(!t) return;
-        let cost = 15000;
-        if(AppState.player.money < cost) return UI.showToast("Нужно 15,000 🪙 для СТО", "error");
+        let cost = 10000;
+        if(AppState.player.money < cost) return UI.showToast("Нужно 10,000 🪙 для ремонта узла", "error");
         AppState.player.money -= cost;
-        t.wear = 100;
+        if(nodeType === 'engine') t.engineWear = 100;
+        if(nodeType === 'tires') t.tiresWear = 100;
+        if(nodeType === 'gearbox') t.gearboxWear = 100;
+        if(nodeType === 'brakes') t.brakesWear = 100;
         DB.sync();
-        UI.showToast(`СТО: Тягач ${t.name} полностью обслужен!`, "success");
+        UI.showToast(`Узел успешно обслужен на СТО!`, "success");
+        UI.renderAll();
+    },
+    hireDriver(driverId) {
+        let d = AppState.driversPool.find(x => x.id === driverId);
+        if(!d || d.hired) return;
+        if(AppState.player.money < 50000) return UI.showToast("Нужно 50,000 🪙 для найма профи", "error");
+        AppState.player.money -= 50000;
+        d.hired = true;
+        DB.sync();
+        UI.showToast(`Водитель ${d.name} нанят в штат!`, "success");
         UI.renderAll();
     },
     saveProfile() {
@@ -372,8 +401,8 @@ const UI = {
         
         for(let i = 0; i < 6; i++) {
             let cargo = cargoTypes[(i + curCityKey.length) % cargoTypes.length];
-            let rew = (i + 1) * 75000 + (curCityKey.length * 12000);
-            let fuel = (i + 1) * 160;
+            let rew = (i + 1) * 85000 + (curCityKey.length * 13000);
+            let fuel = (i + 1) * 170;
             let dur = (i + 1) * 5;
             contractsHtml += `<div class="contract-card">
                 <div class="card-title"><span>📦 ${cargo} из ${cityName}</span><span style="color:var(--success-color);">+${rew.toLocaleString()} 🪙</span></div>
@@ -389,9 +418,22 @@ const UI = {
             if(AppState.fleetFilter === 'my') {
                 fleetArea.innerHTML = AppState.fleet.map(t => `
                     <div class="card" style="border-color:var(--accent-purple);">
-                        <div class="card-title"><span>🚛 ${t.name}</span><span style="color:var(--success-color);">Исправность: ${t.wear}%</span></div>
+                        <div class="card-title"><span>🚛 ${t.name}</span></div>
                         <div style="font-size:11px; color:var(--hint-color); margin-bottom:8px;">Грузоподъемность: ${t.capacity.toLocaleString()} кг</div>
-                        <button class="btn btn-outline" style="font-size:10px;" onclick="GameLogic.repairTruck('${t.id}')">Отправить на СТО (15k 🪙)</button>
+                        <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:6px; margin-bottom:8px; font-size:10px;">
+                            <div style="background:rgba(0,0,0,0.3); padding:4px; border-radius:4px;">Двигатель: <strong style="color:var(--success-color);">${t.engineWear}%</strong> <button onclick="GameLogic.repairNode('${t.id}', 'engine')" style="float:right; background:none; border:none; color:var(--accent-pink); cursor:pointer;">[СТО]</button></div>
+                            <div style="background:rgba(0,0,0,0.3); padding:4px; border-radius:4px;">Шины: <strong style="color:var(--success-color);">${t.tiresWear}%</strong> <button onclick="GameLogic.repairNode('${t.id}', 'tires')" style="float:right; background:none; border:none; color:var(--accent-pink); cursor:pointer;">[СТО]</button></div>
+                            <div style="background:rgba(0,0,0,0.3); padding:4px; border-radius:4px;">КПП: <strong style="color:var(--success-color);">${t.gearboxWear}%</strong> <button onclick="GameLogic.repairNode('${t.id}', 'gearbox')" style="float:right; background:none; border:none; color:var(--accent-pink); cursor:pointer;">[СТО]</button></div>
+                            <div style="background:rgba(0,0,0,0.3); padding:4px; border-radius:4px;">Тормоза: <strong style="color:var(--success-color);">${t.brakesWear}%</strong> <button onclick="GameLogic.repairNode('${t.id}', 'brakes')" style="float:right; background:none; border:none; color:var(--accent-pink); cursor:pointer;">[СТО]</button></div>
+                        </div>
+                    </div>
+                `).join('');
+            } else if(AppState.fleetFilter === 'drivers') {
+                fleetArea.innerHTML = AppState.driversPool.map(d => `
+                    <div class="card" style="border-color:var(--accent-blue);">
+                        <div class="card-title"><span>👨‍✈️ ${d.name}</span><span style="color:var(--accent-pink);">${d.skill}</span></div>
+                        <div style="font-size:11px; color:var(--hint-color); margin-bottom:8px;">Зарплата: ${d.salary.toLocaleString()} 🪙/ч | Статус: ${d.hired ? 'В штате' : 'На рынке'}</div>
+                        ${d.hired ? '<button class="btn btn-outline" style="font-size:10px;" disabled>Уже в штате</button>' : '<button class="btn btn-primary" onclick="GameLogic.hireDriver(\'' + d.id + '\')">Нанять (50k 🪙)</button>'}
                     </div>
                 `).join('');
             } else {
@@ -421,6 +463,7 @@ const UI = {
                 <div style="display:flex;justify-content:space-between;"><span>Общая прибыль:</span><strong style="color:var(--success-color);">${Number(p.total_profit || 0).toLocaleString()} 🪙</strong></div>
                 <div style="display:flex;justify-content:space-between;"><span>Завершенных рейсов:</span><strong>${p.total_trips || 0}</strong></div>
                 <div style="display:flex;justify-content:space-between;"><span>Тягачей в гараже:</span><strong>${AppState.fleet.length} ед.</strong></div>
+                <div style="display:flex;justify-content:space-between;"><span>Водителей в штате:</span><strong>${AppState.driversPool.filter(d=>d.hired).length} чел.</strong></div>
             `;
         }
     }
