@@ -27,15 +27,12 @@ const LICENSES_SHOP = [
     { id: 'basic', name: 'Базовая', type: 'legal', cost: 0, reqLvl: 1 },
     { id: 'dangerous', name: 'Опасные грузы', type: 'legal', cost: 50000, reqLvl: 5 },
     { id: 'oversized', name: 'Негабарит', type: 'legal', cost: 150000, reqLvl: 10 },
-    { id: 'smuggling', name: 'Контрабанда', type: 'illegal', cost: 300000, reqLvl: 12 },
-    { id: 'falsified_docs', name: 'Липовые допуски', type: 'illegal', cost: 600000, reqLvl: 15 },
-    { id: 'black_market', name: 'Черный коридор', type: 'illegal', cost: 1200000, reqLvl: 20 }
+    { id: 'smuggling', name: 'Контрабанда', type: 'illegal', cost: 300000, reqLvl: 12 }
 ];
 
 const BACKGROUNDS_SHOP = [
     { id: 'bg_r1', name: 'Неоновый асфальт', rarity: 'rare', chance: 8.0, image: 'https://i.ibb.co.com/9mwvmfZG/IMG-4513.jpg' },
     { id: 'bg_r2', name: 'Ночной траверз', rarity: 'rare', chance: 8.0, image: 'https://i.ibb.co.com/HLhsyRKk/IMG-4514.jpg' },
-    { id: 'bg_r3', name: 'Кибер-трасса 01', rarity: 'rare', chance: 8.0, image: 'https://i.ibb.co.com/mVjJzRdV/IMG-4519.jpg' },
     { id: 'bg_l3', name: 'Транспортный бог', rarity: 'legendary', chance: 1.0, image: 'https://i.ibb.co.com/mV8CH1jr/IMG-4518.jpg' }
 ];
 
@@ -43,32 +40,121 @@ const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABAS
 const tgUser = tg.initDataUnsafe?.user;
 const telegramId = tgUser?.id ? Number(tgUser.id) : 123456789;
 
-/* НОВАЯ СИСТЕМА: СЕРВЕРНОЕ ВРЕМЯ (Античит) */
+/* МЕХАНИКА 1: СЕРВЕРНОЕ ВРЕМЯ (Античит) */
 const ServerTimeSys = {
     offset: 0,
     async init() {
         try {
             const res = await fetch('https://worldtimeapi.org/api/timezone/Etc/UTC');
             const data = await res.json();
-            const serverTime = new Date(data.utc_datetime).getTime();
-            this.offset = serverTime - Date.now();
-            console.log(`[ServerTime] Синхронизировано. Смещение: ${this.offset}мс`);
-        } catch (e) {
-            console.warn('[ServerTime] Ошибка синхронизации, используем локальное время.');
-            this.offset = 0;
-        }
+            this.offset = new Date(data.utc_datetime).getTime() - Date.now();
+        } catch (e) { this.offset = 0; }
     },
-    now() {
-        return Date.now() + this.offset;
-    }
+    now() { return Date.now() + this.offset; }
 };
 
-const ReputationSys = {
-    getTitle(level) {
-        if (level < 5) return 'Частник-одиночка'; if (level < 10) return 'Вольный водитель';
-        if (level < 15) return 'Опытный дальнобойщик'; if (level < 20) return 'Владелец автопарка';
-        if (level < 30) return 'Босс логистики'; if (level < 40) return 'Теневой барон';
-        if (level < 50) return 'Глобальный оператор'; return 'Транспортный магнат';
+/* МЕХАНИКА 2: ГЛОБАЛЬНАЯ КАРТА МИРА */
+const WORLD_MAP = {
+    currentCity: 'mow',
+    cities: {
+        'ber': { name: 'Берлин', x: '15%', y: '30%', fuelPrice: 22, icon: '🏛️', type: 'hub', desc: 'Автобаны и высокие пошлины' },
+        'mow': { name: 'Москва', x: '35%', y: '40%', fuelPrice: 12, icon: '🏙️', type: 'hub', desc: 'Центральный хаб СНГ' },
+        'kst': { name: 'Костанай', x: '55%', y: '45%', fuelPrice: 8, icon: '🏭', type: 'hub', desc: 'Стратегический хаб. Дешевое топливо!' },
+        'pek': { name: 'Пекин', x: '85%', y: '65%', fuelPrice: 16, icon: '🏯', type: 'hub', desc: 'Высокий спрос на сырье' }
+    },
+    routes: [
+        { id: 'r1', from: 'ber', to: 'mow', dist: 1800, type: 'autobahn', wearMod: 0.5, speedMod: 1.5, name: 'Европейский транзит' },
+        { id: 'r2', from: 'mow', to: 'kst', dist: 2100, type: 'highway', wearMod: 1.0, speedMod: 1.0, name: 'Степной тракт' },
+        { id: 'r3', from: 'kst', to: 'pek', dist: 4600, type: 'dirt', wearMod: 2.5, speedMod: 0.7, name: 'Шелковый путь' }
+    ],
+    cargoTypes: [
+        { name: 'Электроника', lic: 'basic', baseRew: 8, icon: '💻' },
+        { name: 'Стройматериалы', lic: 'basic', baseRew: 5, icon: '🧱' },
+        { name: 'Химикаты', lic: 'dangerous', baseRew: 18, icon: '☣️' },
+        { name: 'Турбины', lic: 'oversized', baseRew: 25, icon: '🏗️' },
+        { name: 'Теневой груз', lic: 'smuggling', baseRew: 40, icon: '🥷' }
+    ]
+};
+
+const MapSys = {
+    selectCity(cityId) {
+        WORLD_MAP.currentCity = cityId;
+        AudioSys.playSFX('click'); AudioSys.playVibrate('click');
+        
+        // Динамическое изменение цены на топливо в зависимости от города
+        AppState.player.fuel_price = WORLD_MAP.cities[cityId].fuelPrice;
+        
+        this.renderMapUI();
+        UI.renderAll();
+    },
+    generateDynamicContracts() {
+        const contracts = [];
+        const currentId = WORLD_MAP.currentCity;
+        
+        WORLD_MAP.routes.forEach(route => {
+            if (route.from === currentId || route.to === currentId) {
+                const targetId = route.from === currentId ? route.to : route.from;
+                const targetCity = WORLD_MAP.cities[targetId];
+                
+                // Генерируем 3 случайных контракта для каждого доступного направления
+                for(let i=0; i<3; i++) {
+                    const cargo = WORLD_MAP.cargoTypes[Math.floor(Math.random() * WORLD_MAP.cargoTypes.length)];
+                    
+                    // Формулы экономики мирового уровня
+                    const reward = Math.floor(route.dist * cargo.baseRew * (1 + Math.random() * 0.2));
+                    const baseFuelReq = Math.floor(route.dist * 0.15); // Будет умножаться на расход конкретной фуры
+                    const durationSec = Math.floor((route.dist / 10) / route.speedMod); 
+                    
+                    contracts.push({
+                        id: `dyn_${targetId}_${i}`,
+                        title: `В ${targetCity.name} (${route.name})`,
+                        name: cargo.name,
+                        targetCity: targetId,
+                        diff: route.type === 'dirt' ? 'Сложно' : 'Норма',
+                        badgeClass: cargo.lic === 'smuggling' ? 'badge-illegal' : 'badge-ordinary',
+                        reward: reward,
+                        baseFuel: baseFuelReq,
+                        duration: durationSec,
+                        reqLvl: cargo.lic === 'smuggling' ? 12 : 1,
+                        reqLic: cargo.lic,
+                        routeId: route.id,
+                        icon: cargo.icon
+                    });
+                }
+            }
+        });
+        return contracts;
+    },
+    renderMapUI() {
+        const mapContainer = document.querySelector('.interactive-map');
+        if(!mapContainer) return;
+        
+        let svgHTML = `<svg style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none;">`;
+        WORLD_MAP.routes.forEach(r => {
+            const c1 = WORLD_MAP.cities[r.from];
+            const c2 = WORLD_MAP.cities[r.to];
+            const strokeColor = r.type === 'autobahn' ? '#3B82F6' : r.type === 'dirt' ? '#F59E0B' : '#8B5CF6';
+            const dash = r.type === 'dirt' ? 'stroke-dasharray="5,5"' : '';
+            svgHTML += `<line x1="${c1.x}" y1="${c1.y}" x2="${c2.x}" y2="${c2.y}" stroke="${strokeColor}" stroke-width="3" opacity="0.6" ${dash} />`;
+        });
+        svgHTML += `</svg>`;
+        
+        let nodesHTML = '';
+        for(let key in WORLD_MAP.cities) {
+            let c = WORLD_MAP.cities[key];
+            let isCurrent = (WORLD_MAP.currentCity === key);
+            nodesHTML += `
+                <div class="map-node ${isCurrent ? 'active-node' : ''}" style="position:absolute; top:${c.y}; left:${c.x}; z-index:2; transform:translate(-50%, -50%);" onclick="MapSys.selectCity('${key}')">
+                    <div class="node-pulse ${isCurrent ? 'pulse-epic' : ''}"></div>
+                    <div class="node-icon" style="font-size:24px;">${c.icon}</div>
+                    <div class="node-label" style="background:rgba(0,0,0,0.8); padding:2px 6px; border-radius:4px;">${c.name}</div>
+                </div>`;
+        }
+        
+        mapContainer.innerHTML = svgHTML + nodesHTML;
+        
+        const cityData = WORLD_MAP.cities[WORLD_MAP.currentCity];
+        UI.safeUpdate('selected-region-title', `📍 ${cityData.name} | Топливо: ${cityData.fuelPrice} 🪙/л`);
     }
 };
 
@@ -90,34 +176,22 @@ const AppState = {
     leaderboardCategory: 'profit', 
     player: { id: null, name: tgUser?.first_name || 'Логист', avatar: tgUser?.photo_url || '', money: 100000, fuel_stock: 400, fuel_price: 12, level: 1, xp: 0, total_profit: 0, total_trips: 0, syndicate: null, last_bonus_time: 0, licenses: ['basic'], pass_level: 1, pass_claimed: [], current_background: 'bg_r1', unlocked_backgrounds: ['bg_r1'], fatigue: 100, wanted_level: 0, garage_level: 1, skills: { eco: 0, luck: 0, mechanic: 0 }, total_fuel_burned: 0, playtime_minutes: 0 },
     syndicateData: { name: null, level: 1, treasuryFuel: 0, techs: { security: 0, logistics: 0, mechanic: 0 }, feed: [] },
-    worldExtra: { lockedCategories: [], sectorDemand: { hub: null, chem: null, heavy: null, shadow: null } },
-    trucks: [], activeTrips: [], leaderboard: [],
-    contracts: [
-        { id: 1, title: 'Обычный: Доски', name: 'Доски', diff: 'Обычный', badgeClass: 'badge-ordinary', image: 'https://i.ibb.co.com/nxzLBSw/0-B0-F3-ED8-68-F9-4-D11-9455-63-CEE59-DEC70.png', reward: 5200, fuel: 70, duration: 15, reqLvl: 1, reqLic: 'basic', sector: 'hub' },
-        { id: 2, title: 'Обычный: Продукты', name: 'Продукты', diff: 'Обычный', badgeClass: 'badge-ordinary', image: 'https://i.ibb.co.com/YBMmXNHj/74065-E6-B-D63-E-446-D-A8-E1-95492-C930-D70.png', reward: 8900, fuel: 100, duration: 22, reqLvl: 2, reqLic: 'basic', sector: 'hub' },
-        { id: 3, title: 'Опасный: Химикаты', name: 'Химикаты', diff: 'Редкий', badgeClass: 'badge-rare', image: 'https://i.ibb.co.com/DPLBSsd9/80-EEB782-572-C-402-C-B9-A2-AD4-DBFC19357.png', reward: 40000, fuel: 350, duration: 120, reqLvl: 6, reqLic: 'dangerous', sector: 'chem' },
-        { id: 4, title: 'Негабарит: Спецтехника', name: 'Спецтехника', diff: 'Эпический', badgeClass: 'badge-epic', image: 'https://i.ibb.co.com/WvL7611N/9-BFBF2-DE-90-B2-4970-84-CC-C3-A98248-B0-CE.png', reward: 150000, fuel: 1000, duration: 600, reqLvl: 12, reqLic: 'oversized', sector: 'heavy' },
-        { id: 5, title: 'Теневой: Контрабанда', name: 'Контрабанда', diff: 'Нелегал', badgeClass: 'badge-illegal', image: 'https://i.ibb.co.com/1GcDdFJ9/D19-A33-BF-999-E-4-B0-F-8-D66-C3714-FCA6163.png', reward: 220000, fuel: 1200, duration: 900, reqLvl: 12, reqLic: 'smuggling', sector: 'shadow' }
-    ]
+    worldExtra: { lockedCategories: [], sectorDemand: {} },
+    trucks: [], activeTrips: [], leaderboard: []
 };
 
 const DB = {
     async init() {
         try {
-            await ServerTimeSys.init(); // Сначала синхронизируем время
+            await ServerTimeSys.init();
             let { data: existingPlayer, error: searchError } = await supabaseClient.from('players').select('*').eq('telegram_id', telegramId).maybeSingle();
             if (searchError) throw searchError;
             if (!existingPlayer) await this.createNewPlayer();
-            else {
-                AppState.player = { ...AppState.player, ...existingPlayer };
-                if (AppState.player.fatigue === undefined) AppState.player.fatigue = 100;
-                if (AppState.player.wanted_level === undefined) AppState.player.wanted_level = 0;
-            }
+            else { AppState.player = { ...AppState.player, ...existingPlayer }; }
             await this.loadGameData(); await this.loadLeaderboard(); 
             
-            // Запуск Оффлайн-Прогресса
+            MapSys.renderMapUI();
             OfflineProgressSys.process();
-            
             UI.renderAll();
         } catch (err) { UI.showToast("Ошибка соединения: " + err.message, "error"); }
     },
@@ -143,85 +217,45 @@ const DB = {
     }
 };
 
-/* НОВАЯ СИСТЕМА: ОФФЛАЙН ПРОГРЕСС */
 const OfflineProgressSys = {
     async process() {
         const now = ServerTimeSys.now();
-        let offlineEarnings = 0;
-        let offlineTripsCompleted = 0;
-        const tripsToDelete = [];
+        let offlineEarnings = 0; let offlineTripsCompleted = 0; const tripsToDelete = [];
 
         for (let i = AppState.activeTrips.length - 1; i >= 0; i--) {
             const trip = AppState.activeTrips[i];
             if (trip.end_time <= now) {
-                // Рейс завершился, пока игрока не было
-                let p = Number(trip.reward);
-                let exp = Math.floor(p * CONFIG.XP_MULTIPLIER);
+                let p = Number(trip.reward); let exp = Math.floor(p * CONFIG.XP_MULTIPLIER);
+                offlineEarnings += p; offlineTripsCompleted += 1;
+                AppState.player.money += p; AppState.player.total_profit += p; AppState.player.total_trips += 1; AppState.player.total_fuel_burned += trip.fuel_req;
                 
-                offlineEarnings += p;
-                offlineTripsCompleted += 1;
+                GameLogic.addXP_silent(exp); 
                 
-                AppState.player.money += p;
-                AppState.player.total_profit += p;
-                AppState.player.total_trips += 1;
-                AppState.player.total_fuel_burned += trip.fuel_req;
-                
-                GameLogic.addXP_silent(exp); // Начисляем опыт без спама тостами
-                
-                // Рассчитываем износ фуры
                 const t = AppState.trucks.find(x => x.id === trip.truck_id);
                 if (t) {
-                    const w = 8; // Базовый износ
-                    t.engineLvl = Math.max(0, t.engineLvl - w);
-                    t.tiresLvl = Math.max(0, t.tiresLvl - Math.floor(w * 1.2));
-                    t.gearLvl = Math.max(0, t.gearLvl - w);
-                    t.brakesLvl = Math.max(0, t.brakesLvl - Math.floor(w * 1.3));
+                    const rData = WORLD_MAP.routes.find(r => r.id === trip.route_id) || { wearMod: 1.0 };
+                    const w = Math.floor(8 * rData.wearMod); 
+                    t.engineLvl = Math.max(0, t.engineLvl - w); t.tiresLvl = Math.max(0, t.tiresLvl - Math.floor(w * 1.2));
+                    t.gearLvl = Math.max(0, t.gearLvl - w); t.brakesLvl = Math.max(0, t.brakesLvl - Math.floor(w * 1.3));
                     await supabaseClient.from('trucks').update({ engineLvl: t.engineLvl, tiresLvl: t.tiresLvl, gearLvl: t.gearLvl, brakesLvl: t.brakesLvl }).eq('id', t.id);
                 }
-
-                tripsToDelete.push(trip.id);
-                AppState.activeTrips.splice(i, 1);
+                tripsToDelete.push(trip.id); AppState.activeTrips.splice(i, 1);
             }
         }
-
         if (tripsToDelete.length > 0) {
-            // Удаляем завершенные рейсы из БД пакетом
-            for (let id of tripsToDelete) {
-                await supabaseClient.from('active_trips').delete().eq('id', id);
-            }
-            await DB.syncPlayer();
-            this.showOfflineModal(offlineTripsCompleted, offlineEarnings);
+            for (let id of tripsToDelete) await supabaseClient.from('active_trips').delete().eq('id', id);
+            await DB.syncPlayer(); this.showOfflineModal(offlineTripsCompleted, offlineEarnings);
         }
     },
     showOfflineModal(tripsCount, earnings) {
         let ex = document.getElementById('offline-modal'); if (ex) ex.remove();
-        const m = `
-            <div id="offline-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(10px);">
-                <div class="card" style="width:100%;max-width:360px;border-color:var(--success-color);text-align:center;box-shadow:0 0 40px rgba(16, 185, 129, 0.4);">
-                    <div style="font-size:40px;margin-bottom:10px;">📈</div>
-                    <h3 style="color:#fff;font-size:20px;margin-bottom:8px;font-weight:900;">ОТЧЕТ КОРПОРАЦИИ</h3>
-                    <p style="font-size:13px;color:var(--hint-color);margin-bottom:20px;">Пока вы отсутствовали, ваши водители продолжали работать и завершили рейсы.</p>
-                    <div style="background:rgba(0,0,0,0.3);padding:15px;border-radius:12px;margin-bottom:20px;">
-                        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                            <span style="color:var(--hint-color);">Успешных рейсов:</span>
-                            <span style="color:#fff;font-weight:bold;">${tripsCount}</span>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;">
-                            <span style="color:var(--hint-color);">Чистая прибыль:</span>
-                            <span style="color:var(--success-color);font-weight:bold;font-size:16px;">+${earnings.toLocaleString()} 🪙</span>
-                        </div>
-                    </div>
-                    <button class="btn btn-primary" style="width:100%;" onclick="document.getElementById('offline-modal').remove(); AudioSys.playSFX('success');">Отлично</button>
-                </div>
-            </div>`;
-        document.body.insertAdjacentHTML('beforeend', m);
-        AudioSys.playVibrate('success');
+        const m = `<div id="offline-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(10px);"><div class="card" style="width:100%;max-width:360px;border-color:var(--success-color);text-align:center;box-shadow:0 0 40px rgba(16, 185, 129, 0.4);"><div style="font-size:40px;margin-bottom:10px;">📈</div><h3 style="color:#fff;font-size:20px;margin-bottom:8px;font-weight:900;">ОТЧЕТ КОРПОРАЦИИ</h3><p style="font-size:13px;color:var(--hint-color);margin-bottom:20px;">Пока вы отсутствовали, ваши водители завершили рейсы.</p><div style="background:rgba(0,0,0,0.3);padding:15px;border-radius:12px;margin-bottom:20px;"><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:var(--hint-color);">Успешных рейсов:</span><span style="color:#fff;font-weight:bold;">${tripsCount}</span></div><div style="display:flex;justify-content:space-between;"><span style="color:var(--hint-color);">Чистая прибыль:</span><span style="color:var(--success-color);font-weight:bold;font-size:16px;">+${earnings.toLocaleString()} 🪙</span></div></div><button class="btn btn-primary" style="width:100%;" onclick="document.getElementById('offline-modal').remove(); AudioSys.playSFX('success');">Отлично</button></div></div>`;
+        document.body.insertAdjacentHTML('beforeend', m); AudioSys.playVibrate('success');
     }
 };
 
 const GameLogic = {
     isFinishing: false,
-    
     getReqXP(lvl) { return Math.floor(1000 * Math.pow(1.5, lvl - 1)); },
     
     async addXP(amount) {
@@ -235,7 +269,39 @@ const GameLogic = {
         while (AppState.player.xp >= req) { AppState.player.xp -= req; AppState.player.level++; AppState.player.pass_level++; req = this.getReqXP(AppState.player.level); }
     },
     
-    async startTrip(reward, fuel, duration, title, reqLvl, reqLic, sector) {
+    async buyTruck(shopId) {
+        const t = TRUCK_SHOP.find(x => x.id === shopId); if (!t) return;
+        if (AppState.player.money < t.price) return UI.showToast(`Нужно ${t.price.toLocaleString()} 🪙`, 'error');
+        AppState.player.money -= t.price;
+        let { data, error } = await supabaseClient.from('trucks').insert([{ player_id: AppState.player.id, name: t.name, capacity: t.capacity, fuel_use: t.fuel_use, rarity: t.rarity, custom_plate: '456LWO|10', engineLvl: 100, tiresLvl: 100, gearLvl: 100, brakesLvl: 100 }]).select().single();
+        if (error) return;
+        AppState.trucks.push(data); await DB.syncPlayer(); UI.showToast(`Куплен новый транспорт: ${t.name}!`, 'success'); UI.renderAll();
+    },
+
+    getRepairCost(val) { 
+        if (val >= 100) return 0; 
+        let base = (100 - val) * 200;
+        let gLvl = AppState.player.garage_level || 1;
+        return Math.floor(base * (1 - ((gLvl - 1) * 0.15)));
+    },
+
+    async repairAll(truckId) {
+        const t = AppState.trucks.find(x => String(x.id) === String(truckId)); if (!t) return;
+        const pts = ['engineLvl', 'tiresLvl', 'gearLvl', 'brakesLvl']; let tc = 0, nr = false;
+        pts.forEach(p => { const v = Number(t[p]) || 0; if (v < 100) { nr = true; tc += this.getRepairCost(v); } });
+        if (!nr) return UI.showToast('Полностью исправен!', 'info');
+        
+        let gLvl = AppState.player.garage_level || 1;
+        const fc = Math.floor(tc * (0.9 - (gLvl - 1) * 0.05));
+        if (AppState.player.money < fc) return UI.showToast(`Нужно ${fc.toLocaleString()} 🪙`, 'error');
+        
+        AppState.player.money -= fc; pts.forEach(p => t[p] = 100);
+        await supabaseClient.from('trucks').update({ engineLvl: 100, tiresLvl: 100, gearLvl: 100, brakesLvl: 100 }).eq('id', t.id);
+        await DB.syncPlayer(); UI.showToast(`Комплексное ТО выполнено!`, 'success'); UI.renderAll();
+    },
+    
+    // ОБНОВЛЕННАЯ ЛОГИКА СТАРТА РЕЙСА (Интеграция с картой)
+    async startTrip(reward, baseFuel, duration, title, reqLvl, reqLic, targetCity, routeId) {
         if (AppState.player.level < reqLvl) return UI.showToast(`Требуется уровень ${reqLvl}!`, 'error');
         if (!AppState.player.licenses.includes(reqLic)) return UI.showToast('Отсутствует лицензия!', 'error');
 
@@ -243,19 +309,25 @@ const GameLogic = {
         const idleTrucks = AppState.trucks.filter(t => !actIds.includes(t.id));
         if (idleTrucks.length === 0) return UI.showToast('Нет свободных тягачей!', 'error');
         const idleTruck = idleTrucks[0];
+        const shopTruckData = TRUCK_SHOP.find(x => x.name === idleTruck.name);
 
         let timeMod = 1.0;
         if (AppState.player.fatigue < 20) timeMod *= 1.3;
 
-        let fFuel = fuel;
+        // Физика топлива: Базовое топливо умножается на множитель расхода фуры
+        let fuelMod = (shopTruckData ? shopTruckData.fuel_use : 50) / 30; // 30 - средний расход
+        let fFuel = Math.floor(baseFuel * fuelMod);
         let fDur = Math.floor(duration * timeMod);
 
         if (AppState.player.fuel_stock < fFuel) return UI.showToast(`Нужно ${fFuel}л топлива!`, 'error');
         
-        // Используем серверное время для старта!
         let endTime = ServerTimeSys.now() + (fDur * 1000);
 
-        let { data, error } = await supabaseClient.from('active_trips').insert([{ player_id: AppState.player.id, truck_id: idleTruck.id, title: title, reward: reward, fuel_req: fFuel, end_time: endTime }]).select().single();
+        let { data, error } = await supabaseClient.from('active_trips').insert([{ 
+            player_id: AppState.player.id, truck_id: idleTruck.id, title: title, 
+            reward: reward, fuel_req: fFuel, end_time: endTime, route_id: routeId 
+        }]).select().single();
+        
         if (error) return UI.showToast("Ошибка запуска рейса", "error");
 
         AppState.player.fuel_stock -= fFuel;
@@ -271,7 +343,6 @@ const GameLogic = {
         if (this.isFinishing) return;
         const tIdx = AppState.activeTrips.findIndex(t => t.id === tripId); if (tIdx === -1) return;
         
-        // Двойная защита: проверяем серверное время перед завершением
         const trip = AppState.activeTrips[tIdx];
         if (trip.end_time > ServerTimeSys.now()) return; 
 
@@ -280,10 +351,12 @@ const GameLogic = {
         
         AppState.player.total_fuel_burned = (AppState.player.total_fuel_burned || 0) + trip.fuel_req;
         AppState.player.money += p; AppState.player.total_profit += p; AppState.player.total_trips += 1;
-        
+
         const t = AppState.trucks.find(x => x.id === trip.truck_id);
         if (t) {
-            const w = 8;
+            // Износ зависит от типа дороги, по которой ехала фура!
+            const rData = WORLD_MAP.routes.find(r => r.id === trip.route_id) || { wearMod: 1.0 };
+            const w = Math.floor(8 * rData.wearMod); 
             t.engineLvl = Math.max(0, t.engineLvl - w);
             t.tiresLvl = Math.max(0, t.tiresLvl - Math.floor(w * 1.2));
             t.gearLvl = Math.max(0, t.gearLvl - w);
@@ -299,6 +372,13 @@ const GameLogic = {
 
         UI.showToast(`Рейс завершен! +${p.toLocaleString()} 🪙`, 'success');
         UI.renderAll();
+    },
+
+    async buyFuel(amt) {
+        const c = Number(amt) * AppState.player.fuel_price;
+        if (AppState.player.money < c) return UI.showToast('Недостаточно монет!', 'error');
+        AppState.player.money -= c; AppState.player.fuel_stock += Number(amt);
+        await DB.syncPlayer(); UI.showToast(`Куплено ${amt}л топлива`, 'success'); UI.renderAll();
     }
 };
 
@@ -332,13 +412,15 @@ const UI = {
         this.safeUpdate('profile-id-lvl', `LVL ${p.level}`);
         this.safeUpdate('user-money', `🪙 ${Number(p.money).toLocaleString()}`); 
         this.safeUpdate('user-fuel-stock', `⛽ ${Number(p.fuel_stock)}л`); 
+        
+        // Обновляем панель цены на топливо в Центре
+        this.safeUpdate('current-fuel-price', `${p.fuel_price || 12} 🪙 / л`);
 
         this.safeUpdate('stat-total-profit', `${Number(p.total_profit || 0).toLocaleString()} 🪙`);
         this.safeUpdate('stat-total-trips', `${p.total_trips || 0}`);
         
         const aTI = AppState.activeTrips.map(t => t.truck_id);
         
-        // Обновленная отрисовка панели рейсов (Использует серверное время!)
         this.safeUpdateHTML('active-trip-panel', AppState.activeTrips.map(tr => { 
             let l = Math.floor((tr.end_time - ServerTimeSys.now()) / 1000); 
             if (l <= 0) { GameLogic.finishTrip(tr.id); return ''; } 
@@ -346,10 +428,31 @@ const UI = {
         }).join(''));
         
         const hI = AppState.trucks.some(t => !aTI.includes(t.id));
-        this.safeUpdateHTML('contracts-list', AppState.contracts.map(c => {
+        
+        // Отрисовка динамических контрактов с глобальной карты!
+        const dynamicContracts = MapSys.generateDynamicContracts();
+        
+        this.safeUpdateHTML('contracts-list', dynamicContracts.map(c => {
             const lL = p.level < c.reqLvl, lLic = !p.licenses.includes(c.reqLic), iL = lL || lLic;
             let bt = lL ? `Ур. ${c.reqLvl}` : lLic ? 'Лицензия' : !hI ? 'Нет фур' : 'Начать рейс';
-            return `<div class="contract-card" style="${iL ? 'opacity:0.6' : ''}"><div class="contract-header"><div class="contract-title-group"><span class="contract-badge ${c.badgeClass}">${c.diff}</span><span class="contract-name">${c.name}</span></div><div class="contract-reward">+${c.reward.toLocaleString()} 🪙</div></div><div class="contract-body"><div class="contract-image"><img src="${c.image}"></div><div class="contract-specs"><div class="spec-item"><span>⏱ Время:</span><span style="color:#fff;font-weight:bold;">${c.duration}с</span></div><div class="spec-item"><span>⛽ Топл:</span><span style="color:#fff;font-weight:bold;">${c.fuel}л</span></div></div></div><button class="contract-action-btn ${!hI || iL ? 'disabled' : 'active'}" ${!hI || iL ? 'disabled' : ''} onclick="GameLogic.startTrip(${c.reward}, ${c.fuel}, ${c.duration}, '${c.title}', ${c.reqLvl}, '${c.reqLic}', '${c.sector}')">${bt}</button></div>`;
+            
+            return `<div class="contract-card" style="${iL ? 'opacity:0.6' : ''}">
+                <div class="contract-header">
+                    <div class="contract-title-group">
+                        <span class="contract-badge ${c.badgeClass}">${c.diff}</span>
+                        <span class="contract-name">${c.icon} ${c.name}</span>
+                    </div>
+                    <div class="contract-reward">+${c.reward.toLocaleString()} 🪙</div>
+                </div>
+                <div class="contract-body" style="padding-top:10px;">
+                    <div style="font-size:12px; color:var(--hint-color); margin-bottom:8px;">Маршрут: <span style="color:#fff;font-weight:bold;">${c.title}</span></div>
+                    <div class="contract-specs">
+                        <div class="spec-item"><span>⏱ Время:</span><span style="color:#fff;font-weight:bold;">${c.duration}с</span></div>
+                        <div class="spec-item"><span>⛽ Б. Топл:</span><span style="color:#fff;font-weight:bold;">${c.baseFuel}л</span></div>
+                    </div>
+                </div>
+                <button class="contract-action-btn ${!hI || iL ? 'disabled' : 'active'}" ${!hI || iL ? 'disabled' : ''} onclick="GameLogic.startTrip(${c.reward}, ${c.baseFuel}, ${c.duration}, '${c.title}', ${c.reqLvl}, '${c.reqLic}', '${c.targetCity}', '${c.routeId}')">${bt}</button>
+            </div>`;
         }).join(''));
     }
 };
@@ -360,17 +463,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const int = setInterval(() => { p += 20; document.getElementById('loader-progress').style.width = `${p}%`; document.getElementById('loader-percent').innerText = `${p}%`; if(p >= 100) { clearInterval(int); document.getElementById('loader-tap').style.display = 'block'; ld.addEventListener('click', () => { ld.style.opacity = '0'; document.getElementById('app-content').style.opacity = '1'; setTimeout(() => ld.remove(), 500); DB.init(); }); } }, 300);
     } else DB.init();
 
-    setInterval(() => { 
-        if (AppState.activeTrips.length > 0) UI.renderAll(); 
-    }, 1000);
-    
-    setInterval(() => { 
-        AppState.player.playtime_minutes = (AppState.player.playtime_minutes || 0) + 3;
-        DB.syncPlayer();
-    }, 180000);
+    setInterval(() => { if (AppState.activeTrips.length > 0) UI.renderAll(); }, 1000);
+    setInterval(() => { AppState.player.playtime_minutes = (AppState.player.playtime_minutes || 0) + 3; DB.syncPlayer(); }, 180000);
 });
 
-window.switchTab = (id) => UI.switchTab(id); 
-window.AudioSys = AudioSys; 
-window.GameLogic = GameLogic; 
-window.UI = UI;
+window.switchTab = (id) => UI.switchTab(id); window.AudioSys = AudioSys; window.GameLogic = GameLogic; window.MapSys = MapSys; window.UI = UI;
