@@ -1,4 +1,4 @@
-const tg = window.Telegram.WebApp; // Исправлено: const с маленькой буквы
+const tg = window.Telegram.WebApp;
 tg.expand();
 tg.ready();
 
@@ -180,7 +180,6 @@ const AdminSys = {
     }
 };
 
-/* ===== МЕХАНИКА 1: УСТАЛОСТЬ ВОДИТЕЛЯ И МОТЕЛИ (`FatigueSys`) ===== */
 const FatigueSys = {
     init() {
         setInterval(() => {
@@ -211,7 +210,6 @@ const FatigueSys = {
     }
 };
 
-/* ===== МЕХАНИКА 2: ПОГОДА И МЕТЕОСТАНЦИЯ (`WeatherSys`) ===== */
 const WeatherSys = {
     updateDynamicWeather() {
         const severeTypes = [
@@ -259,7 +257,6 @@ const WorldState = {
     }
 };
 
-/* ===== МЕХАНИКА 3: РЫНОЧНАЯ СПЕКУЛЯЦИЯ И ДЕФИЦИТ (`MarketSys`) ===== */
 const MarketSys = {
     rotateDemand() {
         const sectors = ['hub', 'chem', 'heavy', 'shadow'];
@@ -277,7 +274,6 @@ const MarketSys = {
     }
 };
 
-/* ===== МЕХАНИКА 4: ЧЕРНЫЙ РЫНОК И СИСТЕМА РОЗЫСКА (`UnderworldSys`) ===== */
 const UnderworldSys = {
     async addWanted(amount) {
         AppState.player.wanted_level = Math.min(5, (AppState.player.wanted_level || 0) + amount);
@@ -305,7 +301,6 @@ const UnderworldSys = {
     }
 };
 
-/* ===== МЕХАНИКА 5: QTE МИНИ-ИГРА ФОРС-МАЖОРОВ (`QTEEventSys`) ===== */
 const QTEEventSys = {
     qteInterval: null,
     triggerQTE(tripId, eventType) {
@@ -357,7 +352,7 @@ const EventSys = {
         if (this.activeEvent) return;
         let luckMod = 1.0;
         if (AppState.player.skills && AppState.player.skills.luck) luckMod -= AppState.player.skills.luck * 0.1;
-        if (AppState.player.fatigue < 20) luckMod *= 3.0; // Если водитель уснул — шанс ЧП х3
+        if (AppState.player.fatigue < 20) luckMod *= 3.0;
         
         const chance = Math.random() / Math.max(0.1, luckMod);
         if (chance < 0.15) {
@@ -406,7 +401,6 @@ const EventSys = {
     closeEventModal() { const modal = document.getElementById('event-modal'); if (modal) modal.remove(); this.activeEvent = null; if (this.timerInterval) clearInterval(this.timerInterval); }
 };
 
-/* ===== МЕХАНИКА 6: ЛИЧНЫЙ ГАРАЖ-СКЛАД (`GarageSys`) ===== */
 const GarageSys = {
     async upgradeGarage() {
         const nextLvl = AppState.player.garage_level + 1;
@@ -500,6 +494,7 @@ const DB = {
                 if (AppState.player.fatigue === undefined) AppState.player.fatigue = 100;
                 if (AppState.player.wanted_level === undefined) AppState.player.wanted_level = 0;
                 if (AppState.player.garage_level === undefined) AppState.player.garage_level = 1;
+                if (AppState.player.playtime_minutes === undefined) AppState.player.playtime_minutes = 0;
             }
             await this.loadGameData(); await this.loadLeaderboard(); AdminSys.checkAdminAccess();
             FatigueSys.init(); UI.renderAll();
@@ -507,13 +502,13 @@ const DB = {
     },
     async createNewPlayer() {
         let stM = 100000, stF = 400;
-        // Добавлены поля, которые нужно сохранять с самого начала
         let pay = { 
             telegram_id: telegramId, name: AppState.player.name, avatar: AppState.player.avatar, 
             money: stM, fuel_stock: stF, level: AppState.player.level, xp: AppState.player.xp, 
             total_trips: 0, licenses: ['basic'], pass_level: 1, pass_claimed: [], 
             current_background: 'bg_r1', unlocked_backgrounds: ['bg_r1'], fatigue: 100, 
-            wanted_level: 0, garage_level: 1, skills: { eco: 0, luck: 0, mechanic: 0 }
+            wanted_level: 0, garage_level: 1, skills: { eco: 0, luck: 0, mechanic: 0 },
+            total_profit: 0, total_fuel_burned: 0, playtime_minutes: 0
         };
         let { data: newP, error } = await supabaseClient.from('players').insert([pay]).select().single();
         if (!error && newP) AppState.player = { ...AppState.player, ...newP };
@@ -529,16 +524,15 @@ const DB = {
     },
     async syncPlayer() {
         const p = AppState.player; if (!p.id) return;
-        // Исправлено: Добавлены недостающие массивы и объекты, чтобы данные не терялись при перезагрузке
         let uD = { 
             name: p.name, avatar: p.avatar, money: Number(p.money), fuel_stock: Number(p.fuel_stock), 
             fuel_price: Number(p.fuel_price), level: Number(p.level), xp: Number(p.xp), 
             total_profit: Number(p.total_profit), total_trips: Number(p.total_trips), 
             fatigue: Number(p.fatigue), wanted_level: Number(p.wanted_level), 
-            garage_level: Number(p.garage_level),
-            licenses: p.licenses, current_background: p.current_background,
+            garage_level: Number(p.garage_level), licenses: p.licenses, current_background: p.current_background,
             unlocked_backgrounds: p.unlocked_backgrounds, pass_level: p.pass_level,
-            pass_claimed: p.pass_claimed, skills: p.skills
+            pass_claimed: p.pass_claimed, skills: p.skills, total_fuel_burned: Number(p.total_fuel_burned),
+            playtime_minutes: Number(p.playtime_minutes), syndicate: p.syndicate === 'null' ? null : p.syndicate
         };
         await supabaseClient.from('players').update(uD).eq('id', p.id);
         this.loadLeaderboard();
@@ -548,12 +542,11 @@ const DB = {
 const GameLogic = {
     isFinishing: false,
     
-    // Исправлено: Добавлена отсутствующая функция прокачки навыков!
     async upgradeSkill(skillKey) {
         const currentLvl = AppState.player.skills[skillKey] || 0;
         if (currentLvl >= 5) return UI.showToast('Навык достиг максимального уровня!', 'info');
         
-        const cost = 25000 * (currentLvl + 1); // Формула цены прокачки (можешь настроить сам)
+        const cost = 25000 * (currentLvl + 1);
         if (AppState.player.money < cost) return UI.showToast(`Нужно ${cost.toLocaleString()} 🪙 для улучшения`, 'error');
         
         AppState.player.money -= cost;
@@ -566,11 +559,13 @@ const GameLogic = {
     },
 
     getReqXP(lvl) { return Math.floor(1000 * Math.pow(1.5, lvl - 1)); },
+    
     async addXP(amount) {
         AppState.player.xp = Number(AppState.player.xp) + Number(amount); let req = this.getReqXP(AppState.player.level), lu = false;
         while (AppState.player.xp >= req) { AppState.player.xp -= req; AppState.player.level++; AppState.player.pass_level++; req = this.getReqXP(AppState.player.level); lu = true; }
         if (lu) UI.showToast(`🎉 НОВЫЙ УРОВЕНЬ: ${AppState.player.level}!`, 'success');
     },
+    
     async buyTruck(shopId) {
         const t = TRUCK_SHOP.find(x => x.id === shopId); if (!t) return;
         if (AppState.trucks.some(x => x.name === t.name)) return UI.showToast('Этот транспорт уже есть!', 'error');
@@ -580,13 +575,15 @@ const GameLogic = {
         if (error) return UI.showToast("Ошибка при покупке", "error");
         AppState.trucks.push(data); await DB.syncPlayer(); UI.showToast(`Куплен новый транспорт: ${t.name}!`, 'success'); UI.renderAll();
     },
+    
     getRepairCost(val) { 
         if (val >= 100) return 0; 
         let base = (100 - val) * 200;
         let gLvl = AppState.player.garage_level || 1;
-        let discount = (gLvl - 1) * 0.15; // Гараж дает скидку 15% за уровень
+        let discount = (gLvl - 1) * 0.15;
         return Math.floor(base * (1 - discount));
     },
+    
     async repairPart(truckId, pName) {
         const t = AppState.trucks.find(x => String(x.id) === String(truckId)); if (!t) return;
         const cVal = Number(t[pName]) || 0; if (cVal >= 100) return UI.showToast('Идеально!', 'info');
@@ -595,6 +592,7 @@ const GameLogic = {
         await supabaseClient.from('trucks').update({ [pName]: 100 }).eq('id', t.id);
         await DB.syncPlayer(); UI.showToast(`Отремонтировано за ${rc.toLocaleString()} 🪙!`, 'success'); UI.renderAll();
     },
+    
     async repairAll(truckId) {
         const t = AppState.trucks.find(x => String(x.id) === String(truckId)); if (!t) return;
         const pts = ['engineLvl', 'tiresLvl', 'gearLvl', 'brakesLvl']; let tc = 0, nr = false;
@@ -605,30 +603,24 @@ const GameLogic = {
         if (AppState.player.money < fc) return UI.showToast(`Нужно ${fc.toLocaleString()} 🪙`, 'error');
         AppState.player.money -= fc; pts.forEach(p => t[p] = 100);
         await supabaseClient.from('trucks').update({ engineLvl: 100, tiresLvl: 100, gearLvl: 100, brakesLvl: 100 }).eq('id', t.id);
-        await DB.syncPlayer(); UI.showToast(`Комплексное ТО выполнено с учетом бонуса гаража!`, 'success'); UI.renderAll();
+        await DB.syncPlayer(); UI.showToast(`Комплексное ТО выполнено со скидкой!`, 'success'); UI.renderAll();
     },
+    
     async startTrip(reward, fuel, duration, title, reqLvl, reqLic, sector) {
         if (AppState.player.level < reqLvl) return UI.showToast(`Требуется уровень ${reqLvl}!`, 'error');
         if (!AppState.player.licenses.includes(reqLic)) return UI.showToast('Отсутствует лицензия!', 'error');
-        
-        // Проверка блокировки погодой
-        if (AppState.worldExtra.lockedCategories.includes(reqLic)) {
-            return UI.showToast(`⚠️ Погодные условия блокируют этот класс грузов!`, 'error');
-        }
+        if (AppState.worldExtra.lockedCategories.includes(reqLic)) return UI.showToast(`⚠️ Погода блокирует этот груз!`, 'error');
 
         const actIds = AppState.activeTrips.map(t => t.truck_id);
         const idleTrucks = AppState.trucks.filter(t => !actIds.includes(t.id));
         if (idleTrucks.length === 0) return UI.showToast('Нет свободных тягачей!', 'error');
         const idleTruck = idleTrucks[0];
 
-        // Учет рыночного дефицита
         let demandData = AppState.worldExtra.sectorDemand[sector];
-        if (demandData && title.includes(demandData.item)) {
-            reward = Math.floor(reward * demandData.multiplier);
-        }
+        if (demandData && title.includes(demandData.item)) reward = Math.floor(reward * demandData.multiplier);
 
         let timeMod = WorldState.weather.timeMod;
-        if (AppState.player.fatigue < 20) timeMod *= 1.3; // Усталый водитель едет дольше на 30%
+        if (AppState.player.fatigue < 20) timeMod *= 1.3;
 
         let fFuel = Math.floor(fuel * WorldState.weather.fuelMod);
         let fDur = Math.floor(duration * timeMod);
@@ -643,21 +635,21 @@ const GameLogic = {
         AppState.activeTrips.push(data); 
         await DB.syncPlayer();
 
-        UI.showToast(`Рейс успешно начат на ${idleTruck.name}!`, 'success');
+        UI.showToast(`Рейс начат на ${idleTruck.name}!`, 'success');
         AudioSys.playSFX('engine');
         UI.renderAll();
     },
+    
     async finishTrip(tripId) {
         if (this.isFinishing) return;
         const tIdx = AppState.activeTrips.findIndex(t => t.id === tripId); if (tIdx === -1) return;
         const trip = AppState.activeTrips[tIdx]; this.isFinishing = true;
         let p = Number(trip.reward); let exp = Math.floor(p * CONFIG.XP_MULTIPLIER);
+        
+        AppState.player.total_fuel_burned = (AppState.player.total_fuel_burned || 0) + trip.fuel_req;
         AppState.player.money += p; AppState.player.total_profit += p; AppState.player.total_trips += 1;
         
-        // Если рейс нелегал — повышаем уровень розыска
-        if (trip.title.includes('Теневой')) {
-            UnderworldSys.addWanted(1);
-        }
+        if (trip.title.includes('Теневой')) UnderworldSys.addWanted(1);
 
         const t = AppState.trucks.find(x => x.id === trip.truck_id);
         if (t) {
@@ -675,16 +667,18 @@ const GameLogic = {
         this.isFinishing = false; 
         await DB.syncPlayer();
 
-        UI.showToast(`Рейс завершен! +${p.toLocaleString()} 🪙 | +${exp} XP`, 'success');
+        UI.showToast(`Рейс завершен! +${p.toLocaleString()} 🪙`, 'success');
         NotificationSys.sendTelegramPush(`✅ Рейс завершен! Заработано: ${p.toLocaleString()} 🪙`);
-        AIDispatcher.randomAdvice(); UI.renderAll();
+        UI.renderAll();
     },
+    
     async buyFuel(amt) {
         const c = Number(amt) * AppState.player.fuel_price;
         if (AppState.player.money < c) return UI.showToast('Недостаточно монет!', 'error');
         AppState.player.money -= c; AppState.player.fuel_stock += Number(amt);
         await DB.syncPlayer(); UI.showToast(`Куплено ${amt}л топлива`, 'success'); UI.renderAll();
     },
+    
     async claimDailyBonus() {
         let n = Date.now();
         if (n - AppState.player.last_bonus_time < CONFIG.BONUS_COOLDOWN_MS) {
@@ -694,6 +688,7 @@ const GameLogic = {
         AppState.player.last_bonus_time = n; AppState.player.money += CONFIG.DAILY_BONUS_COINS; AppState.player.fuel_stock += CONFIG.DAILY_BONUS_FUEL;
         await DB.syncPlayer(); UI.showToast(`Бонус получен!`, 'success'); UI.renderAll();
     },
+    
     async buyLicense(licId) {
         if (AppState.player.licenses.includes(licId)) return UI.showToast('Уже приобретена!', 'info');
         const l = LICENSES_SHOP.find(x => x.id === licId); if (!l) return;
@@ -702,15 +697,25 @@ const GameLogic = {
         AppState.player.money -= l.cost; AppState.player.licenses.push(licId);
         await DB.syncPlayer(); UI.showToast(`Лицензия получена!`, 'success'); UI.renderAll();
     },
+    
     async saveProfile() {
         let nF = document.getElementById('input-username'); let n = nF ? nF.value.trim() : '';
         if (n) { AppState.player.name = n; AdminSys.checkAdminAccess(); }
         await DB.syncPlayer(); UI.showToast('Профиль сохранен', 'success'); UI.renderAll();
     },
+    
     handleAvatarUpload(ev) {
         const f = ev.target.files[0]; if (!f) return;
-        const r = new FileReader(); r.onload = async (e) => { AppState.player.avatar = e.target.result; await DB.syncPlayer(); UI.showToast('Аватар изменен!', 'success'); UI.renderAll(); }; r.readAsDataURL(f);
+        const r = new FileReader(); 
+        r.onload = async (e) => { 
+            AppState.player.avatar = e.target.result; 
+            await DB.syncPlayer(); 
+            UI.showToast('Аватар изменен!', 'success'); 
+            UI.renderAll(); 
+        }; 
+        r.readAsDataURL(f);
     },
+    
     claimPassReward(tLvl, cRew) {
         if (!AppState.player.pass_level) AppState.player.pass_level = 1; if (!AppState.player.pass_claimed) AppState.player.pass_claimed = [];
         if (AppState.player.pass_level < tLvl) return UI.showToast('Уровень не достигнут!', 'error');
@@ -718,20 +723,35 @@ const GameLogic = {
         AppState.player.pass_claimed.push(tLvl); AppState.player.money += Number(cRew); DB.syncPlayer();
         UI.showToast(`Награда получена!`, 'success'); UI.renderAll();
     },
+    
     inviteFriend() { tg.openTelegramLink(`https://t.me/share/url?url=https://t.me/LogisticWorldBot/app?startapp=${telegramId}&text=Го в логистику!`); },
+    
     async createSyndicate(n) {
         n = n.trim(); if (n.length < 3) return UI.showToast('Длиннее 3 символов', 'error');
-        if (AppState.player.syndicate) return UI.showToast('Уже состоите!', 'error');
+        if (AppState.player.syndicate && AppState.player.syndicate !== 'null') return UI.showToast('Уже состоите!', 'error');
         if (AppState.player.money < 500000) return UI.showToast('Нужно 500k!', 'error');
-        AppState.player.money -= 500000; AppState.player.syndicate = n; AppState.syndicateData = { name: n, level: 1, treasuryFuel: 0, techs: { security: 0, logistics: 0, mechanic: 0 }, feed: [`Создан синдикат "${n}"`] };
+        AppState.player.money -= 500000; AppState.player.syndicate = n; 
+        AppState.syndicateData = { name: n, level: 1, treasuryFuel: 0, techs: { security: 0, logistics: 0, mechanic: 0 }, feed: [`Создан синдикат "${n}"`] };
         await DB.syncPlayer(); UI.showToast(`Синдикат создан!`, 'success'); UI.renderAll();
     },
+    
     async joinSyndicate(n) {
         n = n.trim(); if (!n) return UI.showToast('Введите название', 'error');
+        if (AppState.player.syndicate && AppState.player.syndicate !== 'null') return UI.showToast('Уже состоите!', 'error');
         AppState.player.syndicate = n; AppState.syndicateData.name = n;
         await DB.syncPlayer(); UI.showToast(`Вступили в ${n}!`, 'success'); UI.renderAll();
     },
-    async leaveSyndicate() { if (!AppState.player.syndicate) return; if (confirm("Покинуть?")) { AppState.player.syndicate = null; await DB.syncPlayer(); UI.showToast('Покинули.', 'info'); UI.renderAll(); } },
+    
+    async leaveSyndicate() { 
+        if (!AppState.player.syndicate || AppState.player.syndicate === 'null') return; 
+        if (confirm("Покинуть корпорацию?")) { 
+            AppState.player.syndicate = null; 
+            await DB.syncPlayer(); 
+            UI.showToast('Покинули корпорацию.', 'info'); 
+            UI.renderAll(); 
+        } 
+    },
+    
     upgradeTech(tK) {
         const tC = { security: 1000, logistics: 1500, mechanic: 1200 }; const cL = AppState.syndicateData.techs[tK] || 0;
         if (cL >= 5) return UI.showToast('Максимум!', 'info'); const c = tC[tK] * (cL + 1);
@@ -750,7 +770,12 @@ const UI = {
         AudioSys.playVibrate('click'); AudioSys.playSFX('click');
         this.renderAll();
     },
-    switchLeaderboardCategory(cat) { AppState.leaderboardCategory = cat; document.getElementById('lb-tab-profit').classList.toggle('active', cat === 'profit'); document.getElementById('lb-tab-trips').classList.toggle('active', cat === 'trips'); DB.loadLeaderboard().then(() => this.renderAll()); },
+    switchLeaderboardCategory(cat) { 
+        AppState.leaderboardCategory = cat; 
+        document.getElementById('lb-tab-profit').classList.toggle('active', cat === 'profit'); 
+        document.getElementById('lb-tab-trips').classList.toggle('active', cat === 'trips'); 
+        DB.loadLeaderboard().then(() => this.renderAll()); 
+    },
     inspectPlayer(uId) {
         const u = AppState.leaderboard.find(x => String(x.id) === String(uId)); if (!u) return;
         let ex = document.getElementById('inspect-modal'); if (ex) ex.remove();
@@ -767,21 +792,57 @@ const UI = {
     },
     safeUpdate(id, t) { const e = document.getElementById(id); if (e) e.innerText = t; },
     safeUpdateHTML(id, h) { const e = document.getElementById(id); if (e) e.innerHTML = h; },
+    
     renderAll() {
         const p = AppState.player;
-        this.safeUpdate('profile-id-name', p.name); this.safeUpdate('profile-id-role', ReputationSys.getTitle(p.level)); this.safeUpdate('profile-id-lvl', `LVL ${p.level}`);
-        this.safeUpdate('username', p.name); this.safeUpdate('user-title', ReputationSys.getTitle(p.level)); 
-        this.safeUpdate('user-money', `🪙 ${Number(p.money).toLocaleString()}`); this.safeUpdate('user-fuel-stock', `⛽ ${Number(p.fuel_stock)}л`); 
+        
+        const headerAvatar = document.getElementById('user-avatar');
+        if (headerAvatar && p.avatar) headerAvatar.src = p.avatar;
+        const profileAvatar = document.getElementById('profile-id-avatar');
+        if (profileAvatar && p.avatar) profileAvatar.src = p.avatar;
+
+        this.safeUpdate('profile-id-name', p.name); 
+        this.safeUpdate('profile-id-role', ReputationSys.getTitle(p.level)); 
+        this.safeUpdate('profile-id-lvl', `LVL ${p.level}`);
+        this.safeUpdate('username', p.name); 
+        this.safeUpdate('user-title', ReputationSys.getTitle(p.level)); 
+        this.safeUpdate('user-money', `🪙 ${Number(p.money).toLocaleString()}`); 
+        this.safeUpdate('user-fuel-stock', `⛽ ${Number(p.fuel_stock)}л`); 
         this.safeUpdate('user-fatigue-bar', `🔋 ${Math.floor(p.fatigue || 100)}%`);
         this.safeUpdate('garage-lvl-badge', `Ур. ${p.garage_level || 1}`);
+
+        this.safeUpdate('stat-total-profit', `${Number(p.total_profit || 0).toLocaleString()} 🪙`);
+        this.safeUpdate('stat-total-trips', `${p.total_trips || 0}`);
+        this.safeUpdate('stat-total-fuel', `${p.total_fuel_burned || 0} л`);
+        let hrs = Math.floor((p.playtime_minutes || 0) / 60);
+        let mins = (p.playtime_minutes || 0) % 60;
+        this.safeUpdate('stat-playtime', `${hrs}ч ${mins}м`);
+        const favTruck = AppState.trucks.length > 0 ? AppState.trucks[0].name : 'Нет';
+        this.safeUpdate('stat-fav-truck', favTruck);
+
+        const noSyn = document.getElementById('no-syndicate-panel');
+        const actSyn = document.getElementById('active-syndicate-panel');
+        if (p.syndicate && p.syndicate !== 'null') {
+            if (noSyn) noSyn.style.display = 'none';
+            if (actSyn) actSyn.style.display = 'block';
+            this.safeUpdate('corp-name-title', p.syndicate);
+            this.safeUpdate('corp-level-badge', `Ур. ${AppState.syndicateData?.level || 1}`);
+            this.safeUpdate('corp-fuel-treasury', `${AppState.syndicateData?.treasuryFuel || 0} л`);
+        } else {
+            if (noSyn) noSyn.style.display = 'block';
+            if (actSyn) actSyn.style.display = 'none';
+        }
 
         if (p.wanted_level > 0) {
             const wB = document.getElementById('user-wanted-badge');
             if (wB) { wB.style.display = 'inline-block'; wB.innerText = `⭐ ${p.wanted_level}`; }
+        } else {
+            const wB = document.getElementById('user-wanted-badge');
+            if (wB) { wB.style.display = 'none'; }
         }
 
         if (p.weather_forecast_expiry && p.weather_forecast_expiry > Date.now()) {
-            this.safeUpdate('forecast-status-div', `✅ Прогноз активен: ${WorldState.weather.name} (Влияние на износ х${WorldState.weather.wearMod})`);
+            this.safeUpdate('forecast-status-div', `✅ Прогноз активен: ${WorldState.weather.name}`);
         } else {
             this.safeUpdate('forecast-status-div', '');
         }
@@ -805,7 +866,7 @@ const UI = {
         const aTI = AppState.activeTrips.map(t => t.truck_id);
         let fH = AppState.trucks.length > 0 ? AppState.trucks.map(t => {
             const isB = aTI.includes(t.id), sH = isB ? `<span style="font-size:12px;color:#EF4444;">🔴 В рейсе</span>` : `<span style="font-size:12px;color:#10B981;">🟢 Свободна</span>`;
-            const sT = TRUCK_SHOP.find(x => x.name === t.name), cP = t.custom_plate || '456LWO|10';
+            const sT = TRUCK_SHOP.find(x => x.name === t.name);
             let a100 = true, tRC = 0, pts = [{ k: 'engineLvl', n: '🛠 Двс' }, { k: 'tiresLvl', n: '🛞 Шины' }, { k: 'gearLvl', n: '⚙️ КПП' }, { k: 'brakesLvl', n: '🧯 Торм' }];
             let ptH = pts.map(pt => {
                 const v = Number(t[pt.k]) || 100; let cl = v < 40 ? '#EF4444' : v < 75 ? '#F59E0B' : '#10B981';
@@ -819,7 +880,6 @@ const UI = {
 
         this.safeUpdateHTML('licenses-list', LICENSES_SHOP.map(l => { const h = p.licenses.includes(l.id), i = l.type === 'illegal', b = i ? 'var(--accent-pink)' : 'var(--accent-blue)'; return `<div class="card" style="border-color:${b};margin-bottom:10px;"><div class="card-title"><span>${i ? '🥷' : '📜'} ${l.name}</span><span style="color:${h ? '#10B981' : 'var(--accent-pink)'};">${h ? 'Куплено' : `${l.cost.toLocaleString()} 🪙`}</span></div><button class="btn ${h ? 'btn-outline' : 'btn-primary'}" ${h ? 'disabled' : ''} onclick="GameLogic.buyLicense('${l.id}')">${h ? 'Активировано' : 'Приобрести'}</button></div>`; }).join(''));
 
-        // Исправлено: Убрал вызов игровой логики событий отсюда, оставил только рендер
         this.safeUpdateHTML('active-trip-panel', AppState.activeTrips.map(tr => { 
             let l = Math.floor((tr.end_time - Date.now()) / 1000); 
             if (l <= 0) { GameLogic.finishTrip(tr.id); return ''; } 
@@ -849,7 +909,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const int = setInterval(() => { p += 20; document.getElementById('loader-progress').style.width = `${p}%`; document.getElementById('loader-percent').innerText = `${p}%`; if(p >= 100) { clearInterval(int); document.getElementById('loader-tap').style.display = 'block'; ld.addEventListener('click', () => { ld.style.opacity = '0'; document.getElementById('app-content').style.opacity = '1'; setTimeout(() => ld.remove(), 500); DB.init().then(() => { setTimeout(() => AIDispatcher.showPopup("Добро пожаловать в Logistic World!"), 1500); }); }); } }, 300);
     } else DB.init();
 
-    // Исправлено: Добавлена проверка ивентов в общий таймер, чтобы она не зависела от рендера UI
+    // Общий таймер для проверки ивентов (1 раз в секунду)
     setInterval(() => { 
         if (AppState.activeTrips.length > 0) {
             AppState.activeTrips.forEach(tr => {
@@ -859,6 +919,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 1000);
     
-    setInterval(() => { WorldState.generateWeather(); MarketSys.rotateDemand(); AIDispatcher.randomAdvice(); }, 180000);
+    // Таймер генерации погоды, экономики + счетчик времени игры
+    setInterval(() => { 
+        WorldState.generateWeather(); 
+        MarketSys.rotateDemand(); 
+        AIDispatcher.randomAdvice(); 
+        
+        // Учет проведенного времени в игре (прибавляем 3 минуты, так как таймер на 180 сек)
+        AppState.player.playtime_minutes = (AppState.player.playtime_minutes || 0) + 3;
+        DB.syncPlayer();
+    }, 180000);
 });
-window.switchTab = (id) => UI.switchTab(id); window.AudioSys = AudioSys; window.AdminSys = AdminSys; window.GameLogic = GameLogic; window.EventSys = EventSys; window.BackgroundCaseSys = BackgroundCaseSys; window.MapSys = MapSys; window.WeatherSys = WeatherSys; window.FatigueSys = FatigueSys; window.UnderworldSys = UnderworldSys; window.QTEEventSys = QTEEventSys; window.GarageSys = GarageSys; window.UI = UI;
+
+window.switchTab = (id) => UI.switchTab(id); 
+window.AudioSys = AudioSys; 
+window.AdminSys = AdminSys; 
+window.GameLogic = GameLogic; 
+window.EventSys = EventSys; 
+window.BackgroundCaseSys = BackgroundCaseSys; 
+window.MapSys = MapSys; 
+window.WeatherSys = WeatherSys; 
+window.FatigueSys = FatigueSys; 
+window.UnderworldSys = UnderworldSys; 
+window.QTEEventSys = QTEEventSys; 
+window.GarageSys = GarageSys; 
+window.UI = UI;
