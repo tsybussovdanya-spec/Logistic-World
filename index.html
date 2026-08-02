@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <!-- Отключаем масштабирование для идеального отображения в Telegram Web App -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Logistic World TWA</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- Верхняя панель игрока (Шапка) -->
+        <header class="glass-panel header-bar">
+            <div class="user-info">
+                <div class="avatar glow-border"></div>
+                <div class="details">
+                    <h2 id="company-name">Logistic World</h2>
+                    <p id="user-name">@TSYBUSS</p>
+                </div>
+            </div>
+            <div class="balance-container glow-text">
+                <span class="currency">$</span>
+                <span id="balance-amount">1,250,400</span>
+            </div>
+        </header>
+
+        <!-- Основная область с экранами -->
+        <main id="content-area">
+            
+            <!-- ЭКРАН 1: ГЛАВНАЯ (HOME) -->
+            <div id="screen-home" class="screen active">
+                <div class="widget glass-panel">
+                    <h3 class="widget-title">Текущий рейс</h3>
+                    <div class="trip-details">
+                        <div class="city">Костанай</div>
+                        <div class="arrow glow-text">➔</div>
+                        <div class="city">Астана</div>
+                    </div>
+                    <div class="cargo-info">Медицинское оборудование • 12т</div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" style="width: 65%;"></div>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-text">В пути</span>
+                        <span class="time-left">Осталось 2ч 15м</span>
+                    </div>
+                </div>
+
+                <div class="widget glass-panel">
+                    <h3 class="widget-title">Статус автопарка</h3>
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <span class="stat-val text-green">2</span>
+                            <span class="stat-label">Свободно</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-val text-blue">5</span>
+                            <span class="stat-label">В рейсе</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-val text-red">0</span>
+                            <span class="stat-label">В ремонте</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ЭКРАН 2: РЕЙСЫ (БИРЖА) -->
+            <div id="screen-trips" class="screen">
+                <h2 class="screen-title glow-text">Биржа контрактов</h2>
+                <div id="contracts-list">
+                    <!-- Сюда JS будет динамически рендерить карточки контрактов -->
+                </div>
+            </div>
+
+            <!-- ЭКРАН 3: ГАРАЖ -->
+            <div id="screen-garage" class="screen">
+                <h2 class="screen-title glow-text">Ваш автопарк</h2>
+                <p style="color: var(--text-muted); text-align: center; margin-top: 20px;">Модуль в разработке</p>
+            </div>
+
+            <div id="screen-company" class="screen">
+                <h2 class="screen-title glow-text">Управление компанией</h2>
+            </div>
+            
+            <div id="screen-profile" class="screen">
+                <h2 class="screen-title glow-text">Профиль водителя</h2>
+            </div>
+
+        </main>
+
+        <!-- Нижнее навигационное меню -->
+        <nav class="bottom-nav glass-panel">
+            <button class="nav-btn active" data-target="screen-home">
+                <span class="nav-icon">🏠</span>
+                <span class="nav-text">Главная</span>
+            </button>
+            <button class="nav-btn" data-target="screen-trips">
+                <span class="nav-icon">📦</span>
+                <span class="nav-text">Рейсы</span>
+            </button>
+            <button class="nav-btn" data-target="screen-garage">
+                <span class="nav-icon">🚚</span>
+                <span class="nav-text">Гараж</span>
+            </button>
+            <button class="nav-btn" data-target="screen-company">
+                <span class="nav-icon">🏢</span>
+                <span class="nav-text">Комп.</span>
+            </button>
+            <button class="nav-btn" data-target="screen-profile">
+                <span class="nav-icon">👤</span>
+                <span class="nav-text">Профиль</span>
+            </button>
+        </nav>
+
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
