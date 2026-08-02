@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Logistic World TWA</title>
+    <title>Logistic World</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
@@ -20,133 +20,88 @@
             </div>
             <div class="balance-container glow-text">
                 <span class="currency">$</span>
-                <span id="balance-amount">1,250,400</span>
+                <span id="ui-balance">0</span>
             </div>
         </header>
 
         <main id="content-area">
             
-            <!-- ЭКРАН 1: ГЛАВНАЯ (HOME) -->
+            <!-- ГЛАВНАЯ -->
             <div id="screen-home" class="screen active">
                 <div class="widget glass-panel">
-                    <h3 class="widget-title">Текущий рейс</h3>
-                    <div class="trip-details">
-                        <div class="city">Костанай</div>
-                        <div class="arrow glow-text">➔</div>
-                        <div class="city">Астана</div>
-                    </div>
-                    <div class="cargo-info">Медицинское оборудование • 12т</div>
-                    <div class="progress-bar-bg">
-                        <div class="progress-bar-fill" style="width: 65%;"></div>
-                    </div>
-                    <div class="status-row">
-                        <span class="status-text">В пути</span>
-                        <span class="time-left">Осталось 2ч 15м</span>
+                    <h3 class="widget-title">Активный рейс</h3>
+                    <div id="active-trip-container">
+                        <!-- Заполняется через JS -->
+                        <p style="color: var(--text-muted); font-size: 14px;">Нет активных рейсов. Возьмите контракт на бирже.</p>
                     </div>
                 </div>
 
                 <div class="widget glass-panel">
-                    <h3 class="widget-title">Статус автопарка</h3>
+                    <h3 class="widget-title">Обзор автопарка</h3>
                     <div class="stats-grid">
                         <div class="stat-box">
-                            <span class="stat-val text-green">2</span>
+                            <span class="stat-val text-green" id="stat-free-trucks">0</span>
                             <span class="stat-label">Свободно</span>
                         </div>
                         <div class="stat-box">
-                            <span class="stat-val text-blue">5</span>
+                            <span class="stat-val text-blue" id="stat-busy-trucks">0</span>
                             <span class="stat-label">В рейсе</span>
                         </div>
                         <div class="stat-box">
-                            <span class="stat-val text-red">0</span>
-                            <span class="stat-label">В ремонте</span>
+                            <span class="stat-val text-main" id="stat-total-trucks">0</span>
+                            <span class="stat-label">Всего</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- ЭКРАН 2: РЕЙСЫ (БИРЖА) -->
+            <!-- БИРЖА КОНТРАКТОВ -->
             <div id="screen-trips" class="screen">
-                <h2 class="screen-title glow-text">Биржа контрактов</h2>
+                <div class="screen-header">
+                    <h2 class="screen-title glow-text">Биржа контрактов</h2>
+                    <button class="btn-refresh" onclick="gameEngine.generateMarket()">🔄 Обновить</button>
+                </div>
                 <div id="contracts-list"></div>
             </div>
 
-            <!-- ЭКРАН 3: ГАРАЖ -->
+            <!-- ГАРАЖ -->
             <div id="screen-garage" class="screen">
-                <h2 class="screen-title glow-text">Ваш автопарк</h2>
+                <h2 class="screen-title glow-text">Автопарк</h2>
                 <div class="garage-controls">
-                    <button class="btn-secondary">Покупка</button>
-                    <button class="btn-secondary active">Мои грузовики</button>
-                    <button class="btn-secondary">Тюнинг</button>
+                    <button class="btn-secondary active" onclick="gameEngine.switchGarageTab('my-trucks')">Мои фуры</button>
+                    <button class="btn-secondary" onclick="gameEngine.switchGarageTab('shop')">Автосалон</button>
                 </div>
-                <div id="garage-list"></div>
+                <div id="garage-content"></div>
             </div>
 
-            <!-- ЭКРАН 4: КОМПАНИЯ -->
+            <!-- КОМПАНИЯ -->
             <div id="screen-company" class="screen">
                 <h2 class="screen-title glow-text">Штаб-квартира</h2>
-                
                 <div class="widget glass-panel">
-                    <h3 class="widget-title">Финансовый отчет</h3>
+                    <h3 class="widget-title">Статистика компании</h3>
                     <div class="finance-grid">
                         <div class="finance-row">
-                            <span>Доход (сегодня)</span>
-                            <span class="text-green">+$45,200</span>
+                            <span>Успешных рейсов</span>
+                            <span class="text-green" id="comp-trips">0</span>
                         </div>
                         <div class="finance-row">
-                            <span>Расходы (топливо, ЗП)</span>
-                            <span class="text-red">-$12,450</span>
+                            <span>Пройдено километров</span>
+                            <span class="text-blue" id="comp-distance">0 км</span>
                         </div>
-                        <div class="finance-divider"></div>
-                        <div class="finance-row bold">
-                            <span>Чистая прибыль</span>
-                            <span class="text-blue">+$32,750</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="widget glass-panel">
-                    <h3 class="widget-title">Мои лицензии</h3>
-                    <div class="license-list">
-                        <div class="license-item active">Обычные грузы (Ур. 5)</div>
-                        <div class="license-item active">Опасные грузы (ADR) (Ур. 2)</div>
-                        <div class="license-item locked">Международные рейсы (Требуется 15 ур.)</div>
-                        <div class="license-item locked">Негабаритные грузы (Требуется 20 ур.)</div>
                     </div>
                 </div>
             </div>
             
-            <!-- ЭКРАН 5: ПРОФИЛЬ -->
+            <!-- ПРОФИЛЬ -->
             <div id="screen-profile" class="screen">
                 <h2 class="screen-title glow-text">Личное дело</h2>
-                
                 <div class="profile-header glass-panel">
                     <div class="avatar-large glow-border"></div>
                     <h2 class="profile-name">@TSYBUSS</h2>
-                    <p class="profile-title">Генеральный директор</p>
-                    <div class="level-badge">Уровень 12</div>
+                    <p class="profile-title">Владелец корпорации</p>
+                    <div class="level-badge">Уровень 1</div>
                 </div>
-
-                <div class="widget glass-panel">
-                    <h3 class="widget-title">Глобальная статистика</h3>
-                    <div class="stats-grid grid-wrap">
-                        <div class="stat-box">
-                            <span class="stat-val">142</span>
-                            <span class="stat-label">Рейсов</span>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-val">18,450</span>
-                            <span class="stat-label">Общий пробег (км)</span>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-val text-green">98%</span>
-                            <span class="stat-label">Успешность</span>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-val text-blue">7</span>
-                            <span class="stat-label">Грузовиков</span>
-                        </div>
-                    </div>
-                </div>
+                <button class="btn-danger" onclick="gameEngine.hardReset()">Сбросить прогресс игры</button>
             </div>
 
         </main>
@@ -173,7 +128,6 @@
                 <span class="nav-text">Профиль</span>
             </button>
         </nav>
-
     </div>
     <script src="app.js"></script>
 </body>
