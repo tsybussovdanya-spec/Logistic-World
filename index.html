@@ -2,7 +2,6 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <!-- Отключаем масштабирование для идеального отображения в Telegram Web App -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Logistic World TWA</title>
     <link rel="stylesheet" href="style.css">
@@ -11,7 +10,6 @@
 <body>
     <div class="app-container">
         
-        <!-- Верхняя панель игрока (Шапка) -->
         <header class="glass-panel header-bar">
             <div class="user-info">
                 <div class="avatar glow-border"></div>
@@ -26,7 +24,6 @@
             </div>
         </header>
 
-        <!-- Основная область с экранами -->
         <main id="content-area">
             
             <!-- ЭКРАН 1: ГЛАВНАЯ (HOME) -->
@@ -70,28 +67,90 @@
             <!-- ЭКРАН 2: РЕЙСЫ (БИРЖА) -->
             <div id="screen-trips" class="screen">
                 <h2 class="screen-title glow-text">Биржа контрактов</h2>
-                <div id="contracts-list">
-                    <!-- Сюда JS будет динамически рендерить карточки контрактов -->
-                </div>
+                <div id="contracts-list"></div>
             </div>
 
             <!-- ЭКРАН 3: ГАРАЖ -->
             <div id="screen-garage" class="screen">
                 <h2 class="screen-title glow-text">Ваш автопарк</h2>
-                <p style="color: var(--text-muted); text-align: center; margin-top: 20px;">Модуль в разработке</p>
+                <div class="garage-controls">
+                    <button class="btn-secondary">Покупка</button>
+                    <button class="btn-secondary active">Мои грузовики</button>
+                    <button class="btn-secondary">Тюнинг</button>
+                </div>
+                <div id="garage-list"></div>
             </div>
 
+            <!-- ЭКРАН 4: КОМПАНИЯ -->
             <div id="screen-company" class="screen">
-                <h2 class="screen-title glow-text">Управление компанией</h2>
+                <h2 class="screen-title glow-text">Штаб-квартира</h2>
+                
+                <div class="widget glass-panel">
+                    <h3 class="widget-title">Финансовый отчет</h3>
+                    <div class="finance-grid">
+                        <div class="finance-row">
+                            <span>Доход (сегодня)</span>
+                            <span class="text-green">+$45,200</span>
+                        </div>
+                        <div class="finance-row">
+                            <span>Расходы (топливо, ЗП)</span>
+                            <span class="text-red">-$12,450</span>
+                        </div>
+                        <div class="finance-divider"></div>
+                        <div class="finance-row bold">
+                            <span>Чистая прибыль</span>
+                            <span class="text-blue">+$32,750</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="widget glass-panel">
+                    <h3 class="widget-title">Мои лицензии</h3>
+                    <div class="license-list">
+                        <div class="license-item active">Обычные грузы (Ур. 5)</div>
+                        <div class="license-item active">Опасные грузы (ADR) (Ур. 2)</div>
+                        <div class="license-item locked">Международные рейсы (Требуется 15 ур.)</div>
+                        <div class="license-item locked">Негабаритные грузы (Требуется 20 ур.)</div>
+                    </div>
+                </div>
             </div>
             
+            <!-- ЭКРАН 5: ПРОФИЛЬ -->
             <div id="screen-profile" class="screen">
-                <h2 class="screen-title glow-text">Профиль водителя</h2>
+                <h2 class="screen-title glow-text">Личное дело</h2>
+                
+                <div class="profile-header glass-panel">
+                    <div class="avatar-large glow-border"></div>
+                    <h2 class="profile-name">@TSYBUSS</h2>
+                    <p class="profile-title">Генеральный директор</p>
+                    <div class="level-badge">Уровень 12</div>
+                </div>
+
+                <div class="widget glass-panel">
+                    <h3 class="widget-title">Глобальная статистика</h3>
+                    <div class="stats-grid grid-wrap">
+                        <div class="stat-box">
+                            <span class="stat-val">142</span>
+                            <span class="stat-label">Рейсов</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-val">18,450</span>
+                            <span class="stat-label">Общий пробег (км)</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-val text-green">98%</span>
+                            <span class="stat-label">Успешность</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-val text-blue">7</span>
+                            <span class="stat-label">Грузовиков</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
         </main>
 
-        <!-- Нижнее навигационное меню -->
         <nav class="bottom-nav glass-panel">
             <button class="nav-btn active" data-target="screen-home">
                 <span class="nav-icon">🏠</span>
