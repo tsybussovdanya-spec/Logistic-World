@@ -1,41 +1,28 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Инициализация Telegram Web App
     const tg = window.Telegram.WebApp;
-    tg.expand(); // Разворачиваем на весь экран
+    tg.expand();
     
-    // Пытаемся взять данные пользователя из Telegram (если запущено в боте)
-    const userNameElement = document.getElementById('user-name');
-    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-        userNameElement.textContent = `@${tg.initDataUnsafe.user.username}`;
-    }
-
-    // 2. Логика навигации (Переключение экранов)
+    // Навигация
     const navButtons = document.querySelectorAll('.nav-btn');
     const screens = document.querySelectorAll('.screen');
 
     navButtons.forEach(btn => {
         btn.addEventListener('click', () => {
-            // Убираем активность со всех кнопок и экранов
             navButtons.forEach(b => b.classList.remove('active'));
             screens.forEach(s => s.classList.remove('active'));
-
-            // Добавляем активность нажатой кнопке
             btn.classList.add('active');
-
-            // Показываем нужный экран
+            
             const targetScreenId = btn.getAttribute('data-target');
             document.getElementById(targetScreenId).classList.add('active');
-
-            // Опционально: Вибрация при нажатии (Haptic Feedback TWA)
-            tg.HapticFeedback.impactOccurred('light');
+            
+            if(tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+            }
         });
     });
 
-    // 3. Генератор контрактов (Эмуляция получения данных с бэкенда)
-    // Эта логика демонстрирует, как фронтенд будет отрисовывать рейсы
+    // --- ЛОГИКА ЭКРАНА: РЕЙСЫ ---
     const contractsList = document.getElementById('contracts-list');
-    
-    // Имитация базы данных из вашего документа
     const mockTrips = [
         { id: 1, origin: 'Костанай', dest: 'Алматы', cargo: 'Зерно', weight: 22, distance: 1950, reward: 8450 },
         { id: 2, origin: 'Алматы', dest: 'Астана', cargo: 'Электроника', weight: 8, distance: 1200, reward: 6100 },
@@ -44,13 +31,10 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     function renderContracts() {
-        contractsList.innerHTML = ''; // Очищаем контейнер
-        
+        contractsList.innerHTML = '';
         mockTrips.forEach(trip => {
             const card = document.createElement('div');
             card.className = 'contract-card glass-panel';
-            
-            // Форматирование цены (например, 8,450)
             const formattedReward = new Intl.NumberFormat('en-US').format(trip.reward);
 
             card.innerHTML = `
@@ -68,14 +52,91 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Вызываем рендер при загрузке приложения
+    // --- ЛОГИКА ЭКРАНА: ГАРАЖ ---
+    const garageList = document.getElementById('garage-list');
+    
+    // Глубокая симуляция состояния транспорта из дизайн-документа
+    const mockVehicles = [
+        { 
+            id: 101, 
+            brand: 'Volvo', 
+            model: 'F16 Cyber', 
+            plate: '803MQA | 10', 
+            mileage: 145020,
+            status: 'IDLE',
+            condition: { engine: 85, tires: 45, transmission: 92, oil: 60 }
+        },
+        { 
+            id: 102, 
+            brand: 'Scania', 
+            model: 'R500 Neon', 
+            plate: '215ABC | 01', 
+            mileage: 89000,
+            status: 'ON_TRIP',
+            condition: { engine: 98, tires: 90, transmission: 95, oil: 85 }
+        }
+    ];
+
+    function getConditionColor(val) {
+        if (val > 70) return 'var(--color-green)';
+        if (val > 30) return 'var(--accent-color)';
+        return 'var(--color-red)';
+    }
+
+    function renderGarage() {
+        garageList.innerHTML = '';
+        mockVehicles.forEach(vehicle => {
+            const card = document.createElement('div');
+            card.className = 'truck-card glass-panel';
+            
+            // Динамический рендер физики износа
+            card.innerHTML = `
+                <div class="truck-header">
+                    <div class="truck-model">${vehicle.brand} ${vehicle.model}</div>
+                    <div class="truck-plate glow-text">${vehicle.plate}</div>
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">
+                    Пробег: ${new Intl.NumberFormat('ru-RU').format(vehicle.mileage)} км • Статус: ${vehicle.status === 'IDLE' ? 'Свободен' : 'В рейсе'}
+                </div>
+                
+                <div class="condition-grid">
+                    <div class="cond-item">
+                        <div class="cond-label"><span>Двигатель</span><span>${vehicle.condition.engine}%</span></div>
+                        <div class="cond-bar-bg"><div class="cond-bar-fill" style="width: ${vehicle.condition.engine}%; background: ${getConditionColor(vehicle.condition.engine)}"></div></div>
+                    </div>
+                    <div class="cond-item">
+                        <div class="cond-label"><span>Шины</span><span>${vehicle.condition.tires}%</span></div>
+                        <div class="cond-bar-bg"><div class="cond-bar-fill" style="width: ${vehicle.condition.tires}%; background: ${getConditionColor(vehicle.condition.tires)}"></div></div>
+                    </div>
+                    <div class="cond-item">
+                        <div class="cond-label"><span>Трансмиссия</span><span>${vehicle.condition.transmission}%</span></div>
+                        <div class="cond-bar-bg"><div class="cond-bar-fill" style="width: ${vehicle.condition.transmission}%; background: ${getConditionColor(vehicle.condition.transmission)}"></div></div>
+                    </div>
+                    <div class="cond-item">
+                        <div class="cond-label"><span>Масло</span><span>${vehicle.condition.oil}%</span></div>
+                        <div class="cond-bar-bg"><div class="cond-bar-fill" style="width: ${vehicle.condition.oil}%; background: ${getConditionColor(vehicle.condition.oil)}"></div></div>
+                    </div>
+                </div>
+                
+                <button class="btn-repair" onclick="repairVehicle(${vehicle.id})">🛠 Техническое обслуживание</button>
+            `;
+            garageList.appendChild(card);
+        });
+    }
+
+    // Инициализация
     renderContracts();
+    renderGarage();
 });
 
-// Глобальная функция для кнопки "Принять рейс"
 window.acceptTrip = function(id) {
     const tg = window.Telegram.WebApp;
-    tg.HapticFeedback.notificationOccurred('success');
-    tg.showAlert(`Рейс #${id} успешно принят! Перейдите в гараж, чтобы назначить транспорт.`);
-    // В реальном проекте здесь будет fetch запрос к вашему Node.js серверу
+    if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    tg.showAlert(`Контракт #${id} подписан. Назначьте тягач в меню Гаража.`);
+};
+
+window.repairVehicle = function(id) {
+    const tg = window.Telegram.WebApp;
+    if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+    tg.showConfirm(`Отправить транспорт #${id} на полное обслуживание? Стоимость: $2,500`);
 };
