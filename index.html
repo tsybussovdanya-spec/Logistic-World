@@ -3,365 +3,275 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Logistic World | Симулятор Логиста</title>
-    
-    <!-- Telegram Web App SDK -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Supabase Client SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- Подключаем стили -->
+    <meta name="theme-color" content="#05050A">
+    <title>Logistic World</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- Фоновый аудиофайл -->
-    <audio id="bg-music" loop preload="auto" crossorigin="anonymous" src="https://raw.githubusercontent.com/tsybussovdanya-spec/Logistic-World/refs/heads/Music/bharatt_saurabh_tujh_bin.mp3"></audio>
+    <!-- Аудио система -->
+    <audio id="bg-music" loop>
+        <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=cyberpunk-2099-10701.mp3" type="audio/mpeg">
+    </audio>
 
-    <!-- Звуковые эффекты SFX -->
-    <audio id="sfx-click" preload="auto" src="https://assets.mixkit.co/sfx/preview/mixkit-modern-technology-select-3124.mp3"></audio>
-    <audio id="sfx-success" preload="auto" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3"></audio>
-    <audio id="sfx-error" preload="auto" src="https://assets.mixkit.co/sfx/preview/mixkit-software-interface-error-2574.mp3"></audio>
-    <audio id="sfx-engine" preload="auto" src="https://assets.mixkit.co/sfx/preview/mixkit-sport-car-engine-rev-115.mp3"></audio>
-
-    <!-- Экран загрузки (Splash Screen) -->
+    <!-- Экран загрузки с анимированным фоном -->
     <div id="loading-screen" class="loading-screen">
+        <div class="loader-bg-animation"></div>
         <div class="loader-content">
             <h1 class="loader-title">LOGISTIC WORLD</h1>
-            <p class="loader-subtitle">Инициализация транспортной сети...</p>
-            <div class="loader-bar-container">
-                <div id="loader-progress" class="loader-bar-fill"></div>
+            <p id="loader-tip" class="loader-tip">ИИ-Диспетчер: Проверяю состояние серверов...</p>
+            <div class="progress-bar-container">
+                <div id="loader-progress" class="progress-bar-fill"></div>
             </div>
-            <div id="loader-percent" class="loader-percent">0%</div>
-            <div id="loader-tap" class="loader-tap-prompt" style="display: none;">Нажмите в любое место, чтобы войти</div>
+            <p id="loader-percent" class="loader-percent">0%</p>
+            <p id="loader-tap" class="loader-tap" style="display: none;">Коснитесь экрана, чтобы начать</p>
         </div>
     </div>
 
-    <!-- Общий контейнер приложения -->
-    <div id="app-content" class="app-container" style="opacity: 0; transition: opacity 0.5s ease;">
-        
-        <!-- Верхняя плашка профиля и баланса -->
-        <header class="app-header">
-            <div class="user-info" onclick="switchTab('profile')">
+    <!-- Уведомления и ИИ-Диспетчер -->
+    <div id="toast-container" class="toast-container"></div>
+    <div id="ai-dispatcher" class="ai-dispatcher">
+        <div class="ai-avatar">🤖</div>
+        <div class="ai-message" id="ai-message">Привет! Я твой ИИ-помощник.</div>
+    </div>
+
+    <!-- Анимированный параллакс фон -->
+    <div class="parallax-bg" id="parallax-bg"></div>
+
+    <div class="app-container" id="app-content" style="opacity: 0;">
+        <header class="app-header" onclick="switchTab('profile')">
+            <div class="user-profile-preview">
                 <div class="avatar-wrapper">
-                    <img id="user-avatar" src="https://via.placeholder.com/50" alt="Avatar">
-                    <div id="user-level-badge" class="level-badge">LVL 1</div>
+                    <img id="user-avatar" src="" class="avatar-small" alt="Avatar">
                 </div>
-                <div>
-                    <div id="username" class="username">Логист</div>
-                    <div id="user-title" class="user-title">Частник-одиночка</div>
+                <div class="user-info">
+                    <div class="name-row">
+                        <h1 id="username" class="user-name-title premium-name">Логист</h1>
+                        <span id="user-level-badge" class="level-badge">LVL 1</span>
+                    </div>
+                    <!-- Звание Логиста -->
+                    <div id="user-title" style="font-size: 12px; color: var(--accent-pink); margin-top: 2px; font-weight: 600;">Частник-одиночка</div>
+                    <div class="balance-container">
+                        <span id="user-money" class="badge-money">🪙 0</span>
+                        <span id="user-fuel-stock" class="badge-fuel">⛽ 0л</span>
+                    </div>
+                    <div class="xp-bar-container">
+                        <div id="xp-bar-fill" class="xp-bar-fill"></div>
+                    </div>
                 </div>
             </div>
-            <div class="balances-container">
-                <div id="user-money" class="balance-badge">🪙 100 000</div>
-                <div id="user-fuel-stock" class="balance-badge fuel">⛽ 400л</div>
-                <div id="user-fatigue-bar" class="balance-badge fatigue">🔋 100%</div>
-                <div id="user-wanted-badge" class="balance-badge wanted" style="display: none;">⭐ 0</div>
-                <div id="weather-info" class="balance-badge weather">☀️ Ясно</div>
+            <div class="weather-badge" id="weather-info" onclick="event.stopPropagation(); UI.showToast('Текущая погода влияет на износ и топливо!', 'info')">
+                ☀️ Ясно
             </div>
         </header>
 
-        <!-- Глобальный баннер ивента -->
-        <div id="global-event-banner" class="event-banner" style="display: none;">
-            <div class="event-title" id="global-event-title">Ивент</div>
-            <div class="event-desc" id="global-event-desc">Описание ивента</div>
-        </div>
-
-        <!-- Основная рабочая область (Вкладки) -->
-        <main class="main-content">
-
-            <!-- Вкладка 1: Контракты (Биржа рейсов) -->
-            <section id="tab-contracts" class="tab-content active">
-                <div class="section-header">
-                    <h2>Глобальная Карта</h2>
-                    <p class="subtitle">Выберите сектор для загрузки контрактов</p>
-                </div>
-                
-                <!-- Активные рейсы пользователя -->
-                <div id="active-trip-panel"></div>
-
-                <!-- Интерактивная карта -->
-                <div class="interactive-map">
-                    <div class="map-bg"></div>
-                    <!-- Сектор 1 -->
-                    <div class="map-node node-hub" onclick="MapSys.selectRegion('hub')">
-                        <div class="node-pulse"></div>
-                        <div class="node-icon">📦</div>
-                        <div class="node-label">Базовый Хаб</div>
-                    </div>
-                    <!-- Сектор 2 -->
-                    <div class="map-node node-chem" onclick="MapSys.selectRegion('chem')">
-                        <div class="node-pulse pulse-danger"></div>
-                        <div class="node-icon">☣️</div>
-                        <div class="node-label">Хим-Завод</div>
-                    </div>
-                    <!-- Сектор 3 -->
-                    <div class="map-node node-heavy" onclick="MapSys.selectRegion('heavy')">
-                        <div class="node-pulse pulse-epic"></div>
-                        <div class="node-icon">🏗️</div>
-                        <div class="node-label">Промзона</div>
-                    </div>
-                    <!-- Сектор 4 -->
-                    <div class="map-node node-shadow" onclick="MapSys.selectRegion('shadow')">
-                        <div class="node-pulse pulse-illegal"></div>
-                        <div class="node-icon">🥷</div>
-                        <div class="node-label">Теневой Порт</div>
-                    </div>
-                </div>
-
-                <div class="section-header" style="margin-top: 20px;">
-                    <h3 id="selected-region-title" style="font-size: 16px; color: var(--accent-blue);">📍 Все контракты</h3>
-                </div>
-
-                <!-- Список доступных контрактов -->
-                <div id="contracts-list" class="contracts-grid"></div>
-            </section>
-
-            <!-- Вкладка 2: Автопарк -->
-            <section id="tab-fleet" class="tab-content">
+        <main class="content-area">
+            
+            <!-- Вкладка: Гараж -->
+            <section id="tab-fleet" class="tab-content active">
                 <div class="section-header">
                     <h2>Автопарк</h2>
-                    <p class="subtitle">Управление транспортом, СТО, госномерами и тюнинг</p>
+                    <p class="subtitle">Управление транспортом, СТО и тюнинг</p>
                 </div>
-                <div id="fleet-list"></div>
+                
+                <div id="fleet-list" class="card-grid"></div>
+                
+                <div class="card bonus-card" style="margin-top: 12px;">
+                    <div class="card-content">
+                        <h3>Ежедневный Бонус</h3>
+                        <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 8px;">Награды за лояльность компании.</p>
+                        <button type="button" class="btn btn-primary" onclick="GameLogic.claimDailyBonus()">Забрать 🎁</button>
+                    </div>
+                </div>
             </section>
 
-            <!-- Вкладка 3: Рейтинг -->
+            <!-- Вкладка: Логистика -->
+            <section id="tab-logistics" class="tab-content">
+                <div class="section-header">
+                    <h2>Центр Логистики</h2>
+                    <p class="subtitle">Поиск выгодных контрактов</p>
+                </div>
+                
+                <!-- Ежедневные квесты -->
+                <div class="card" style="margin-bottom: 12px; border-color: var(--accent-purple);">
+                    <div class="card-title">
+                        <span>📋 Ежедневные Квесты</span>
+                        <span style="font-size: 11px; color: var(--hint-color);">Обновление каждый день</span>
+                    </div>
+                    <div id="quests-list" class="card-grid" style="gap: 8px;"></div>
+                </div>
+
+                <!-- Глобальный ивент -->
+                <div class="global-event-banner" id="global-event-banner" style="display:none;">
+                    <h4>⚠️ <span id="global-event-title">Глобальное событие</span></h4>
+                    <p id="global-event-desc">Топливный кризис! Цены на бирже растут.</p>
+                </div>
+
+                <!-- 🛢 Топливная биржа -->
+                <div class="card" style="margin-bottom: 12px; border-color: var(--accent-blue);">
+                    <div class="card-title">
+                        <span>🛢 Топливная биржа</span>
+                        <span id="current-fuel-price" style="color: var(--accent-blue); font-weight: 800;">0 🪙 / л</span>
+                    </div>
+                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">
+                        Следите за рынком! Цены меняются динамически. Закупайте топливо впрок, когда цена падает.
+                    </p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                        <button type="button" class="btn btn-outline" style="border-color: var(--accent-blue); color: var(--accent-blue); flex-direction: column; padding: 10px 0;" onclick="GameLogic.buyFuel(100)">
+                            <span style="font-size: 14px;">100 л</span>
+                            <span style="font-size: 10px; opacity: 0.7; margin-top: 2px;">Закупить</span>
+                        </button>
+                        <button type="button" class="btn btn-outline" style="border-color: var(--accent-blue); color: var(--accent-blue); flex-direction: column; padding: 10px 0;" onclick="GameLogic.buyFuel(500)">
+                            <span style="font-size: 14px;">500 л</span>
+                            <span style="font-size: 10px; opacity: 0.7; margin-top: 2px;">Закупить</span>
+                        </button>
+                        <button type="button" class="btn btn-primary" style="background: var(--accent-blue); flex-direction: column; padding: 10px 0; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);" onclick="GameLogic.buyFuel(1000)">
+                            <span style="font-size: 14px;">1000 л</span>
+                            <span style="font-size: 10px; opacity: 0.9; margin-top: 2px;">Оптом</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="active-trip-panel"></div>
+                
+                <h3 class="subsection-title">Лицензии</h3>
+                <div class="licenses-row" id="licenses-list"></div>
+
+                <h3 class="subsection-title" style="margin-top:12px;">Доступные контракты</h3>
+                <div id="contracts-list" class="card-grid"></div>
+            </section>
+
+            <!-- Вкладка: Рейтинг -->
             <section id="tab-leaderboard" class="tab-content">
                 <div class="section-header">
                     <h2>Рейтинг Логистов</h2>
-                    <p class="subtitle">Элита грузоперевозок и статистика лидеров</p>
+                    <p class="subtitle">Топ лучших игроков по заработку</p>
                 </div>
-                <div class="leaderboard-tabs" style="display: flex; gap: 8px; margin-bottom: 12px;">
-                    <button type="button" id="lb-tab-profit" class="btn btn-outline active" style="flex: 1; font-size: 12px; padding: 10px;" onclick="UI.switchLeaderboardCategory('profit')">💰 Капитал</button>
-                    <button type="button" id="lb-tab-trips" class="btn btn-outline" style="flex: 1; font-size: 12px; padding: 10px;" onclick="UI.switchLeaderboardCategory('trips')">🚚 Рейсы</button>
-                </div>
-                <div id="leaderboard-podium" class="podium-container"></div>
-                <div id="leaderboard-list" class="card-grid" style="margin-bottom: 70px;"></div>
-                <div id="my-rank-sticky" class="my-rank-bar">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span id="my-rank-num" class="my-rank-badge">#--</span>
-                        <span style="font-size: 13px; font-weight: bold; color: #fff;">Ваше место</span>
-                    </div>
-                    <div id="my-rank-val" style="font-weight: 800; color: var(--accent-pink); font-size: 14px;">0 🪙</div>
-                </div>
+                <div id="leaderboard-list" class="card-grid"></div>
             </section>
 
-            <!-- Вкладка 4: Центр -->
-            <section id="tab-center" class="tab-content">
+            <!-- Вкладка: Сезонный пропуск -->
+            <section id="tab-pass" class="tab-content">
                 <div class="section-header">
-                    <h2>Центр Логистики</h2>
-                    <p class="subtitle">Топливная биржа, лицензии, мотели и кейсы фонов</p>
+                    <h2>Season Pass: Cyber Tokyo</h2>
+                    <p class="subtitle" id="pass-subtitle">Ваш текущий уровень пропуска: 1</p>
                 </div>
-                
-                <!-- Метеостанция -->
-                <div class="card" style="margin-bottom: 16px; border-color: #F59E0B;">
-                    <div class="card-title"><span style="color:#F59E0B;">📡 Метеостанция</span></div>
-                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Покупайте прогноз погоды на 2 часа вперед для точного планирования рискованных контрактов.</p>
-                    <button type="button" class="btn btn-primary" style="font-size:12px;" onclick="WeatherSys.buyForecast()">Купить прогноз (25,000 🪙)</button>
-                    <div id="forecast-status-div" style="font-size: 11px; color: var(--success-color); margin-top: 8px;"></div>
-                </div>
-
-                <!-- Придорожные отели -->
-                <div class="card" style="margin-bottom: 16px; border-color: var(--success-color);">
-                    <div class="card-title"><span style="color:var(--success-color);">🛏️ Придорожный мотель</span></div>
-                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Восстановите бодрость водителя до 100% (требуется для избежания штрафов и замедления рейсов).</p>
-                    <div style="display: flex; gap: 8px;">
-                        <button type="button" class="btn btn-outline" style="flex:1; font-size:11px;" onclick="FatigueSys.useEnergyDrink()">⚡ Энергетик (+40%)</button>
-                        <button type="button" class="btn btn-primary" style="flex:1; font-size:11px;" onclick="FatigueSys.restAtMotel()">💤 Ночлег (5,000 🪙)</button>
-                    </div>
-                </div>
-
-                <!-- Юридический офис (Адвокат) -->
-                <div class="card" style="margin-bottom: 16px; border-color: #EF4444;">
-                    <div class="card-title"><span style="color:#EF4444;">⚖️ Услуги адвоката (ФСБ)</span></div>
-                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Сбросьте накопленный уровень розыска за контрабанду и нелегальные допуски.</p>
-                    <button type="button" class="btn btn-outline" style="font-size:12px; border-color:#EF4444; color:#EF4444;" onclick="UnderworldSys.hireLawyer()">Очистить досье (150k ⭐)</button>
-                </div>
-
-                <div id="background-case-section"></div>
-                <div class="card" style="margin-bottom: 16px;">
-                    <div class="card-title">
-                        <span>⛽ Топливная биржа</span>
-                        <span id="current-fuel-price" style="color:var(--accent-blue);">12 🪙 / л</span>
-                    </div>
-                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Закупайте топливо для обеспечения будущих рейсов по выгодным ценам.</p>
-                    <div style="display: flex; gap: 8px;">
-                        <button type="button" class="btn btn-outline" style="flex:1; font-size:11px;" onclick="GameLogic.buyFuel(100)">Купить 100л</button>
-                        <button type="button" class="btn btn-outline" style="flex:1; font-size:11px;" onclick="GameLogic.buyFuel(500)">Купить 500л</button>
-                        <button type="button" class="btn btn-primary" style="flex:1; font-size:11px;" onclick="GameLogic.buyFuel(1000)">Купить 1000л</button>
-                    </div>
-                </div>
-                <div class="card" style="margin-bottom: 16px;">
-                    <div class="card-title"><span>🧠 Прокачка навыков</span></div>
-                    <div id="skills-list" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;"></div>
-                </div>
-                <div class="card-title" style="margin: 16px 0 8px 0;"><span>📜 Лицензии и допуски</span></div>
-                <div id="licenses-list"></div>
+                <div id="pass-tiers-list" class="card-grid"></div>
             </section>
 
-            <!-- Вкладка 5: Синдикаты -->
+            <!-- Вкладка: Синдикат -->
             <section id="tab-syndicate" class="tab-content">
                 <div class="section-header">
-                    <h2>Синдикаты</h2>
-                    <p class="subtitle">Корпоративное сотрудничество и технологии</p>
+                    <h2>Корпорация</h2>
+                    <p class="subtitle">Объединяйтесь для масштабных целей</p>
                 </div>
-                <div id="no-syndicate-panel" class="card" style="text-align: center; padding: 24px;">
-                    <h3 style="color: #fff; margin-bottom: 8px;">Нет корпорации</h3>
-                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 16px;">Создайте свой синдикат за 500,000 🪙 или присоединяйтесь к существующему.</p>
-                    <input type="text" id="input-new-syndicate" placeholder="Название синдиката" style="width: 100%; padding: 10px; background: #000; border: 1px solid var(--border-color); color: #fff; border-radius: 8px; margin-bottom: 10px; text-align: center;" />
-                    <button type="button" class="btn btn-primary" style="margin-bottom: 8px;" onclick="GameLogic.createSyndicate(document.getElementById('input-new-syndicate').value)">Создать синдикат</button>
-                    <div style="display: flex; gap: 8px; margin-top: 8px;">
-                        <input type="text" id="input-join-syndicate" placeholder="Корпорация для входа" style="flex: 1; padding: 8px; background: #000; border: 1px solid var(--border-color); color: #fff; border-radius: 8px; font-size: 12px;" />
-                        <button type="button" class="btn btn-outline" style="width: auto; font-size: 12px; padding: 8px 12px;" onclick="GameLogic.joinSyndicate(document.getElementById('input-join-syndicate').value)">Войти</button>
-                    </div>
+                
+                <div class="card">
+                    <h3 id="corp-name">Синдикат не выбран</h3>
+                    <p id="corp-role" style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Вам нужно вступить в корпорацию.</p>
+                    <button type="button" class="btn btn-primary" onclick="GameLogic.joinSyndicate('CyberLogistics')">Вступить в CyberLogistics</button>
                 </div>
-                <div id="active-syndicate-panel" style="display: none;">
-                    <div class="card" style="margin-bottom: 16px; border-color: var(--accent-purple);">
-                        <div class="card-title">
-                            <span id="corp-name-title">Название Синдиката</span>
-                            <span id="corp-level-badge" style="color: var(--accent-pink);">Ур. 1</span>
-                        </div>
-                        <div style="font-size: 12px; color: var(--hint-color); margin-top: 4px;">Ваша роль: <span id="corp-role-desc" style="color: #fff; font-weight: bold;">Участник</span></div>
-                        <div style="font-size: 12px; color: var(--hint-color); margin-top: 2px;">Топливный фонд: <span id="corp-fuel-treasury" style="color: var(--accent-blue); font-weight: bold;">0 л</span></div>
-                        <button type="button" class="btn btn-outline" style="margin-top: 12px; font-size: 11px; border-color: #EF4444; color: #EF4444;" onclick="GameLogic.leaveSyndicate()">Покинуть корпорацию</button>
-                    </div>
-                    <div class="card-title" style="margin-bottom: 8px;"><span>🔬 Корпоративные технологии</span></div>
-                    <div id="corp-tech-tree" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;"></div>
-                    <div class="card-title" style="margin-bottom: 8px;"><span>📋 Участники и Логи</span></div>
-                    <div class="card" style="margin-bottom: 16px;">
-                        <div id="corp-members-list" style="margin-bottom: 12px;"></div>
-                        <div id="corp-activity-feed" style="font-size: 11px; color: var(--hint-color); display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto;"></div>
-                    </div>
-                </div>
+
+                <h3 class="subsection-title" style="margin-top:12px;">Совместный контракт (Co-op)</h3>
+                <div class="card" id="coop-panel"></div>
             </section>
 
-            <!-- Вкладка 6: Профиль -->
+            <!-- Вкладка: Профиль -->
             <section id="tab-profile" class="tab-content">
                 <div class="section-header">
-                    <h2>Профиль Логиста</h2>
-                    <p class="subtitle">Ваша статистика, гараж-склад и достижения</p>
+                    <h2>Профиль & Настройки</h2>
+                    <p class="subtitle">История, Аватар и Музыка</p>
                 </div>
                 
-                <!-- Личный гараж-склад -->
-                <div class="card" style="margin-bottom: 16px; border-color: var(--accent-purple);">
-                    <div class="card-title"><span style="color: var(--accent-purple);">🏠 Личный гараж-склад</span><span id="garage-lvl-badge">Ур. 1</span></div>
-                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Каждый уровень гаража снижает стоимость комплексного ТО и увеличивает надежность базы.</p>
-                    <button type="button" class="btn btn-primary" style="font-size: 12px;" onclick="GarageSys.upgradeGarage()">Улучшить гараж (250,000 🪙)</button>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <span class="stat-label">Всего заработано</span>
+                        <span class="stat-value" id="stat-total-profit">0 🪙</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Выполнено рейсов</span>
+                        <span class="stat-value" id="stat-total-trips">0</span>
+                    </div>
                 </div>
 
-                <div id="profile-card-main" class="card" style="margin-bottom: 16px; text-align: center; position: relative; overflow: hidden;">
-                    <div style="position: absolute; inset: 0; background: rgba(18, 18, 26, 0.85); z-index: 1;"></div>
-                    <div style="position: relative; z-index: 2;">
-                        <div style="position: relative; width: 80px; height: 80px; margin: 0 auto 10px auto;">
-                            <img id="profile-id-avatar" src="https://via.placeholder.com/80" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-purple);" />
-                            <label for="avatar-file-input" style="position: absolute; bottom: 0; right: 0; background: var(--accent-purple); width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer;">📷</label>
-                            <input type="file" id="avatar-file-input" accept="image/*" style="display: none;" onchange="GameLogic.handleAvatarUpload(event)" />
-                        </div>
-                        <h3 id="profile-id-name" style="color: #fff; font-size: 18px;">Логист</h3>
-                        <div id="profile-id-role" style="font-size: 12px; color: var(--accent-pink); font-weight: bold; margin-top: 2px;">Частник-одиночка</div>
-                        <div style="display: flex; justify-content: center; gap: 15px; margin-top: 10px; font-size: 12px; color: var(--hint-color);">
-                            <div>Уровень: <span id="profile-id-lvl" style="color: #fff; font-weight: bold;">LVL 1</span></div>
-                        </div>
+                <!-- Навыки Логиста -->
+                <div class="card" style="margin-top: 12px; border-color: var(--accent-blue);">
+                    <h3>🧠 Навыки Логиста</h3>
+                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 8px;">Прокачивайте пассивные перки за монеты.</p>
+                    <div id="skills-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                </div>
+
+                <!-- Транспортная сеть (Рефералы) -->
+                <div class="card" style="margin-top: 12px; border-color: var(--accent-purple);">
+                    <h3>🤝 Транспортная сеть</h3>
+                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 8px;">
+                        Пригласи партнера в игру! Вы оба получите бонус: <b>+50,000 🪙 и +500л топлива</b>.
+                    </p>
+                    <button type="button" class="btn btn-primary" style="background: var(--accent-purple);" onclick="GameLogic.inviteFriend()">
+                        🔗 Позвать логиста
+                    </button>
+                </div>
+
+                <!-- Админ-панель -->
+                <div class="card" id="admin-panel-card" style="margin-top: 12px; border-color: var(--accent-pink); display: none;">
+                    <h3 style="color: var(--accent-pink);">🛡️ Админ Панель</h3>
+                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Управление ресурсами разработчика</p>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <button type="button" class="btn btn-primary" onclick="AdminSys.addMoney(500000)">+500,000 🪙</button>
+                        <button type="button" class="btn btn-primary" onclick="AdminSys.addFuel(5000)">+5,000л Топлива</button>
+                        <button type="button" class="btn btn-primary" onclick="AdminSys.setLevel(25)">Установить Уровень 25</button>
+                        <button type="button" class="btn btn-outline" onclick="AdminSys.unlockAll()">Разблокировать всё</button>
                     </div>
                 </div>
-                <div class="card" style="margin-bottom: 16px;">
-                    <div class="card-title"><span>✏️ Настройки профиля</span></div>
-                    <div style="margin-top: 10px;">
-                        <label style="font-size: 11px; color: var(--hint-color);">Ваш никнейм</label>
-                        <input type="text" id="input-username" placeholder="Введите имя..." style="width: 100%; padding: 10px; background: #000; border: 1px solid var(--border-color); color: #fff; border-radius: 8px; margin-top: 4px; margin-bottom: 10px;" />
-                        <button type="button" class="btn btn-primary" style="font-size: 12px; padding: 10px;" onclick="GameLogic.saveProfile()">Сохранить профиль</button>
+
+                <div class="card" style="margin-top: 12px;">
+                    <h3>Аватар профиля</h3>
+                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 8px;">Загрузите свою фотографию из галереи</p>
+                    <input type="file" id="avatar-file-input" accept="image/*" style="display: none;" onchange="GameLogic.handleAvatarUpload(event)">
+                    <button type="button" class="btn btn-outline" onclick="document.getElementById('avatar-file-input').click()">Выбрать из галереи 🖼️</button>
+                </div>
+
+                <div class="card" style="margin-top: 12px;">
+                    <h3>Настройки</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                        <span>Музыка</span>
+                        <button type="button" id="btn-music" class="btn btn-outline" style="width: auto;" onclick="AudioSys.toggleMusic()">Выключено 🔇</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                        <span>Звуки (SFX)</span>
+                        <button type="button" id="btn-sfx" class="btn btn-outline" style="width: auto;" onclick="AudioSys.toggleSFX()">Включено 🔊</button>
                     </div>
                 </div>
-                <div class="card" style="margin-bottom: 16px;">
-                    <div class="card-title"><span>🌌 Мои фоны профиля</span></div>
-                    <p style="font-size: 12px; color: var(--hint-color); margin: 6px 0 12px 0;">Выбирайте разблокированные анимированные фоны для своего профиля.</p>
-                    <div id="backgrounds-inventory-list"></div>
-                </div>
-                <div class="card" style="margin-bottom: 16px; border-color: var(--accent-blue);">
-                    <div class="card-title"><span>🎁 Ежедневный бонус</span></div>
-                    <p style="font-size: 12px; color: var(--hint-color); margin: 6px 0 12px 0;">Забирайте ценные ресурсы каждые 24 часа!</p>
-                    <button type="button" class="btn btn-primary" style="font-size: 12px; padding: 10px;" onclick="GameLogic.claimDailyBonus()">Забрать бонус (+15,000 🪙)</button>
-                </div>
-                <div class="card" style="margin-bottom: 16px;">
-                    <div class="card-title"><span>👥 Пригласить друга</span></div>
-                    <p style="font-size: 12px; color: var(--hint-color); margin: 6px 0 12px 0;">Приглашайте друзей и получайте бонусные средства за каждого реферала.</p>
-                    <button type="button" class="btn btn-outline" style="font-size: 12px; padding: 10px;" onclick="GameLogic.inviteFriend()">Поделиться ссылкой</button>
-                </div>
-                <div class="card" style="margin-bottom: 16px;">
-                    <div class="card-title"><span>🎫 Боевой пропуск</span></div>
-                    <p id="pass-subtitle" style="font-size: 12px; color: var(--hint-color); margin: 6px 0 12px 0;">Ваш текущий уровень пропуска: 1</p>
-                    <div id="pass-tiers-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+
+                <div class="card" style="margin-top: 12px;">
+                    <div class="input-group">
+                        <label>Никнейм (введите секретный код для Админки):</label>
+                        <input type="text" id="input-username" class="input-text">
+                    </div>
+                    <button type="button" class="btn btn-save" onclick="GameLogic.saveProfile()">Сохранить профиль</button>
                 </div>
                 
-                <!-- Статистика профиля -->
-                <div class="card" style="margin-bottom: 16px;">
-                    <div class="card-title"><span>📊 Общая статистика</span></div>
-                    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px; font-size: 13px;">
-                        <div style="display: flex; justify-content: space-between;"><span>Всего заработано:</span><strong id="stat-total-profit">0 🪙</strong></div>
-                        <div style="display: flex; justify-content: space-between;"><span>Завершенных рейсов:</span><strong id="stat-total-trips">0</strong></div>
-                        <div style="display: flex; justify-content: space-between;"><span>Сожжено топлива:</span><strong id="stat-total-fuel">0 л</strong></div>
-                        <div style="display: flex; justify-content: space-between;"><span>Время в игре:</span><strong id="stat-playtime">0ч 0м</strong></div>
-                        <div style="display: flex; justify-content: space-between;"><span>Любимый тягач:</span><strong id="stat-fav-truck">Нет</strong></div>
-                    </div>
-                </div>
-                <div class="card" style="margin-bottom: 16px;">
-                    <div class="card-title"><span>⚙️ Аудио и Звук</span></div>
-                    <div style="display: flex; gap: 8px; margin-top: 10px;">
-                        <button type="button" id="btn-music" class="btn btn-outline" style="flex:1; font-size:11px;" onclick="AudioSys.toggleMusic()">Музыка 🔇</button>
-                        <button type="button" id="btn-sfx" class="btn btn-primary" style="flex:1; font-size:11px;" onclick="AudioSys.toggleSFX()">Эффекты 🔊</button>
-                    </div>
-                </div>
-                <div id="admin-panel-card" class="card" style="display: none; border-color: #EF4444; margin-bottom: 70px;">
-                    <div class="card-title"><span style="color: #EF4444;">🛡️ Панель Администратора</span></div>
-                    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
-                        <button type="button" class="btn btn-outline" style="font-size:11px; border-color:#EF4444; color:#EF4444;" onclick="AdminSys.addMoney(1000000)">+1,000,000 🪙</button>
-                        <button type="button" class="btn btn-outline" style="font-size:11px; border-color:#EF4444; color:#EF4444;" onclick="AdminSys.addFuel(5000)">+5,000л Топлива</button>
-                        <button type="button" class="btn btn-outline" style="font-size:11px; border-color:#EF4444; color:#EF4444;" onclick="AdminSys.setLevel(25)">Установить Ур. 25</button>
-                        <button type="button" class="btn btn-outline" style="font-size:11px; border-color:#EF4444; color:#EF4444;" onclick="AdminSys.unlockAll()">Разблокировать ВСЁ</button>
+                <div class="card" style="margin-top: 12px;">
+                    <h3>Обратная связь</h3>
+                    <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+                        <button type="button" class="btn btn-outline social-btn" onclick="tg.openTelegramLink('https://t.me/TSYBUSS')">👑 Владелец (@TSYBUSS)</button>
+                        <button type="button" class="btn btn-outline social-btn" onclick="tg.openTelegramLink('https://t.me/LogisticWorld_news')">📰 Новости проекта</button>
+                        <button type="button" class="btn btn-outline social-btn" onclick="tg.openTelegramLink('https://t.me/LogisticWorld_sup')">🛠 Тех. Поддержка</button>
                     </div>
                 </div>
             </section>
         </main>
 
-        <!-- Нижняя навигационная панель -->
-        <nav class="app-nav">
-            <button type="button" class="nav-item active" onclick="switchTab('contracts')">
-                <span class="nav-icon">📦</span>
-                <span class="nav-label">Рейсы</span>
-            </button>
-            <button type="button" class="nav-item" onclick="switchTab('fleet')">
-                <span class="nav-icon">🚚</span>
-                <span class="nav-label">Автопарк</span>
-            </button>
-            <button type="button" class="nav-item" onclick="switchTab('leaderboard')">
-                <span class="nav-icon">🏆</span>
-                <span class="nav-label">Рейтинг</span>
-            </button>
-            <button type="button" class="nav-item" onclick="switchTab('center')">
-                <span class="nav-icon">⛽</span>
-                <span class="nav-label">Центр</span>
-            </button>
-            <button type="button" class="nav-item" onclick="switchTab('syndicate')">
-                <span class="nav-icon">🏢</span>
-                <span class="nav-label">Синдикат</span>
-            </button>
-            <button type="button" class="nav-item" onclick="switchTab('profile')">
-                <span class="nav-icon">👤</span>
-                <span class="nav-label">Профиль</span>
-            </button>
+        <nav class="nav-tabs bottom-nav">
+            <button type="button" class="tab-btn active" onclick="switchTab('fleet')"><span class="icon">🚛</span></button>
+            <button type="button" class="tab-btn" onclick="switchTab('logistics')"><span class="icon">🗺️</span></button>
+            <button type="button" class="tab-btn" onclick="switchTab('leaderboard')"><span class="icon">🏆</span></button>
+            <button type="button" class="tab-btn" onclick="switchTab('pass')"><span class="icon">🎫</span></button>
+            <button type="button" class="tab-btn" onclick="switchTab('syndicate')"><span class="icon">🤝</span></button>
+            <button type="button" class="tab-btn" onclick="switchTab('profile')"><span class="icon">👤</span></button>
         </nav>
-
-        <!-- ИИ Диспетчер -->
-        <div id="ai-dispatcher" class="ai-dispatcher">
-            <div class="ai-avatar">🤖</div>
-            <div class="ai-bubble">
-                <div class="ai-title">ИИ Диспетчер</div>
-                <div id="ai-message">Системные системы работают в штатном режиме.</div>
-            </div>
-        </div>
-        <div id="toast-container" class="toast-container"></div>
     </div>
-    
     <script src="script.js"></script>
 </body>
 </html>
