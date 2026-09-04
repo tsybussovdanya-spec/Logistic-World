@@ -112,7 +112,7 @@
     <div class="history-list" id="historyList"></div>
   </div>
 
-  <script>
+    <script>
     const SUPABASE_URL = "https://aiqlcndsayerxjtcwqbj.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_zKJ28h0HfzaojbT9s1uwmw_eX7UQZz0";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -186,7 +186,7 @@
         document.getElementById('monthBalance').innerText = `${monthTotal >= 0 ? '+' : ''}${monthTotal.toLocaleString()} ₸`;
 
       } catch (err) {
-        alert("Ошибка загрузки: " + err.message);
+        console.error("Ошибка:", err.message);
       }
     }
 
@@ -204,12 +204,13 @@
       const finalAmount = type === 'deposit' ? val : -val;
 
       try {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('transactions')
           .insert([{ user_id: userId, amount: finalAmount, type: type }]);
 
         if (error) {
-          alert("Ошибка Supabase: " + error.message);
+          // Если БД заблокирует запрос, вы увидите причину в alert
+          alert("Ошибка БД: " + error.message);
           if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
         } else {
           if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
@@ -217,11 +218,11 @@
           await loadData();
         }
       } catch (err) {
-        alert("Ошибка выполнения: " + err.message);
+        alert("Системная ошибка: " + err.message);
       }
     }
 
     loadData();
   </script>
-</body>
-</html>
+
+ 
