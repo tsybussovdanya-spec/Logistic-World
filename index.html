@@ -164,17 +164,54 @@
             <section id="tab-syndicate" class="tab-content">
                 <div class="section-header">
                     <h2>Корпорация</h2>
-                    <p class="subtitle">Объединяйтесь для масштабных целей</p>
+                    <p class="subtitle">Объединяйтесь для масштабных целей и бонусов</p>
                 </div>
                 
-                <div class="card">
-                    <h3 id="corp-name">Синдикат не выбран</h3>
-                    <p id="corp-role" style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Вам нужно вступить в корпорацию.</p>
-                    <button type="button" class="btn btn-primary" onclick="GameLogic.joinSyndicate('CyberLogistics')">Вступить в CyberLogistics</button>
+                <!-- Панель если игрок НЕ в синдикате -->
+                <div id="no-syndicate-panel" class="card" style="border-color: var(--accent-blue);">
+                    <h3>Вступление и Создание</h3>
+                    <p style="font-size: 12px; color: var(--hint-color); margin-bottom: 12px;">Создайте свою империю или присоединитесь к существующей, чтобы получать пассивные бонусы.</p>
+                    
+                    <div class="input-group">
+                        <input type="text" id="input-syndicate-name" class="input-text" placeholder="Введите название Синдиката...">
+                    </div>
+                    
+                    <div style="display: flex; gap: 8px; margin-top: 12px;">
+                        <button type="button" class="btn btn-outline" style="flex: 1;" onclick="GameLogic.joinSyndicate(document.getElementById('input-syndicate-name').value)">
+                            Вступить
+                        </button>
+                        <button type="button" class="btn btn-primary" style="flex: 1; background: var(--accent-purple);" onclick="GameLogic.createSyndicate(document.getElementById('input-syndicate-name').value)">
+                            Создать (500k 🪙)
+                        </button>
+                    </div>
                 </div>
 
-                <h3 class="subsection-title" style="margin-top:12px;">Совместный контракт (Co-op)</h3>
-                <div class="card" id="coop-panel"></div>
+                <!-- Панель если игрок В синдикате -->
+                <div id="active-syndicate-panel" style="display: none;">
+                    <div class="card" style="border-color: var(--accent-purple); margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 id="corp-name-title" style="color: var(--accent-purple); font-size: 18px;">Имя Синдиката</h3>
+                            <span id="corp-level-badge" style="background: rgba(168, 85, 247, 0.2); padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; color: var(--accent-purple);">Ур. 1</span>
+                        </div>
+                        <p id="corp-role-desc" style="font-size: 12px; color: var(--hint-color); margin-top: 4px;">Ваша должность: Логист</p>
+                        
+                        <div style="margin-top: 12px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+                            <span style="font-size: 12px; font-weight: bold;">Текущие бонусы корпорации:</span>
+                            <ul id="corp-buffs-list" style="font-size: 11px; color: #10B981; margin-top: 4px; padding-left: 16px;">
+                                <li>+0% к прибыли рейсов</li>
+                            </ul>
+                        </div>
+                        
+                        <button type="button" class="btn btn-outline" style="margin-top: 12px; border-color: var(--accent-pink); color: var(--accent-pink);" onclick="GameLogic.leaveSyndicate()">
+                            Покинуть синдикат
+                        </button>
+                    </div>
+
+                    <h3 class="subsection-title">Развитие корпорации</h3>
+                    <div class="card" id="coop-panel-content">
+                        <!-- Сюда рендерится прогресс -->
+                    </div>
+                </div>
             </section>
 
             <!-- Вкладка: Профиль -->
