@@ -28,16 +28,39 @@
       border-radius: 20px;
       padding: 20px;
       box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      position: relative;
     }
 
     .balance-card { text-align: center; background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(16, 185, 129, 0.05)); border: 1px solid rgba(6, 182, 212, 0.2); }
     .balance-title { font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
     .balance-amount { font-size: 38px; font-weight: 800; color: var(--text-main); text-shadow: 0 0 20px rgba(6, 182, 212, 0.3); }
 
+    /* Секция цели и прогресс-бара */
+    .goal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; color: var(--text-muted); }
+    .goal-set-btn { background: none; border: none; color: var(--accent-cyan); font-size: 13px; font-weight: 600; cursor: pointer; }
+    .progress-track { width: 100%; height: 12px; background: rgba(255, 255, 255, 0.08); border-radius: 10px; overflow: hidden; position: relative; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green)); width: 0%; transition: width 0.4s ease; border-radius: 10px; }
+    .goal-info { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: var(--text-muted); }
+
     .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .stat-item { text-align: center; padding: 14px; }
     .stat-value { font-size: 18px; font-weight: 700; margin-top: 4px; }
     .stat-value.neutral { color: var(--accent-cyan); }
+
+    /* Выбор тегов */
+    .tags-container { display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px; }
+    .tag-chip {
+      padding: 8px 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      font-size: 13px;
+      color: var(--text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+    .tag-chip.active { background: rgba(6, 182, 212, 0.2); border-color: var(--accent-cyan); color: #fff; font-weight: 600; }
 
     .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .input-group { margin-bottom: 12px; }
@@ -72,9 +95,18 @@
     .btn-withdraw { background: var(--accent-red); color: #fff; box-shadow: 0 4px 15px rgba(244, 63, 94, 0.3); }
     .btn:active { transform: scale(0.97); opacity: 0.9; }
 
-    .history-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: var(--text-muted); }
+    /* История операций */
+    .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .history-title { font-size: 16px; font-weight: 600; color: var(--text-muted); }
+    .reset-all-btn { background: none; border: none; color: var(--accent-red); font-size: 12px; cursor: pointer; opacity: 0.8; }
+
     .history-list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
-    .history-item { display: flex; justify-content: space-between; padding: 10px 14px; background: rgba(255, 255, 255, 0.02); border-radius: 10px; font-size: 14px; }
+    .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255, 255, 255, 0.02); border-radius: 10px; font-size: 14px; }
+    .history-left { display: flex; flex-direction: column; gap: 2px; }
+    .history-tag { font-size: 11px; color: var(--text-muted); }
+    .history-right { display: flex; align-items: center; gap: 10px; }
+    .delete-item-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 2px; }
+    .delete-item-btn:active { color: var(--accent-red); }
     .empty-history { text-align: center; color: var(--text-muted); font-size: 14px; padding: 10px; }
   </style>
 </head>
@@ -83,6 +115,21 @@
   <div class="glass-card balance-card">
     <div class="balance-title">Накоплено всего</div>
     <div class="balance-amount" id="totalBalance">0 ₸</div>
+  </div>
+
+  <!-- Карточка цели -->
+  <div class="glass-card">
+    <div class="goal-header">
+      <span>Цель накопления</span>
+      <button class="goal-set-btn" onclick="setGoal()">Изменить цель</button>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="goal-info">
+      <span id="goalPercent">0%</span>
+      <span id="goalTarget">Цель: 100,000 ₸</span>
+    </div>
   </div>
 
   <div class="stats-grid">
@@ -97,6 +144,14 @@
   </div>
 
   <div class="glass-card">
+    <!-- Выбор тегов -->
+    <div class="tags-container" id="tagsContainer">
+      <div class="tag-chip active" onclick="selectTag('Другое', this)">💡 Другое</div>
+      <div class="tag-chip" onclick="selectTag('Зарплата', this)">💼 Зарплата</div>
+      <div class="tag-chip" onclick="selectTag('Подарок', this)">🎁 Подарок</div>
+      <div class="tag-chip" onclick="selectTag('Еда', this)">🍔 Еда</div>
+    </div>
+
     <div class="input-group">
       <input type="number" id="amountInput" placeholder="Введите сумму" inputmode="decimal">
     </div>
@@ -107,7 +162,10 @@
   </div>
 
   <div class="glass-card">
-    <div class="history-title">Последние операции</div>
+    <div class="history-header">
+      <div class="history-title">Последние операции</div>
+      <button class="reset-all-btn" onclick="resetAllData()">Очистить всё</button>
+    </div>
     <div class="history-list" id="historyList"></div>
   </div>
 
@@ -118,19 +176,62 @@
       tg.expand(); 
     }
 
-    // Загрузка транзакций из памяти устройства
+    let selectedTag = 'Другое';
+
     function getTransactions() {
       const data = localStorage.getItem('piggy_transactions');
       return data ? JSON.parse(data) : [];
     }
 
-    // Сохранение транзакций в память устройства
     function saveTransactions(transactions) {
       localStorage.setItem('piggy_transactions', JSON.stringify(transactions));
     }
 
+    function getGoal() {
+      return parseFloat(localStorage.getItem('piggy_goal')) || 100000;
+    }
+
+    function setGoal() {
+      const current = getGoal();
+      const input = prompt("Введите сумму цели в ₸:", current);
+      if (input !== null) {
+        const val = parseFloat(input.replace(',', '.').trim());
+        if (!isNaN(val) && val > 0) {
+          localStorage.setItem('piggy_goal', val);
+          loadData();
+        } else {
+          alert("Введите корректную сумму");
+        }
+      }
+    }
+
+    function selectTag(tag, element) {
+      selectedTag = tag;
+      document.querySelectorAll('.tag-chip').forEach(el => el.classList.remove('active'));
+      element.classList.add('active');
+    }
+
+    function deleteTransaction(id) {
+      if (confirm("Удалить эту запись?")) {
+        let transactions = getTransactions();
+        transactions = transactions.filter(t => t.id !== id);
+        saveTransactions(transactions);
+        if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+        loadData();
+      }
+    }
+
+    function resetAllData() {
+      if (confirm("Вы уверены, что хотите сбросить ВСЮ историю накоплений?")) {
+        localStorage.removeItem('piggy_transactions');
+        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
+        loadData();
+      }
+    }
+
     function loadData() {
       const transactions = getTransactions();
+      const targetGoal = getGoal();
 
       let total = 0;
       let weekTotal = 0;
@@ -159,26 +260,39 @@
           if (date >= startOfMonth) monthTotal += val;
         });
 
-        // Отображение последних 10 операций
-        transactions.slice(0, 10).forEach(t => {
+        transactions.slice(0, 15).forEach(t => {
           const item = document.createElement('div');
           item.className = 'history-item';
           const isPlus = t.type === 'deposit';
           const amountVal = Math.abs(Number(t.amount)).toLocaleString();
+          const tagName = t.tag || 'Другое';
           
           item.innerHTML = `
-            <span>${isPlus ? 'Пополнение' : 'Снятие'}</span>
-            <span style="color: ${isPlus ? 'var(--accent-green)' : 'var(--accent-red)'}">
-              ${isPlus ? '+' : '-'}${amountVal} ₸
-            </span>
+            <div class="history-left">
+              <span>${isPlus ? 'Пополнение' : 'Снятие'}</span>
+              <span class="history-tag">${tagName}</span>
+            </div>
+            <div class="history-right">
+              <span style="color: ${isPlus ? 'var(--accent-green)' : 'var(--accent-red)'}">
+                ${isPlus ? '+' : '-'}${amountVal} ₸
+              </span>
+              <button class="delete-item-btn" onclick="deleteTransaction(${t.id})">✕</button>
+            </div>
           `;
           historyList.appendChild(item);
         });
       }
 
+      // Обновление балансов
       document.getElementById('totalBalance').innerText = `${total.toLocaleString()} ₸`;
       document.getElementById('weekBalance').innerText = `${weekTotal >= 0 ? '+' : ''}${weekTotal.toLocaleString()} ₸`;
       document.getElementById('monthBalance').innerText = `${monthTotal >= 0 ? '+' : ''}${monthTotal.toLocaleString()} ₸`;
+
+      // Расчет прогресса цели
+      const percent = Math.min(Math.max(Math.round((total / targetGoal) * 100), 0), 100);
+      document.getElementById('progressFill').style.width = `${percent}%`;
+      document.getElementById('goalPercent').innerText = `${percent}%`;
+      document.getElementById('goalTarget').innerText = `Цель: ${targetGoal.toLocaleString()} ₸`;
     }
 
     function addTransaction(type) {
@@ -192,14 +306,13 @@
       }
 
       const finalAmount = type === 'deposit' ? val : -val;
-
       const transactions = getTransactions();
       
-      // Добавляем новую запись в начало массива
       transactions.unshift({
         id: Date.now(),
         amount: finalAmount,
         type: type,
+        tag: selectedTag,
         created_at: new Date().toISOString()
       });
 
@@ -211,7 +324,6 @@
       loadData();
     }
 
-    // Загружаем данные при старте
     loadData();
   </script>
 </body>
