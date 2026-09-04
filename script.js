@@ -460,9 +460,9 @@ const AppState = {
         skills: { eco: 0, luck: 0, mechanic: 0 }
     },
     syndicateData: {
-        target: 50000,
-        current: 12000,
-        reward: 250000
+        target: 10000,
+        current: 0,
+        level: 1
     },
     trucks: [],
     activeTrips: [],
@@ -802,6 +802,12 @@ const GameLogic = {
             reward = Math.floor(reward * WorldState.marketEvent.multiplier);
         }
 
+        // Бонус от синдиката
+        if (AppState.player.syndicate && AppState.syndicateData.level) {
+            const synBonus = (AppState.syndicateData.level * 0.02); // 2% за уровень
+            reward = Math.floor(reward * (1 + synBonus));
+        }
+
         // Навык эко-вождения снижает расход топлива
         let ecoMod = 1.0;
         if (AppState.player.skills && AppState.player.skills.eco) {
@@ -958,32 +964,6 @@ const GameLogic = {
         UI.renderAll();
     },
 
-    async contributeToCoop(fuelAmount) {
-        if (!AppState.player.syndicate) {
-            return UI.showToast('Сначала вступите в корпорацию!', 'error');
-        }
-        
-        if (AppState.player.fuel_stock < fuelAmount) {
-            return UI.showToast(`Нужно ${fuelAmount}л топлива! У вас: ${AppState.player.fuel_stock}л`, 'error');
-        }
-
-        AppState.player.fuel_stock -= fuelAmount;
-        AppState.syndicateData.current += fuelAmount;
-
-        await DB.syncPlayer();
-        UI.showToast(`Вы пожертвовали ${fuelAmount}л топлива!`, 'success');
-
-        if (AppState.syndicateData.current >= AppState.syndicateData.target) {
-            UI.showToast('🎉 Контракт ВЫПОЛНЕН! Вы получили премию!', 'success');
-            AIDispatcher.showPopup("Орбитальная станция снабжена! Бонус зачислен.");
-            AppState.player.money += AppState.syndicateData.reward;
-            AppState.syndicateData.current = 0; 
-            await DB.syncPlayer();
-        }
-
-        UI.renderAll();
-    },
-
     async claimDailyBonus() {
         let now = Date.now();
         if (now - AppState.player.last_bonus_time < CONFIG.BONUS_COOLDOWN_MS) {
@@ -1062,14 +1042,6 @@ const GameLogic = {
         UI.renderAll();
     },
 
-    async joinSyndicate(name) {
-        if (AppState.player.syndicate === name) return UI.showToast('Вы уже в этом синдикате', 'info');
-        AppState.player.syndicate = name;
-        await DB.syncPlayer();
-        UI.showToast(`Вы вступили в ${name}!`, 'success');
-        UI.renderAll();
-    },
-
     updateMarket() {
         const minPrice = 8;
         const maxPrice = 22;
@@ -1125,12 +1097,73 @@ const GameLogic = {
     },
 
     inviteFriend() {
-        const botUsername = 'LogisticWorldBot'; // Замени на свой, если нужно
+        const botUsername = 'LogisticWorldBot'; // Замени на юзернейм своего бота (без @)
         const refLink = `https://t.me/${botUsername}/app?startapp=${telegramId}`;
         const shareText = `Присоединяйся к моей логистической империи! Тебя ждет крутой стартовый бонус.`;
         
         const url = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent(shareText)}`;
         tg.openTelegramLink(url);
+    },
+
+    createSyndicate: async function(name) {
+        name = name.trim();
+        if (!name || name.length < 3) return UI.showToast('Название должно быть длиннее 3 символов', 'error');
+        if (AppState.player.syndicate) return UI.showToast('Вы уже состоите в синдикате!', 'error');
+        if (AppState.player.money < 500000) return UI.showToast('Нужно 500,000 🪙 для создания!', 'error');
+
+        AppState.player.money -= 500000;
+        AppState.player.syndicate = name;
+        AppState.syndicateData = { target: 10000, current: 0, level: 1 };
+        
+        await DB.syncPlayer();
+        UI.showToast(`Синдикат "${name}" успешно создан!`, 'success');
+        UI.renderAll();
+    },
+
+    joinSyndicate: async function(name) {
+        name = name.trim();
+        if (!name) return UI.showToast('Введите название синдиката', 'error');
+        if (AppState.player.syndicate === name) return UI.showToast('Вы уже в этом синдикате', 'info');
+        if (AppState.player.syndicate) return UI.showToast('Сначала покиньте текущий синдикат', 'error');
+
+        AppState.player.syndicate = name;
+        AppState.syndicateData = { target: 10000, current: 0, level: 1 }; 
+        
+        await DB.syncPlayer();
+        UI.showToast(`Вы вступили в ${name}!`, 'success');
+        UI.renderAll();
+    },
+
+    leaveSyndicate: async function() {
+        if (!AppState.player.syndicate) return;
+        
+        if (confirm("Вы уверены, что хотите покинуть синдикат? Прогресс будет утерян.")) {
+            AppState.player.syndicate = null;
+            await DB.syncPlayer();
+            UI.showToast('Вы покинули корпорацию.', 'info');
+            UI.renderAll();
+        }
+    },
+
+    contributeToCoop: async function(fuelAmount) {
+        if (!AppState.player.syndicate) return UI.showToast('Сначала вступите в корпорацию!', 'error');
+        if (AppState.player.fuel_stock < fuelAmount) return UI.showToast(`Нужно ${fuelAmount}л топлива!`, 'error');
+
+        AppState.player.fuel_stock -= fuelAmount;
+        AppState.syndicateData.current += fuelAmount;
+
+        if (AppState.syndicateData.current >= AppState.syndicateData.target) {
+            AppState.syndicateData.level = (AppState.syndicateData.level || 1) + 1;
+            AppState.syndicateData.current -= AppState.syndicateData.target;
+            AppState.syndicateData.target = Math.floor(AppState.syndicateData.target * 1.5);
+            
+            UI.showToast(`🎉 Синдикат достиг ${AppState.syndicateData.level} уровня!`, 'success');
+            AIDispatcher.showPopup("Корпорация расширяется! Баффы увеличены.");
+        }
+
+        await DB.syncPlayer();
+        UI.showToast(`Вложено ${fuelAmount}л в развитие!`, 'success');
+        UI.renderAll();
     }
 };
 
@@ -1204,29 +1237,35 @@ const UI = {
             }).join(''));
         }
         
+        // --- Логика рендера Синдиката ---
+        const noSynPanel = document.getElementById('no-syndicate-panel');
+        const activeSynPanel = document.getElementById('active-syndicate-panel');
+
         if(p.syndicate) {
-            this.safeUpdate('corp-name', p.syndicate);
-            this.safeUpdate('corp-role', 'Ваша должность: Логист');
-            
+            if(noSynPanel) noSynPanel.style.display = 'none';
+            if(activeSynPanel) activeSynPanel.style.display = 'block';
+
+            if (!AppState.syndicateData.level) AppState.syndicateData.level = 1;
             const syn = AppState.syndicateData;
             const pct = Math.min((syn.current / syn.target) * 100, 100).toFixed(1);
+            const bonusMod = (syn.level * 2); // +2% к доходу за каждый уровень
             
-            this.safeUpdateHTML('coop-panel', `
-                <h4>Поставка для орбитальной станции</h4>
-                <p style="font-size:12px; color:var(--hint-color); margin: 4px 0;">Собрано топлива: ${syn.current.toLocaleString()} / ${syn.target.toLocaleString()} л</p>
+            this.safeUpdate('corp-name-title', p.syndicate);
+            this.safeUpdate('corp-level-badge', `Ур. ${syn.level}`);
+            this.safeUpdateHTML('corp-buffs-list', `<li>💰 +${bonusMod}% к прибыли всех контрактов</li>`);
+            
+            this.safeUpdateHTML('coop-panel-content', `
+                <p style="font-size:12px; color:var(--hint-color); margin: 4px 0;">Опыт до следующего уровня: ${syn.current.toLocaleString()} / ${syn.target.toLocaleString()} л</p>
                 <div class="progress-bar-container" style="margin: 8px 0;">
                     <div class="progress-bar-fill" style="width: ${pct}%; background: var(--accent-blue); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);"></div>
                 </div>
                 <button type="button" class="btn btn-primary" style="background: var(--accent-blue);" onclick="GameLogic.contributeToCoop(500)">
-                    Пожертвовать 500л
+                    Пожертвовать 500л топлива
                 </button>
             `);
         } else {
-            this.safeUpdate('corp-name', 'Синдикат не выбран');
-            this.safeUpdate('corp-role', 'Вам нужно вступить в корпорацию.');
-            this.safeUpdateHTML('coop-panel', `
-                <p style="font-size:12px; color:var(--hint-color); text-align:center;">Контракты корпорации станут доступны после вступления в Синдикат.</p>
-            `);
+            if(noSynPanel) noSynPanel.style.display = 'block';
+            if(activeSynPanel) activeSynPanel.style.display = 'none';
         }
 
         const xpProg = Math.min((p.xp / GameLogic.getReqXP(p.level)) * 100, 100);
@@ -1380,6 +1419,12 @@ const UI = {
                 currentReward = Math.floor(currentReward * WorldState.marketEvent.multiplier);
             }
 
+            // Предварительный рендер с баффом синдиката (чисто визуально для игрока)
+            if (AppState.player.syndicate && AppState.syndicateData.level) {
+                const synBonus = (AppState.syndicateData.level * 0.02);
+                currentReward = Math.floor(currentReward * (1 + synBonus));
+            }
+
             let btnText = 'Начать рейс';
             if (lockedLvl) btnText = `Нужен Ур. ${c.reqLvl}`;
             else if (lockedLic) btnText = 'Нет лицензии';
@@ -1389,7 +1434,7 @@ const UI = {
                 <div class="card-title"><span>${c.title}</span><span style="color:var(--accent-pink);">+${currentReward.toLocaleString()} 🪙</span></div>
                 <div class="specs-grid"><div>Время: ${c.duration}с</div><div>Топливо: ${c.fuel}л</div></div>
                 <button class="btn btn-primary" ${!hasIdleTrucks || isLocked ? 'disabled' : ''} 
-                    onclick="GameLogic.startTrip(${currentReward}, ${c.fuel}, ${c.duration}, '${c.title}', ${c.reqLvl}, '${c.reqLic}')">
+                    onclick="GameLogic.startTrip(${c.reward}, ${c.fuel}, ${c.duration}, '${c.title}', ${c.reqLvl}, '${c.reqLic}')">
                     ${btnText}
                 </button>
             </div>`;
