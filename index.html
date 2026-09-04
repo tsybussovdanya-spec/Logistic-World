@@ -67,7 +67,10 @@
     .stat-value.neutral { color: var(--accent-cyan); transition: color 0.3s ease; }
 
     /* Выбор кастомизации */
-    .section-label { font-size: 13px; color: var(--text-muted); font-weight: 600; margin-bottom: 10px; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .section-label { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+    .sound-toggle-btn { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--card-border); color: var(--text-main); padding: 4px 10px; border-radius: 10px; font-size: 12px; cursor: pointer; }
+    
     .custom-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; }
     .theme-chip {
       padding: 8px 12px;
@@ -200,7 +203,10 @@
 
   <!-- Блок кастомизации -->
   <div class="glass-card">
-    <div class="section-label">🎨 Стиль приложения</div>
+    <div class="section-header">
+      <div class="section-label">🎨 Стиль и эффекты</div>
+      <button class="sound-toggle-btn" id="soundToggleBtn" onclick="toggleSound()">🔊 Звук: Вкл</button>
+    </div>
     <div class="custom-row" id="themesRow">
       <div class="theme-chip active" onclick="setTheme('neon', this)">🩵 Neon</div>
       <div class="theme-chip" onclick="setTheme('lazurit', this)">💎 Lazurit</div>
@@ -208,7 +214,7 @@
       <div class="theme-chip" onclick="setTheme('emerald', this)">🌿 Emerald</div>
     </div>
 
-    <div class="section-label">Иконка копилки</div>
+    <div class="section-label" style="margin-bottom: 8px;">Иконка копилки</div>
     <div class="custom-row" id="iconsRow">
       <button class="icon-btn active" onclick="setIcon('💰', this)">💰</button>
       <button class="icon-btn" onclick="setIcon('🐷', this)">🐷</button>
@@ -252,8 +258,114 @@
     }
 
     let selectedTag = 'Другое';
+    let isSoundEnabled = localStorage.getItem('piggy_sound') !== 'false';
 
-    // Загрузка и установка темы
+    // --- SFX (Звуковой движок Web Audio API) ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playSFX(type) {
+      if (!isSoundEnabled) return;
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      const now = audioCtx.currentTime;
+
+      if (type === 'deposit') {
+        // Звон пополнения (двухтоновый чип)
+        const osc1 = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc1.type = 'sine';
+        osc2.type = 'triangle';
+
+        osc1.frequency.setValueAtTime(587.33, now); // D5
+        osc1.frequency.exponentialRampToValueAtTime(880, now + 0.15); // A5
+
+        osc2.frequency.setValueAtTime(1174.66, now + 0.05); // D6
+
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc1.start(now);
+        osc2.start(now + 0.05);
+        osc1.stop(now + 0.3);
+        osc2.stop(now + 0.3);
+
+      } else if (type === 'withdraw') {
+        // Звук снятия (падающий тон)
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(220, now + 0.2);
+
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.2);
+
+      } else if (type === 'click') {
+        // Легкий щелчок интерфейса
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(400, now + 0.04);
+
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.04);
+
+      } else if (type === 'error') {
+        // Звук ошибки
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.setValueAtTime(110, now + 0.1);
+
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.25);
+      }
+    }
+
+    function toggleSound() {
+      isSoundEnabled = !isSoundEnabled;
+      localStorage.setItem('piggy_sound', isSoundEnabled);
+      updateSoundBtn();
+      if (isSoundEnabled) playSFX('click');
+    }
+
+    function updateSoundBtn() {
+      const btn = document.getElementById('soundToggleBtn');
+      btn.innerText = isSoundEnabled ? '🔊 Звук: Вкл' : '🔇 Звук: Выкл';
+    }
+
+    // --- Загрузка и управление темой ---
     function applySavedTheme() {
       const savedTheme = localStorage.getItem('piggy_theme') || 'neon';
       const savedIcon = localStorage.getItem('piggy_icon') || '💰';
@@ -261,7 +373,6 @@
       document.body.className = `theme-${savedTheme}`;
       document.getElementById('piggyIcon').innerText = savedIcon;
 
-      // Обновление активных кнопок темы
       document.querySelectorAll('#themesRow .theme-chip').forEach(el => {
         if (el.getAttribute('onclick').includes(`'${savedTheme}'`)) {
           el.classList.add('active');
@@ -270,7 +381,6 @@
         }
       });
 
-      // Обновление активных кнопок иконок
       document.querySelectorAll('#iconsRow .icon-btn').forEach(el => {
         if (el.innerText === savedIcon) {
           el.classList.add('active');
@@ -278,6 +388,8 @@
           el.classList.remove('active');
         }
       });
+
+      updateSoundBtn();
     }
 
     function setTheme(themeName, element) {
@@ -286,6 +398,7 @@
       
       document.querySelectorAll('#themesRow .theme-chip').forEach(el => el.classList.remove('active'));
       element.classList.add('active');
+      playSFX('click');
       if (tg?.HapticFeedback) tg.HapticFeedback.selectionChanged();
     }
 
@@ -295,6 +408,7 @@
 
       document.querySelectorAll('#iconsRow .icon-btn').forEach(el => el.classList.remove('active'));
       element.classList.add('active');
+      playSFX('click');
       if (tg?.HapticFeedback) tg.HapticFeedback.selectionChanged();
     }
 
@@ -312,14 +426,17 @@
     }
 
     function setGoal() {
+      playSFX('click');
       const current = getGoal();
       const input = prompt("Введите сумму цели в ₸:", current);
       if (input !== null) {
         const val = parseFloat(input.replace(',', '.').trim());
         if (!isNaN(val) && val > 0) {
           localStorage.setItem('piggy_goal', val);
+          playSFX('deposit');
           loadData();
         } else {
+          playSFX('error');
           alert("Введите корректную сумму");
         }
       }
@@ -329,21 +446,26 @@
       selectedTag = tag;
       document.querySelectorAll('#tagsContainer .tag-chip').forEach(el => el.classList.remove('active'));
       element.classList.add('active');
+      playSFX('click');
     }
 
     function deleteTransaction(id) {
+      playSFX('click');
       if (confirm("Удалить эту запись?")) {
         let transactions = getTransactions();
         transactions = transactions.filter(t => t.id !== id);
         saveTransactions(transactions);
+        playSFX('error');
         if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
         loadData();
       }
     }
 
     function resetAllData() {
+      playSFX('click');
       if (confirm("Вы уверены, что хотите сбросить ВСЮ историю накоплений?")) {
         localStorage.removeItem('piggy_transactions');
+        playSFX('error');
         if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
         loadData();
       }
@@ -421,6 +543,7 @@
       const val = parseFloat(rawVal);
 
       if (isNaN(val) || val <= 0) {
+        playSFX('error');
         if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
         return;
       }
@@ -438,13 +561,14 @@
 
       saveTransactions(transactions);
 
+      playSFX(type);
       if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
       
       input.value = '';
       loadData();
     }
 
-    // Инициализация при старте
+    // Инициализация
     applySavedTheme();
     loadData();
   </script>
